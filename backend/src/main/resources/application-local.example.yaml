@@ -1,0 +1,7 @@
+# Copia este archivo como application-local.yaml (misma carpeta) y pon tus valores.
+# application-local.yaml está en .gitignore; este ejemplo sí se sube al repositorio.
+DB_USER: root
+DB_PASSWORD: cambia-esto
+# JWT_SECRET: una-cadena-aleatoria-de-al-menos-32-caracteres
+# ADMIN_EMAIL: admin@supplycore.local
+# ADMIN_PASSWORD: Clave1234   # solo se usa la primera vez, si no hay ADMIN_SISTEMA

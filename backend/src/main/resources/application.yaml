@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: supply-core
+
+  # Secretos locales (fuera de git). Ver application-local.example.yaml
+  config:
+    import: optional:classpath:application-local.yaml
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/supply_core?createDatabaseIfNotExist=true&serverTimezone=America/Bogota&useUnicode=true&characterEncoding=utf8
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none                 # el esquema lo maneja Flyway, nunca Hibernate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 50   # carga relaciones LAZY por lotes (evita N+1 en listados)
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+
+  data:
+    web:
+      pageable:
+        max-page-size: 100           # nadie puede pedir 1.000.000 de filas por página
+
+  servlet:
+    multipart:
+      max-file-size: 10MB            # igual a app.storage.tamano-maximo-bytes
+      max-request-size: 11MB
+
+app:
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:4200}
+  jwt:
+    secret: ${JWT_SECRET:}            # ≥ 32 caracteres; vacío = aleatorio (solo desarrollo)
+    expiracion-minutos: ${JWT_EXPIRACION_MINUTOS:480}
+  storage:
+    ruta: ${STORAGE_RUTA:./almacenamiento}   # archivos de documentos (fuera de la BD y de git)
+    tamano-maximo-bytes: 10485760             # 10 MB
+  admin:
+    email: ${ADMIN_EMAIL:admin@supplycore.local}
+    password: ${ADMIN_PASSWORD:}      # solo se usa si aún no existe un ADMIN_SISTEMA
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
