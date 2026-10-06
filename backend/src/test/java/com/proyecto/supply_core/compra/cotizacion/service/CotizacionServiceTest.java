@@ -47,6 +47,7 @@ import com.proyecto.supply_core.compra.rfq.repository.RfqRepository;
 import com.proyecto.supply_core.documento.dto.DocumentoResponse;
 import com.proyecto.supply_core.documento.enums.EntidadDocumento;
 import com.proyecto.supply_core.documento.service.DocumentoService;
+import com.proyecto.supply_core.ia.service.ExtraccionService;
 import com.proyecto.supply_core.inventario.entity.Producto;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
@@ -63,8 +64,9 @@ class CotizacionServiceTest {
     private final DocumentoService documentos = mock(DocumentoService.class);
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
     private final NotificacionService notificaciones = mock(NotificacionService.class);
+    private final ExtraccionService extraccion = mock(ExtraccionService.class);
     private final CotizacionService service = new CotizacionService(cotizaciones, rfqs, proveedores, documentos,
-            auditoria, notificaciones);
+            auditoria, notificaciones, extraccion);
     private final CotizacionReglaDocumentos regla = new CotizacionReglaDocumentos(cotizaciones);
 
     private MockHttpServletRequest request;
@@ -184,6 +186,7 @@ class CotizacionServiceTest {
         assertNull(r.total()); // la IA leerá los precios en el paso 13
 
         assertEquals(EstadoCotizacion.ENVIADA, service.enviar(9L).estado());
+        verify(extraccion).programar(guardada); // la IA la lee en segundo plano
     }
 
     @Test

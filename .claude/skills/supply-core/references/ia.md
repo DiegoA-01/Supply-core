@@ -18,3 +18,10 @@ Criterios: PRECIO, CALIDAD, ENTREGA, GARANTIA, HISTORIAL, RIESGO. Usar siempre l
 - La clave de la API va en variable de entorno; el dominio solo conoce `IAClient` (proveedor de modelo intercambiable).
 - Reintentos acotados (`intentos`); error ⇒ estado ERROR con mensaje, sin bloquear la UI.
 - Argumento para la sustentación: un error de la IA nunca termina en compra sin revisión humana.
+
+## Implementación (paso 13, 2026-10-06)
+- Proveedor por configuración: `app.ia.proveedor` = `ninguno` (defecto) | `ollama` | `claude`. Claude sin `ANTHROPIC_API_KEY` ⇒ sin IA (la app arranca igual).
+- Claude: SDK `com.anthropic:anthropic-java` 2.34.0, modelo `claude-opus-5-5`, structured outputs con el record `ExtraccionIA`. La key es de la API (console.anthropic.com), no de la suscripción.
+- Ollama: `POST /api/chat` con `format` = esquema JSON (`OllamaIAClient.esquemaExtraccion`). Modelo sugerido `qwen2.5vl:3b` (CPU, minutos por documento).
+- La IA copia valores como texto; `NumeroTexto` los interpreta. Nunca se inventa un número: renglón ilegible ⇒ campo `renglonNoLeido` crítico.
+- Explicación por cotización: plantilla Java. La IA solo redacta `explicacion_general` a pedido (`POST /api/rfqs/{id}/analisis/explicar`).

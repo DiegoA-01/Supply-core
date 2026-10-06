@@ -1,11 +1,7 @@
 package com.proyecto.supply_core.compra.cotizacion.service;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,19 +17,17 @@ import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.compra.cotizacion.dto.CotizacionRequest;
 import com.proyecto.supply_core.compra.cotizacion.dto.CotizacionResponse;
-import com.proyecto.supply_core.compra.cotizacion.dto.LineaCotizacionRequest;
 import com.proyecto.supply_core.compra.cotizacion.entity.Cotizacion;
-import com.proyecto.supply_core.compra.cotizacion.entity.CotizacionLinea;
 import com.proyecto.supply_core.compra.cotizacion.enums.EstadoCotizacion;
 import com.proyecto.supply_core.compra.cotizacion.enums.OrigenCotizacion;
 import com.proyecto.supply_core.compra.cotizacion.repository.CotizacionRepository;
 import com.proyecto.supply_core.compra.rfq.entity.Rfq;
-import com.proyecto.supply_core.compra.rfq.entity.RfqLinea;
 import com.proyecto.supply_core.compra.rfq.enums.EstadoRfq;
 import com.proyecto.supply_core.compra.rfq.repository.RfqRepository;
 import com.proyecto.supply_core.documento.dto.DocumentoResponse;
 import com.proyecto.supply_core.documento.enums.EntidadDocumento;
 import com.proyecto.supply_core.documento.service.DocumentoService;
+import com.proyecto.supply_core.ia.service.ExtraccionService;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
 import com.proyecto.supply_core.proveedor.repository.ProveedorRepository;
@@ -62,6 +56,7 @@ public class CotizacionService {
     private final DocumentoService documentoService;
     private final AuditoriaService auditoriaService;
     private final NotificacionService notificacionService;
+    private final ExtraccionService extraccionService;
 
     /**
      * @param cotizacionRepository cotizaciones
@@ -70,16 +65,19 @@ public class CotizacionService {
      * @param documentoService     archivo original
      * @param auditoriaService     registro de acciones
      * @param notificacionService  aviso al comprador
+     * @param extraccionService    lectura de cotizaciones por archivo (IA)
      */
     public CotizacionService(CotizacionRepository cotizacionRepository, RfqRepository rfqRepository,
             ProveedorRepository proveedorRepository, DocumentoService documentoService,
-            AuditoriaService auditoriaService, NotificacionService notificacionService) {
+            AuditoriaService auditoriaService, NotificacionService notificacionService,
+            ExtraccionService extraccionService) {
         this.cotizacionRepository = cotizacionRepository;
         this.rfqRepository = rfqRepository;
         this.proveedorRepository = proveedorRepository;
         this.documentoService = documentoService;
         this.auditoriaService = auditoriaService;
         this.notificacionService = notificacionService;
+        this.extraccionService = extraccionService;
     }
 
     /**
@@ -115,26 +113,7 @@ public class CotizacionService {
                 ? null : req.condicionesComerciales().trim());
         c.getLineas().clear();
         cotizacionRepository.flush(); // borra las líneas viejas antes de insertar (UNIQUE cotización + línea RFQ)
-        Map<Long, RfqLinea> lineasRfq = rfq.getLineas().stream()
-                .collect(Collectors.toMap(RfqLinea::getId, Function.identity()));
-        for (LineaCotizacionRequest l : req.lineas() == null ? List.<LineaCotizacionRequest>of() : req.lineas()) {
-            RfqLinea rl = lineasRfq.get(l.rfqLineaId());
-            if (rl == null) {
-                throw new NegocioException("LINEA_RFQ_INVALIDA",
-                        "La línea " + l.rfqLineaId() + " no pertenece a la " + rfq.getConsecutivo());
-            }
-            CotizacionLinea linea = new CotizacionLinea();
-            linea.setRfqLinea(rl);
-            linea.setProducto(rl.getProducto());
-            linea.setCantidadOfertada(l.cantidadOfertada());
-            linea.setUnidadOfertada(l.unidadOfertada().trim());
-            linea.setFactorConversion(l.factorConversion());
-            linea.setPrecioUnitarioOfertado(l.precioUnitarioOfertado());
-            linea.setDescuentoPct(l.descuentoPct() == null ? BigDecimal.ZERO : l.descuentoPct());
-            linea.setImpuestoPct(l.impuestoPct() == null ? BigDecimal.ZERO : l.impuestoPct());
-            c.agregarLinea(linea);
-        }
-        CalculadoraCotizacion.recalcular(c);
+        ArmadorLineas.armar(c, rfq, req.lineas());
         auditoriaService.exito(AccionAuditoria.COTIZACION_GUARDAR, EntidadAuditada.COTIZACION, c.getId(),
                 rfq.getConsecutivo() + "; lineas=" + c.getLineas().size() + "; total=" + c.getTotal());
         return CotizacionResponse.of(c);
@@ -179,6 +158,9 @@ public class CotizacionService {
         }
         c.setEstado(EstadoCotizacion.ENVIADA);
         c.setEnviadoEn(LocalDateTime.now());
+        if (c.getOrigen() == OrigenCotizacion.ARCHIVO) {
+            extraccionService.programar(c); // la IA lo lee en segundo plano (o queda para digitar)
+        }
         notificacionService.notificar(rfq.getUsuarioId(), EventoNotificacion.COTIZACION_RECIBIDA,
                 c.getProveedor().getRazonSocial() + " envió su cotización para la " + rfq.getConsecutivo());
         auditoriaService.exito(AccionAuditoria.COTIZACION_ENVIAR, EntidadAuditada.COTIZACION, c.getId(),

@@ -156,6 +156,35 @@ public class DocumentoService {
                 d.getTamanoBytes());
     }
 
+    /**
+     * Lee un documento completo para un proceso interno del sistema (p. ej. la lectura con IA en segundo
+     * plano, que no tiene usuario de sesión). <b>No aplica reglas de acceso</b>: nunca exponerlo en un
+     * controller.
+     *
+     * @param id id del documento
+     * @return bytes, tipo y nombre
+     * @throws NoEncontradoException si no existe o falta el archivo
+     */
+    @Transactional(readOnly = true)
+    public ContenidoDocumento leerParaSistema(Long id) {
+        Documento d = documentoRepository.findById(id).orElseThrow(() -> new NoEncontradoException("Documento", id));
+        try (InputStream in = storageClient.abrir(d.getRutaStorage()).getInputStream()) {
+            return new ContenidoDocumento(in.readAllBytes(), d.getTipoMime(), d.getNombreArchivo());
+        } catch (IOException e) {
+            throw new UncheckedIOException("No se pudo leer el documento " + id, e);
+        }
+    }
+
+    /**
+     * Contenido de un documento leído por el sistema.
+     *
+     * @param bytes    contenido
+     * @param tipoMime tipo real
+     * @param nombre   nombre original
+     */
+    public record ContenidoDocumento(byte[] bytes, String tipoMime, String nombre) {
+    }
+
     // ----------------------------------------------------------------- apoyo
 
     /**

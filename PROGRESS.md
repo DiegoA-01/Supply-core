@@ -1,7 +1,7 @@
 # Supply-Core — Progreso del backend
 
-> Última actualización: 2026-10-05 · Estado: **pasos 0 a 12 completos + 11-bis (despachos)**.
-> **244 pruebas en verde** (también con la JVM en inglés), Javadoc sin advertencias (`doclint=all`), 11 migraciones Flyway, 28 controllers.
+> Última actualización: 2026-10-06 · Estado: **pasos 0 a 14 completos + 11-bis (despachos)**.
+> **293 pruebas en verde** (también con la JVM en inglés), Javadoc sin advertencias (`doclint=all`), 13 migraciones Flyway, 32 controllers.
 > Detalle vivo para Claude: `.claude/skills/supply-core/references/estado.md` y `plan-backend.md`.
 
 ---
@@ -19,6 +19,8 @@
 | 11 | `compra/rfq/` | RFQ desde solicitud aprobada (UC-06): invitación automática por categoría con alertas, abrir/cerrar/cancelar, cierre automático por fecha límite, vista del proveedor invitado |
 | 11-bis | `despacho/` | Remisión de salida (lo que se vende o entrega): varias líneas, confirmar descuenta el stock todo o nada, anular lo devuelve. Sin precios ni facturación |
 | 12 | `compra/cotizacion/` | El proveedor cotiza (UC-07) por formulario o archivo; Java calcula montos y precio normalizado; sobre cerrado hasta que la RFQ cierre |
+| 13 | `ia/` + `compra/analisis/` | Lectura de cotizaciones por archivo con IA (ninguna / Ollama local / Claude) con confianza por dato y revisión humana; motor de comparación en Java con pesos versionados, alertas y ranking publicable |
+| 14 | `compra/adjudicacion/` | Adjudicación (UC-09) sobre el análisis publicado, justificación si no sigue la recomendación, aprobación por política con segregación; marca ganadora y cierra RFQ/solicitud como ADJUDICADA |
 | 4 | `empresa/` | Empresa única, sedes, centros de costo, políticas de aprobación por rango de monto |
 | 5 | `catalogo/` | Categorías, unidades de medida con magnitud y conversión |
 | 6 | `inventario/` | Productos (UC-02), bodegas, stock por bodega, movimientos y kardex (UC-03) |
@@ -41,7 +43,9 @@ Las cotizaciones del proveedor llegan en el paso 12. La evaluación UC-14 se dis
 | V9 | `rfq`: fechas de apertura y cierre, índices para el job de cierre y el portal + eventos de RFQ |
 | V10 | `despacho` y `despacho_linea`, tipos de movimiento SALIDA_VENTA y ANULACION_DESPACHO, consecutivo DES |
 | V11 | `cotizacion_linea`: una línea por producto de la RFQ y CHECKs de valores + evento de cotización recibida |
-| **Próximo libre** | **V12** |
+| V12 | IA y análisis: un procesamiento por cotización, explicación general del ranking, CHECK de confianza, evento de revisión |
+| V13 | `adjudicacion`: política que exigió la aprobación, índices y eventos de adjudicación |
+| **Próximo libre** | **V14** |
 
 ---
 
@@ -144,13 +148,11 @@ Todo el código está en `backend/src/main/java/com/proyecto/supply_core/`. Cada
 
 ## 4. Lo que sigue
 
-### Siguiente: paso 13. Pasos 13 a 19 (orden obligatorio, detalle en `plan-backend.md`)
+### Siguiente: paso 15. Pasos 15 a 19 (orden obligatorio, detalle en `plan-backend.md`)
 Para notificar en los pasos nuevos: agregar el evento a `EventoNotificacion`, sembrar sus canales en una migración y llamar `notificacionService.notificarRol(...)`.
 
 | Paso | Módulo | Notas para retomarlo |
 |---|---|---|
-| 13 | `ia/` + `compra/analisis` | Normalizar con `UnidadMedidaService.convertir`; la IA nunca calcula dinero |
-| 14 | `compra/adjudicacion` | UC-09; `aplicable(ADJUDICACION, monto)` |
 | 15 | `compra/orden` | UC-10/12; inmutable (nuevas versiones); regla de documentos ORDEN_COMPRA |
 | 16 | `pago/` | UC-11; regla de documentos PAGO, `comprobante_documento_id` |
 | 17 | `recepcion/` | UC-13; al cerrar, `EvaluacionProveedorService.registrar(...)`; `MovimientoInventarioService.registrarEntradaCompra(...)` / `registrarDevolucionProveedor(...)`; regla de documentos RECEPCION |

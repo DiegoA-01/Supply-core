@@ -110,5 +110,27 @@ public enum AccionAuditoria {
     /** Guardado del borrador de una cotización (formulario). */
     COTIZACION_GUARDAR,
     /** Envío de una cotización al comprador. */
-    COTIZACION_ENVIAR
+    COTIZACION_ENVIAR,
+    /** Confirmación o corrección humana de un dato leído por la IA. */
+    EXTRACCION_CONFIRMAR,
+    /** Digitación manual de las líneas de una cotización que llegó por archivo. */
+    COTIZACION_DIGITAR,
+    /** Nueva versión de la matriz de pesos de evaluación. */
+    PESOS_CAMBIAR,
+    /** Generación del análisis comparativo (ranking en borrador). */
+    ANALISIS_GENERAR,
+    /** Publicación del ranking de un análisis. */
+    ANALISIS_PUBLICAR,
+    /** Adjudicación de una RFQ a una cotización. */
+    ADJUDICACION_CREAR,
+    /** Aprobación o rechazo de una adjudicación. */
+    ADJUDICACION_DECIDIR,
+    /** Emisión de una orden de compra (versión 1). */
+    ORDEN_EMITIR,
+    /** Nueva versión de una orden (la anterior queda REEMPLAZADA). */
+    ORDEN_VERSIONAR,
+    /** Cancelación de una orden. */
+    ORDEN_CANCELAR,
+    /** Respuesta del proveedor: aceptar, rechazar, preparar o despachar. */
+    ORDEN_PROVEEDOR
 }

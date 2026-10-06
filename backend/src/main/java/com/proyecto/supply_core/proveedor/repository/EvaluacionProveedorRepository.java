@@ -37,4 +37,13 @@ public interface EvaluacionProveedorRepository extends JpaRepository<EvaluacionP
      */
     @Query("select avg(e.score) from EvaluacionProveedor e where e.proveedorId = :proveedorId and e.score is not null")
     Double promedioScore(@Param("proveedorId") Long proveedorId);
+
+    /**
+     * Promedio del indicador de calidad de sus evaluaciones (para el criterio CALIDAD del análisis).
+     *
+     * @param proveedorId proveedor
+     * @return promedio o {@code null} si no hay datos de calidad
+     */
+    @Query("select avg(e.calidad) from EvaluacionProveedor e where e.proveedorId = :proveedorId and e.calidad is not null")
+    Double promedioCalidad(@Param("proveedorId") Long proveedorId);
 }

@@ -162,7 +162,7 @@ compra/cotizacion/  entity: Cotizacion, CotizacionLinea · enums: EstadoCotizaci
 ```
 - Reglas: solo RFQ ABIERTA y vigente; una cotización por proveedor por RFQ; se conserva el archivo original; origen ARCHIVO dispara IA (paso 13).
 
-## Paso 13 — `ia/` + `compra/analisis/` · UC-08
+## Paso 13 — `ia/` + `compra/analisis/` · UC-08 · ✅
 ```
 ia/
 ├── client/   IAClient (interfaz) + implementación del proveedor elegido + esquema JSON de salida
@@ -179,7 +179,7 @@ compra/analisis/
 - Reglas: confianza baja en dato crítico bloquea publicar hasta confirmar; anomalía = alerta; snapshot de pesos; la IA nunca calcula.
 - Empezar con un `IAClient` falso (mock) para avanzar sin API; prueba unitaria del motor con el ejemplo del PDF.
 
-## Paso 14 — `compra/adjudicacion/` · UC-09
+## Paso 14 — `compra/adjudicacion/` · UC-09 · ✅
 ```
 compra/adjudicacion/  entity: Adjudicacion · service: AdjudicacionService (crear, aprobar, rechazar)
                       controller: /api/rfqs/{id}/adjudicacion, POST /api/adjudicaciones/{id}/decision

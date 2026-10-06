@@ -38,5 +38,13 @@ public enum EntidadAuditada {
     /** Tabla {@code despacho}. */
     DESPACHO,
     /** Tabla {@code cotizacion}. */
-    COTIZACION
+    COTIZACION,
+    /** Tabla {@code config_pesos_evaluacion}. */
+    CONFIG_PESOS,
+    /** Tabla {@code analisis_cotizacion}. */
+    ANALISIS,
+    /** Tabla {@code adjudicacion}. */
+    ADJUDICACION,
+    /** Tabla {@code orden_compra}. */
+    ORDEN_COMPRA
 }

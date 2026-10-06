@@ -23,7 +23,23 @@ public enum EventoNotificacion {
     /** Una RFQ abierta se canceló (destino: invitados). */
     RFQ_CANCELADA("Solicitud de cotización cancelada"),
     /** Un proveedor envió su cotización (destino: comprador que creó la RFQ). */
-    COTIZACION_RECIBIDA("Cotización recibida");
+    COTIZACION_RECIBIDA("Cotización recibida"),
+    /** La IA leyó una cotización con dudas o falló; el comprador debe revisarla (destino: comprador de la RFQ). */
+    EXTRACCION_REQUIERE_REVISION("Cotización por revisar"),
+    /** Una adjudicación espera aprobación (destino: rol aprobador de la política). */
+    ADJUDICACION_PENDIENTE_APROBACION("Adjudicación pendiente de aprobación"),
+    /** Se aprobó o rechazó una adjudicación (destino: comprador que adjudicó). */
+    ADJUDICACION_DECIDIDA("Decisión sobre la adjudicación"),
+    /** La cotización del proveedor ganó (destino: usuarios del proveedor). */
+    COTIZACION_SELECCIONADA("Su cotización fue seleccionada"),
+    /** Se emitió una orden de compra (destino: usuarios del proveedor). */
+    ORDEN_EMITIDA("Nueva orden de compra"),
+    /** La orden cambió de versión o se canceló (destino: usuarios del proveedor). */
+    ORDEN_ACTUALIZADA("Orden de compra actualizada"),
+    /** El proveedor aceptó, rechazó, preparó o despachó (destino: comprador que emitió). */
+    ORDEN_RESPUESTA_PROVEEDOR("Respuesta del proveedor a la orden"),
+    /** La orden fue despachada y llegará a bodega (destino: ALMACENISTA). */
+    ORDEN_DESPACHADA("Mercancía despachada");
 
     /** Asunto del correo. */
     private final String asunto;
