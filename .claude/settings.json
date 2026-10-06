@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(/docs/**)",
+      "Read(/.github/modernize/**)",
+      "Read(/backend/.github/modernize/**)",
+      "Read(**/target/**)",
+      "Read(**/node_modules/**)",
+      "Read(**/.angular/**)",
+      "Read(/backend/almacenamiento/**)"
+    ]
+  }
+}

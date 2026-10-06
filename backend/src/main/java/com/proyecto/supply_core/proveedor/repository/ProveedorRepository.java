@@ -1,5 +1,6 @@
 package com.proyecto.supply_core.proveedor.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -36,8 +37,9 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Long> {
      * Búsqueda paginada con filtros opcionales ({@code null} = no filtrar).
      *
      * @param texto    coincidencia parcial en razón social o NIT
-     * @param estado   estado del proveedor
-     * @param pageable página y orden
+     * @param estado      estado del proveedor
+     * @param categoriaId categoría que puede cotizar
+     * @param pageable    página y orden
      * @return página de proveedores
      */
     @Query("""
@@ -45,7 +47,23 @@ public interface ProveedorRepository extends JpaRepository<Proveedor, Long> {
             where (:texto is null or lower(p.razonSocial) like lower(concat('%', :texto, '%'))
                                   or p.nit like concat('%', :texto, '%'))
               and (:estado is null or p.estado = :estado)
+              and (:categoriaId is null or exists (
+                    select 1 from Proveedor p2 join p2.categorias c where p2 = p and c.id = :categoriaId))
             """)
     Page<Proveedor> buscar(@Param("texto") String texto, @Param("estado") EstadoProveedor estado,
-            Pageable pageable);
+            @Param("categoriaId") Long categoriaId, Pageable pageable);
+
+    /**
+     * Proveedores HABILITADOS que cotizan una categoría (invitados a una RFQ, paso 11).
+     *
+     * @param categoriaId categoría
+     * @return proveedores ordenados por razón social
+     */
+    @Query("""
+            select p from Proveedor p join p.categorias c
+            where c.id = :categoriaId
+              and p.estado = com.proyecto.supply_core.proveedor.enums.EstadoProveedor.HABILITADO
+            order by p.razonSocial
+            """)
+    List<Proveedor> findHabilitadosPorCategoria(@Param("categoriaId") Long categoriaId);
 }

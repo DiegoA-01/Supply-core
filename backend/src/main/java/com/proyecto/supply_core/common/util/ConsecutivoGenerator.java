@@ -20,6 +20,8 @@ public class ConsecutivoGenerator {
     public static final String RFQ = "RFQ";
     /** Prefijo de órdenes de compra. */
     public static final String ORDEN_COMPRA = "OC";
+    /** Prefijo de despachos (remisiones de salida). */
+    public static final String DESPACHO = "DES";
 
     private final JdbcTemplate jdbc;
 
@@ -34,7 +36,7 @@ public class ConsecutivoGenerator {
      * Reserva el siguiente número del prefijo. Debe correr dentro de una transacción para que
      * el UPDATE y el {@code LAST_INSERT_ID()} usen la misma conexión; si no hay una, se abre.
      *
-     * @param prefijo uno de {@link #SOLICITUD}, {@link #RFQ}, {@link #ORDEN_COMPRA}
+     * @param prefijo uno de {@link #SOLICITUD}, {@link #RFQ}, {@link #ORDEN_COMPRA}, {@link #DESPACHO}
      * @return consecutivo formateado, p. ej. {@code SOL-000001}
      * @throws NegocioException si el prefijo no está registrado en la tabla {@code consecutivo}
      */

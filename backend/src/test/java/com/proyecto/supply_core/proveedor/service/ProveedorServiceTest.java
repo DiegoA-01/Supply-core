@@ -3,6 +3,7 @@ package com.proyecto.supply_core.proveedor.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -10,6 +11,7 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -34,6 +36,7 @@ import com.proyecto.supply_core.catalogo.entity.CategoriaProducto;
 import com.proyecto.supply_core.catalogo.repository.CategoriaProductoRepository;
 import com.proyecto.supply_core.common.exception.AccesoDenegadoException;
 import com.proyecto.supply_core.common.exception.NegocioException;
+import com.proyecto.supply_core.proveedor.dto.ActualizarProveedorRequest;
 import com.proyecto.supply_core.proveedor.dto.MotivoRequest;
 import com.proyecto.supply_core.proveedor.dto.RegistroProveedorRequest;
 import com.proyecto.supply_core.proveedor.entity.Proveedor;
@@ -173,6 +176,42 @@ class ProveedorServiceTest {
         sesion(new UsuarioAutenticado(77L, "v@t.com", "Laura", Set.of("PROVEEDOR"), 40L));
         proveedor(EstadoProveedor.HABILITADO);
         assertEquals(40L, service.miProveedor().id());
+    }
+
+    @Test
+    void actualizarCambiaContactoYCategoriasPeroNoNitNiRazonSocial() {
+        Proveedor p = proveedor(EstadoProveedor.HABILITADO);
+        CategoriaProducto cat = new CategoriaProducto();
+        cat.setId(3L);
+        cat.setNombre("Tecnología");
+        when(categorias.findByIdInAndActivoTrue(anyCollection())).thenReturn(List.of(cat));
+
+        var r = service.actualizar(40L, new ActualizarProveedorRequest(" Compras@Tech.com ", " ", "Calle 1", Set.of(3L)));
+
+        assertEquals("compras@tech.com", r.correoContacto());
+        assertNull(r.telefono());
+        assertEquals("Calle 1", r.direccion());
+        assertEquals(List.of(3L), r.categorias().stream().map(c -> c.id()).toList());
+        assertEquals("900123456-7", p.getNit());
+        assertEquals("Tech SAS", p.getRazonSocial());
+        verify(auditoria).exito(eq(AccionAuditoria.PROVEEDOR_EDITAR), eq(EntidadAuditada.PROVEEDOR), eq(40L),
+                anyString());
+    }
+
+    @Test
+    void actualizarMioSoloSobreSuPropioProveedor() {
+        var req = new ActualizarProveedorRequest(null, null, null, Set.of(3L));
+        assertThrows(AccesoDenegadoException.class, () -> service.actualizarMio(req));
+
+        CategoriaProducto cat = new CategoriaProducto();
+        cat.setId(3L);
+        cat.setNombre("Tecnología");
+        when(categorias.findByIdInAndActivoTrue(anyCollection())).thenReturn(List.of(cat));
+        sesion(new UsuarioAutenticado(77L, "v@t.com", "Laura", Set.of("PROVEEDOR"), 40L));
+        proveedor(EstadoProveedor.HABILITADO);
+
+        assertEquals(40L, service.actualizarMio(req).id());
+        verify(proveedores, never()).findWithCategoriasById(41L);
     }
 
     @Test

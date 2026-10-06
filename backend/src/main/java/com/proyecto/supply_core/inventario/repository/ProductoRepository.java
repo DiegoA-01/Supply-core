@@ -42,6 +42,14 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     Optional<Producto> findWithRelacionesById(Long id);
 
     /**
+     * Indica si el producto existe y está activo (validador {@code @ProductoActivo}).
+     *
+     * @param id id del producto
+     * @return {@code true} si existe y está activo
+     */
+    boolean existsByIdAndActivoTrue(Long id);
+
+    /**
      * Búsqueda paginada con filtros opcionales ({@code null} = no filtrar).
      *
      * @param texto       coincidencia parcial en código o nombre

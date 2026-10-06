@@ -28,6 +28,7 @@ import com.proyecto.supply_core.common.util.Ordenamiento;
 import com.proyecto.supply_core.catalogo.dto.CategoriaResponse;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
+import com.proyecto.supply_core.proveedor.dto.ActualizarProveedorRequest;
 import com.proyecto.supply_core.proveedor.dto.MotivoRequest;
 import com.proyecto.supply_core.proveedor.dto.ProveedorResponse;
 import com.proyecto.supply_core.proveedor.dto.RegistroProveedorRequest;
@@ -56,7 +57,7 @@ public class ProveedorService {
     static final String MENSAJE_REGISTRO =
             "Registro recibido. Podrá iniciar sesión cuando el área de compras apruebe su solicitud.";
     /** Campos por los que se puede ordenar el listado. */
-    private static final Set<String> CAMPOS_ORDENABLES = Set.of("razonSocial", "nit", "estado", "creadoEn");
+    private static final Set<String> CAMPOS_ORDENABLES = Set.of("razonSocial", "nit", "estado", "creadoEn", "scoreActual");
 
     private final ProveedorRepository proveedorRepository;
     private final CategoriaProductoRepository categoriaRepository;
@@ -140,16 +141,58 @@ public class ProveedorService {
      * Lista proveedores con filtros opcionales.
      *
      * @param texto    coincidencia en razón social o NIT
-     * @param estado   estado
-     * @param pageable página y orden (solo campos de {@link #CAMPOS_ORDENABLES})
+     * @param estado      estado
+     * @param categoriaId categoría que puede cotizar
+     * @param pageable    página y orden (solo campos de {@link #CAMPOS_ORDENABLES})
      * @return página de proveedores
      * @throws ParametroInvalidoException si se pide ordenar por un campo no permitido
      */
     @Transactional(readOnly = true)
-    public PageResponse<ProveedorResponse> buscar(String texto, EstadoProveedor estado, Pageable pageable) {
+    public PageResponse<ProveedorResponse> buscar(String texto, EstadoProveedor estado, Long categoriaId,
+            Pageable pageable) {
         String filtro = (texto == null || texto.isBlank()) ? null : texto.trim();
-        return PageResponse.of(proveedorRepository.buscar(filtro, estado,
+        return PageResponse.of(proveedorRepository.buscar(filtro, estado, categoriaId,
                 Ordenamiento.validar(pageable, CAMPOS_ORDENABLES)), ProveedorResponse::of);
+    }
+
+    /**
+     * Proveedores HABILITADOS de una categoría (para invitarlos a una RFQ en el paso 11).
+     *
+     * @param categoriaId categoría
+     * @return proveedores ordenados por razón social (vacío si no hay)
+     */
+    @Transactional(readOnly = true)
+    public List<Proveedor> habilitadosDeCategoria(Long categoriaId) {
+        return proveedorRepository.findHabilitadosPorCategoria(categoriaId);
+    }
+
+    /**
+     * ADMIN_COMPRAS edita contacto y categorías de cualquier proveedor.
+     *
+     * @param id  id del proveedor
+     * @param req datos nuevos (ya validados)
+     * @return proveedor actualizado
+     * @throws NoEncontradoException si no existe
+     */
+    @Transactional
+    public ProveedorResponse actualizar(Long id, ActualizarProveedorRequest req) {
+        return aplicarCambios(buscarEntidad(id), req);
+    }
+
+    /**
+     * El proveedor edita su propio contacto y categorías desde el portal.
+     *
+     * @param req datos nuevos (ya validados)
+     * @return su proveedor actualizado
+     * @throws AccesoDenegadoException si el usuario no pertenece a un proveedor
+     */
+    @Transactional
+    public ProveedorResponse actualizarMio(ActualizarProveedorRequest req) {
+        UsuarioAutenticado u = SesionActual.usuario();
+        if (!u.esProveedor()) {
+            throw new AccesoDenegadoException("Su usuario no pertenece a un proveedor");
+        }
+        return aplicarCambios(buscarEntidad(u.proveedorId()), req);
     }
 
     /**
@@ -231,6 +274,25 @@ public class ProveedorService {
     }
 
     // ----------------------------------------------------------------- apoyo
+
+    /**
+     * Copia los datos editables y audita qué cambió (razón social y NIT no se tocan).
+     *
+     * @param p   proveedor con categorías cargadas
+     * @param req datos nuevos
+     * @return proveedor actualizado
+     */
+    private ProveedorResponse aplicarCambios(Proveedor p, ActualizarProveedorRequest req) {
+        p.setCorreoContacto(req.correoContacto() == null || req.correoContacto().isBlank()
+                ? null : normalizarCorreo(req.correoContacto()));
+        p.setTelefono(textoOpcional(req.telefono()));
+        p.setDireccion(textoOpcional(req.direccion()));
+        p.getCategorias().clear();
+        p.getCategorias().addAll(resolverCategorias(req.categoriaIds()));
+        auditoriaService.exito(AccionAuditoria.PROVEEDOR_EDITAR, EntidadAuditada.PROVEEDOR, p.getId(),
+                "nit=" + p.getNit() + "; categorias=" + req.categoriaIds());
+        return ProveedorResponse.of(p);
+    }
 
     /**
      * Aplica una transición de estado validándola y registra quién y cuándo revisó.

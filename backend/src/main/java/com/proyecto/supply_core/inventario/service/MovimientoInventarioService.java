@@ -140,6 +140,45 @@ public class MovimientoInventarioService {
     }
 
     /**
+     * Salida por un despacho confirmado (venta o entrega). Solo la llama {@code DespachoService}.
+     *
+     * @param productoId     producto despachado
+     * @param bodegaId       bodega de la que sale
+     * @param cantidad       cantidad en la unidad del producto (> 0)
+     * @param referenciaTipo documento de origen ({@code DESPACHO})
+     * @param referenciaId   id del despacho
+     * @return movimiento registrado
+     * @throws NegocioException si el stock no alcanza (STOCK_INSUFICIENTE)
+     */
+    @Transactional
+    public RegistroMovimientoResponse registrarSalidaVenta(Long productoId, Long bodegaId, BigDecimal cantidad,
+            String referenciaTipo, Long referenciaId) {
+        return aplicar(TipoMovimiento.SALIDA_VENTA, productoId, bodegaId, null, cantidad, null,
+                referenciaTipo, referenciaId);
+    }
+
+    /**
+     * Entrada que devuelve al stock lo de un despacho anulado. Solo la llama {@code DespachoService}.
+     *
+     * @param productoId     producto
+     * @param bodegaId       bodega a la que vuelve
+     * @param cantidad       cantidad en la unidad del producto (> 0)
+     * @param motivo         motivo de la anulación (obligatorio)
+     * @param referenciaTipo documento de origen ({@code DESPACHO})
+     * @param referenciaId   id del despacho
+     * @return movimiento registrado
+     */
+    @Transactional
+    public RegistroMovimientoResponse registrarAnulacionDespacho(Long productoId, Long bodegaId, BigDecimal cantidad,
+            String motivo, String referenciaTipo, Long referenciaId) {
+        if (motivo == null || motivo.isBlank()) {
+            throw new NegocioException("MOTIVO_OBLIGATORIO", "La anulación de un despacho exige motivo");
+        }
+        return aplicar(TipoMovimiento.ANULACION_DESPACHO, productoId, null, bodegaId, cantidad, motivo,
+                referenciaTipo, referenciaId);
+    }
+
+    /**
      * Kardex con filtros, más recientes primero.
      *
      * @param filtro   filtros validados

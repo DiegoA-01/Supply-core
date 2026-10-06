@@ -30,5 +30,13 @@ public enum EntidadAuditada {
     /** Tabla {@code documento}. */
     DOCUMENTO,
     /** Tabla {@code config_notificacion}. */
-    CONFIG_NOTIFICACION
+    CONFIG_NOTIFICACION,
+    /** Tabla {@code solicitud_compra}. */
+    SOLICITUD_COMPRA,
+    /** Tabla {@code rfq}. */
+    RFQ,
+    /** Tabla {@code despacho}. */
+    DESPACHO,
+    /** Tabla {@code cotizacion}. */
+    COTIZACION
 }

@@ -27,6 +27,8 @@ public enum AccionAuditoria {
     PROVEEDOR_RECHAZAR,
     /** ADMIN_COMPRAS suspendió un proveedor. */
     PROVEEDOR_SUSPENDER,
+    /** Edición de datos de contacto o categorías de un proveedor (por él mismo o por ADMIN_COMPRAS). */
+    PROVEEDOR_EDITAR,
     /** Edición de los datos de la empresa. */
     EMPRESA_EDITAR,
     /** Alta de sede. */
@@ -76,5 +78,37 @@ public enum AccionAuditoria {
     /** Subida de un documento (archivo) a un registro. */
     DOCUMENTO_SUBIR,
     /** Activación o desactivación de un canal de notificación para un evento. */
-    CONFIG_NOTIFICACION_CAMBIAR
+    CONFIG_NOTIFICACION_CAMBIAR,
+    /** Creación de una solicitud de compra (BORRADOR). */
+    SOLICITUD_CREAR,
+    /** Edición de una solicitud en BORRADOR o DEVUELTA. */
+    SOLICITUD_EDITAR,
+    /** Envío de una solicitud (pasa a aprobación o queda aprobada si no aplica política). */
+    SOLICITUD_ENVIAR,
+    /** Cancelación de una solicitud abierta. */
+    SOLICITUD_CANCELAR,
+    /** Decisión del aprobador: APROBADA, RECHAZADA o DEVUELTA. */
+    SOLICITUD_DECIDIR,
+    /** Creación de una RFQ en BORRADOR desde una solicitud aprobada. */
+    RFQ_CREAR,
+    /** Edición de una RFQ en BORRADOR (fecha límite, condiciones, invitados, especificaciones). */
+    RFQ_EDITAR,
+    /** Apertura de una RFQ: se envía a los proveedores invitados. */
+    RFQ_ABRIR,
+    /** Cierre de una RFQ (manual o automático por fecha límite). */
+    RFQ_CERRAR,
+    /** Cancelación de una RFQ. */
+    RFQ_CANCELAR,
+    /** Creación de un despacho (remisión de salida) en BORRADOR. */
+    DESPACHO_CREAR,
+    /** Edición de un despacho en BORRADOR. */
+    DESPACHO_EDITAR,
+    /** Confirmación de un despacho: descuenta el stock. */
+    DESPACHO_CONFIRMAR,
+    /** Anulación de un despacho (si estaba confirmado, devuelve el stock). */
+    DESPACHO_ANULAR,
+    /** Guardado del borrador de una cotización (formulario). */
+    COTIZACION_GUARDAR,
+    /** Envío de una cotización al comprador. */
+    COTIZACION_ENVIAR
 }

@@ -10,9 +10,11 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 
@@ -27,9 +29,12 @@ import com.proyecto.supply_core.catalogo.entity.CategoriaProducto;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.web.WebTestBase;
 import com.proyecto.supply_core.catalogo.dto.CategoriaResponse;
+import com.proyecto.supply_core.common.dto.PageResponse;
+import com.proyecto.supply_core.proveedor.dto.EvaluacionResponse;
 import com.proyecto.supply_core.proveedor.dto.ProveedorResponse;
 import com.proyecto.supply_core.proveedor.dto.RegistroProveedorResponse;
 import com.proyecto.supply_core.proveedor.enums.EstadoProveedor;
+import com.proyecto.supply_core.proveedor.service.EvaluacionProveedorService;
 import com.proyecto.supply_core.proveedor.service.ProveedorService;
 
 @WebMvcTest({ RegistroProveedorController.class, ProveedorController.class, PortalProveedorController.class })
@@ -41,6 +46,9 @@ class ProveedorControllerTest extends WebTestBase {
 
     @MockitoBean
     private ProveedorService proveedorService;
+
+    @MockitoBean
+    private EvaluacionProveedorService evaluacionService;
 
     private final ProveedorResponse tech = new ProveedorResponse(40L, "Tech SAS", "900123456-7", "ventas@tech.com",
             null, null, null, EstadoProveedor.HABILITADO, null, List.of(new CategoriaResponse(1L, "Tecnología", true)),
@@ -115,7 +123,7 @@ class ProveedorControllerTest extends WebTestBase {
 
     @Test
     void bandejaParaComprasCompradorYAuditorPeroNoProveedor() throws Exception {
-        when(proveedorService.buscar(any(), any(), any())).thenReturn(new com.proyecto.supply_core.common.dto
+        when(proveedorService.buscar(any(), any(), any(), any())).thenReturn(new com.proyecto.supply_core.common.dto
                 .PageResponse<>(List.of(tech), 0, 20, 1, 1));
 
         mvc.perform(get("/api/proveedores?estado=PENDIENTE").header(HttpHeaders.AUTHORIZATION, bearer("ADMIN_COMPRAS")))
@@ -178,5 +186,54 @@ class ProveedorControllerTest extends WebTestBase {
                 .andExpect(jsonPath("$.id").value(40));
         mvc.perform(get("/api/portal/proveedor").header(HttpHeaders.AUTHORIZATION, bearer("ADMIN_COMPRAS")))
                 .andExpect(status().isForbidden());
+    }
+
+    // ------------------------------------------------------------- paso 9: perfil y evaluaciones
+
+    @Test
+    void edicionDePerfilValidadaYSoloPorRolCorrecto() throws Exception {
+        when(proveedorService.actualizarMio(any())).thenReturn(tech);
+        when(proveedorService.actualizar(eq(40L), any())).thenReturn(tech);
+        String valido = """
+                {"correoContacto":"compras@tech.com","telefono":"3001234567","categoriaIds":[1]}""";
+
+        mvc.perform(put("/api/portal/proveedor").header(HttpHeaders.AUTHORIZATION, bearerProveedor(40L))
+                        .contentType(MediaType.APPLICATION_JSON).content(valido))
+                .andExpect(status().isOk());
+        mvc.perform(put("/api/proveedores/40").header(HttpHeaders.AUTHORIZATION, bearer("ADMIN_COMPRAS"))
+                        .contentType(MediaType.APPLICATION_JSON).content(valido))
+                .andExpect(status().isOk());
+        mvc.perform(put("/api/proveedores/40").header(HttpHeaders.AUTHORIZATION, bearer("COMPRADOR"))
+                        .contentType(MediaType.APPLICATION_JSON).content(valido))
+                .andExpect(status().isForbidden());
+        mvc.perform(put("/api/portal/proveedor").header(HttpHeaders.AUTHORIZATION, bearerProveedor(40L))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"correoContacto\":\"no-es-correo\",\"categoriaIds\":[9]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detalles", hasItems("correoContacto: no tiene un formato de correo válido")));
+    }
+
+    @Test
+    void evaluacionesParaInternosYParaElPropioProveedor() throws Exception {
+        PageResponse<EvaluacionResponse> pagina = new PageResponse<>(List.of(new EvaluacionResponse(1L, 7L,
+                new BigDecimal("90.00"), null, null, null, null, null, new BigDecimal("90.00"), null)), 0, 20, 1, 1);
+        when(evaluacionService.listar(eq(40L), any())).thenReturn(pagina);
+        when(evaluacionService.mias(any())).thenReturn(pagina);
+
+        mvc.perform(get("/api/proveedores/40/evaluaciones").header(HttpHeaders.AUTHORIZATION, bearer("AUDITOR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.contenido[0].score").value(90.0))
+                .andExpect(jsonPath("$.contenido[0].calidad").doesNotExist());
+        mvc.perform(get("/api/portal/proveedor/evaluaciones").header(HttpHeaders.AUTHORIZATION, bearerProveedor(40L)))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/proveedores/40/evaluaciones").header(HttpHeaders.AUTHORIZATION, bearerProveedor(40L)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void filtroPorCategoriaValidado() throws Exception {
+        mvc.perform(get("/api/proveedores?categoriaId=0").header(HttpHeaders.AUTHORIZATION, bearer("COMPRADOR")))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(proveedorService);
     }
 }

@@ -2,6 +2,7 @@ package com.proyecto.supply_core.empresa.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -157,6 +158,19 @@ public class PoliticaAprobacionService {
         BigDecimal valor = monto(monto);
         return politicaRepository.findByEmpresaIdAndTipoAndActivoTrue(EmpresaUnica.ID, tipo).stream()
                 .filter(p -> p.cubre(valor)).findFirst();
+    }
+
+    /**
+     * Política activa de mayor tramo (la de {@code monto_desde} más alto). Se usa cuando el monto
+     * no se conoce completo: se exige la aprobación más exigente (decisión del proyecto).
+     *
+     * @param tipo tipo de operación
+     * @return política de mayor tramo o vacío si no hay políticas activas de ese tipo
+     */
+    @Transactional(readOnly = true)
+    public Optional<PoliticaAprobacion> deMayorTramo(TipoPolitica tipo) {
+        return politicaRepository.findByEmpresaIdAndTipoAndActivoTrue(EmpresaUnica.ID, tipo).stream()
+                .max(Comparator.comparing(PoliticaAprobacion::getMontoDesde));
     }
 
     /**
