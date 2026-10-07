@@ -132,5 +132,11 @@ public enum AccionAuditoria {
     /** Cancelación de una orden. */
     ORDEN_CANCELAR,
     /** Respuesta del proveedor: aceptar, rechazar, preparar o despachar. */
-    ORDEN_PROVEEDOR
+    ORDEN_PROVEEDOR,
+    /** Registro de un pago de una orden (UC-11). */
+    PAGO_REGISTRAR,
+    /** Comprobante adjuntado a un pago (cierra la evidencia pendiente). */
+    PAGO_COMPROBANTE,
+    /** Anulación de un pago registrado por error, con motivo. */
+    PAGO_ANULAR
 }

@@ -35,7 +35,7 @@ Convenciones: PK `id BIGINT AUTO_INCREMENT`; FK `<tabla>_id BIGINT`; booleanos `
 - analisis_cotizacion.estado: BORRADOR, PUBLICADO · anomalia.severidad: BAJA, MEDIA, ALTA
 - adjudicacion.estado: PENDIENTE_APROBACION, APROBADA, RECHAZADA
 - orden_compra.estado: EMITIDA, ACEPTADA_PROVEEDOR, RECHAZADA_PROVEEDOR, EN_PREPARACION, DESPACHADA, RECIBIDA_PARCIAL, RECIBIDA_TOTAL, CERRADA, CANCELADA, REEMPLAZADA
-- pago.estado: PENDIENTE, REGISTRADO (+ evidencia_pendiente)
+- pago.estado: PENDIENTE (sin uso), REGISTRADO (+ evidencia_pendiente), ANULADO (V15, con motivo_anulacion) · pago.metodo: TRANSFERENCIA, CONSIGNACION, CHEQUE, EFECTIVO, TARJETA, OTRO
 - recepcion_linea.estado: ACEPTADA, EN_REVISION
 - config_notificacion.canal: EMAIL, INTERNA
 

@@ -53,6 +53,7 @@ import com.proyecto.supply_core.inventario.entity.Producto;
 import com.proyecto.supply_core.inventario.repository.BodegaRepository;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
+import com.proyecto.supply_core.pago.repository.PagoRepository;
 import com.proyecto.supply_core.proveedor.entity.Proveedor;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
@@ -70,8 +71,9 @@ class OrdenServiceTest {
     private final ConsecutivoGenerator consecutivos = mock(ConsecutivoGenerator.class);
     private final NotificacionService notificaciones = mock(NotificacionService.class);
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
+    private final PagoRepository pagos = mock(PagoRepository.class);
     private final OrdenCompraService service = new OrdenCompraService(ordenes, historial, adjudicaciones, bodegas,
-            unidades, usuarios, consecutivos, auditoria, notificaciones);
+            unidades, usuarios, consecutivos, auditoria, notificaciones, pagos);
     private final OrdenProveedorService proveedorService = new OrdenProveedorService(service, ordenes, auditoria,
             notificaciones);
 
@@ -121,6 +123,7 @@ class OrdenServiceTest {
         b.setNombre("Principal");
         when(bodegas.findById(1L)).thenReturn(Optional.of(b));
         when(consecutivos.siguiente(ConsecutivoGenerator.ORDEN_COMPRA)).thenReturn("OC-000001");
+        when(pagos.pagadoPorConsecutivo("OC-000001")).thenReturn(BigDecimal.ZERO);
         Usuario portal = new Usuario();
         portal.setId(77L);
         when(usuarios.findByProveedorId(40L)).thenReturn(List.of(portal));
@@ -187,6 +190,18 @@ class OrdenServiceTest {
         assertEquals("ORDEN_SIN_LINEAS", assertThrows(NegocioException.class, () -> service.nuevaVersion(v2.id(),
                 new NuevaVersionRequest("quitar todo", null, null, null, List.of(new NuevaVersionRequest.CambioCantidad(
                         v2.lineas().get(0).id(), BigDecimal.ZERO))))).getCodigo());
+    }
+
+    @Test
+    void nuevaVersionNoQuedaPorDebajoDeLoPagado() {
+        var v1 = emitir();
+        when(pagos.pagadoPorConsecutivo("OC-000001")).thenReturn(new BigDecimal("20000.00"));
+
+        NegocioException e = assertThrows(NegocioException.class, () -> service.nuevaVersion(v1.id(),
+                new NuevaVersionRequest("Reducir a la mitad", null, null, null, List.of(
+                        new NuevaVersionRequest.CambioCantidad(v1.lineas().get(0).id(), new BigDecimal("24"))))));
+        assertEquals("ORDEN_TOTAL_MENOR_PAGADO", e.getCodigo()); // 12852 < 20000
+        assertEquals(EstadoOrden.EMITIDA, guardadas.get(0).getEstado());
     }
 
     @Test

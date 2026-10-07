@@ -39,7 +39,11 @@ public enum EventoNotificacion {
     /** El proveedor aceptó, rechazó, preparó o despachó (destino: comprador que emitió). */
     ORDEN_RESPUESTA_PROVEEDOR("Respuesta del proveedor a la orden"),
     /** La orden fue despachada y llegará a bodega (destino: ALMACENISTA). */
-    ORDEN_DESPACHADA("Mercancía despachada");
+    ORDEN_DESPACHADA("Mercancía despachada"),
+    /** Se registró un pago de la orden (destino: usuarios del proveedor y comprador que emitió). */
+    PAGO_REGISTRADO("Pago registrado"),
+    /** Se anuló un pago de la orden (destino: usuarios del proveedor y comprador que emitió). */
+    PAGO_ANULADO("Pago anulado");
 
     /** Asunto del correo. */
     private final String asunto;

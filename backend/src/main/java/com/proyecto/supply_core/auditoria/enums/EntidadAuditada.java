@@ -46,5 +46,7 @@ public enum EntidadAuditada {
     /** Tabla {@code adjudicacion}. */
     ADJUDICACION,
     /** Tabla {@code orden_compra}. */
-    ORDEN_COMPRA
+    ORDEN_COMPRA,
+    /** Tabla {@code pago}. */
+    PAGO
 }

@@ -42,6 +42,7 @@ import com.proyecto.supply_core.inventario.entity.Bodega;
 import com.proyecto.supply_core.inventario.repository.BodegaRepository;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
+import com.proyecto.supply_core.pago.repository.PagoRepository;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
 
@@ -77,6 +78,7 @@ public class OrdenCompraService {
     private final ConsecutivoGenerator consecutivos;
     private final AuditoriaService auditoriaService;
     private final NotificacionService notificacionService;
+    private final PagoRepository pagoRepository;
 
     /**
      * @param ordenRepository        órdenes
@@ -88,12 +90,13 @@ public class OrdenCompraService {
      * @param consecutivos           números OC-000001
      * @param auditoriaService       registro de acciones
      * @param notificacionService    avisos
+     * @param pagoRepository         pagos (una versión no puede quedar por debajo de lo pagado)
      */
     public OrdenCompraService(OrdenCompraRepository ordenRepository, OrdenEstadoHistorialRepository historialRepository,
             AdjudicacionRepository adjudicacionRepository, BodegaRepository bodegaRepository,
             UnidadMedidaService unidadMedidaService, UsuarioRepository usuarioRepository,
             ConsecutivoGenerator consecutivos, AuditoriaService auditoriaService,
-            NotificacionService notificacionService) {
+            NotificacionService notificacionService, PagoRepository pagoRepository) {
         this.ordenRepository = ordenRepository;
         this.historialRepository = historialRepository;
         this.adjudicacionRepository = adjudicacionRepository;
@@ -103,6 +106,7 @@ public class OrdenCompraService {
         this.consecutivos = consecutivos;
         this.auditoriaService = auditoriaService;
         this.notificacionService = notificacionService;
+        this.pagoRepository = pagoRepository;
     }
 
     /**
@@ -167,7 +171,8 @@ public class OrdenCompraService {
      * @param id  versión actual
      * @param req motivo y cambios
      * @return versión nueva (EMITIDA)
-     * @throws NegocioException si el estado ya no permite cambios o la orden quedaría sin líneas
+     * @throws NegocioException si el estado ya no permite cambios, la orden quedaría sin líneas o su total
+     *                          quedaría por debajo de lo ya pagado
      */
     @Transactional
     public OrdenResponse nuevaVersion(Long id, NuevaVersionRequest req) {
@@ -215,6 +220,12 @@ public class OrdenCompraService {
             throw new NegocioException("ORDEN_SIN_LINEAS", "La nueva versión debe tener al menos una línea; para anular use cancelar");
         }
         totalizar(nueva);
+        BigDecimal pagado = pagoRepository.pagadoPorConsecutivo(actual.getConsecutivo());
+        if (nueva.getTotal().compareTo(pagado) < 0) {
+            throw new NegocioException("ORDEN_TOTAL_MENOR_PAGADO", "La nueva versión quedaría en $ "
+                    + nueva.getTotal().toPlainString() + " y ya se pagaron $ " + pagado.toPlainString()
+                    + "; anule los pagos que sobran antes de reducirla");
+        }
         actual.setEstado(EstadoOrden.REEMPLAZADA);
         historial(actual, EstadoOrden.REEMPLAZADA, "Reemplazada por la versión " + nueva.getVersion() + ": " + nueva.getMotivoVersion());
         OrdenCompra guardada = ordenRepository.save(nueva);

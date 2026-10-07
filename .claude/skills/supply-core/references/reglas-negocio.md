@@ -4,7 +4,7 @@ Resumen fiel del documento funcional (`docs/proyecto supply-core.pdf`, no abrir)
 
 ## Roles (códigos en tabla `rol`)
 ADMIN_SISTEMA (usuarios, seguridad, catálogos; no decide compras) · ADMIN_COMPRAS (políticas, categorías, proveedores habilitados) · SOLICITANTE · COMPRADOR (RFQ, análisis, orden) · APROBADOR (aprueba según límite) · ALMACENISTA (recepción, movimientos) · ADMINISTRATIVO (registra pago) · PROVEEDOR (portal: cotiza, confirma, despacha) · AUDITOR (solo lectura).
-Segregación: quien solicita no puede además aprobar y registrar el pago, si la política lo exige (validar en Service).
+Segregación: no registra el pago quien solicitó, aprobó la solicitud, adjudicó, aprobó la adjudicación o emitió alguna versión de la orden (validado en `PagoService`).
 
 ## Flujo de punta a punta
 Necesidad (stock < mínimo o manual) → Solicitud → Aprobación → RFQ → Proveedor cotiza (form o archivo) → IA extrae (confianza por dato) → Java valida/calcula/normaliza → IA explica ranking → Comprador decide → Aprobación de adjudicación si el monto lo exige → Orden de compra → Pago registrado → Proveedor confirma/despacha → Recepción → Stock sube → Evaluación del proveedor → Cierre.
@@ -33,7 +33,7 @@ Necesidad (stock < mínimo o manual) → Solicitud → Aprobación → RFQ → P
 - cotizacion: BORRADOR → ENVIADA → EN_ANALISIS → SELECCIONADA | NO_SELECCIONADA ; RECHAZADA.
 - adjudicacion: PENDIENTE_APROBACION → APROBADA | RECHAZADA (si no requiere aprobación, nace APROBADA).
 - orden: EMITIDA → ACEPTADA_PROVEEDOR | RECHAZADA_PROVEEDOR ; → EN_PREPARACION → DESPACHADA → RECIBIDA_PARCIAL → RECIBIDA_TOTAL → CERRADA ; CANCELADA ; REEMPLAZADA (nueva versión).
-- pago: PENDIENTE → REGISTRADO.
+- pago: nace REGISTRADO (PENDIENTE sin uso) → ANULADO (motivo, deja de sumar).
 Cada transición: validar estado origen en el Service, registrar auditoría, notificar si aplica.
 
 ## Fuera de alcance

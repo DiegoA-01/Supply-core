@@ -186,7 +186,7 @@ compra/adjudicacion/  entity: Adjudicacion · service: AdjudicacionService (crea
 ```
 - Reglas: requiere análisis PUBLICADO; justificación si no sigue recomendación; política ADJUDICACION decide si requiere aprobación; marca cotizaciones SELECCIONADA/NO_SELECCIONADA; RFQ → ADJUDICADA.
 
-## Paso 15 — `compra/orden/` · UC-10, UC-12
+## Paso 15 — `compra/orden/` · UC-10, UC-12 · ✅
 ```
 compra/orden/  entity: OrdenCompra, OrdenCompraLinea, OrdenCompraEstadoHistorial · enums: EstadoOrden
                service: OrdenCompraService (emitir desde adjudicación APROBADA, nueva versión, cancelar), OrdenProveedorService (aceptar/rechazar/preparar/despachar)
@@ -194,11 +194,12 @@ compra/orden/  entity: OrdenCompra, OrdenCompraLinea, OrdenCompraEstadoHistorial
 ```
 - Reglas: inmutable (nueva versión con motivo, anterior REEMPLAZADA); cada cambio de estado → historial + auditoría + notificación.
 
-## Paso 16 — `pago/` · UC-11
+## Paso 16 — `pago/` · UC-11 · ✅
 ```
 pago/  entity: Pago · service: PagoService · controller: /api/ordenes/{id}/pagos (ADMINISTRATIVO)
 ```
 - Reglas: valor > 0; sin comprobante ⇒ `evidencia_pendiente=1`; segregación con solicitante/aprobador si la política lo pide.
+- Hecho: `POST/GET /api/ordenes/{id}/pagos`, `GET /api/pagos` (filtros), `GET /api/pagos/{id}`, `POST /api/pagos/{id}/comprobante`, `POST /api/pagos/{id}/anular`, portal `GET /api/portal/ordenes/{id}/pagos`. Decisiones del usuario: pagos desde EMITIDA (anticipos/parciales, Σ ≤ total vigente), anular con motivo (V15 ANULADO), segregación a todos los involucrados.
 
 ## Paso 17 — `recepcion/` · UC-13
 ```
