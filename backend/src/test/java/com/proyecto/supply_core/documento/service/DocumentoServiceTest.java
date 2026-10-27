@@ -68,7 +68,7 @@ class DocumentoServiceTest {
         service = new DocumentoService(repo, new LocalStorageClient(new StorageProperties(carpeta.toString(), 1024)),
                 auditoria, new StorageProperties(carpeta.toString(), 1024), List.of(regla));
         request = new MockHttpServletRequest();
-        sesion(new UsuarioAutenticado(9L, "p@x.com", "Proveedor", Set.of("PROVEEDOR"), 40L));
+        sesion(new UsuarioAutenticado(9L, "p@x.com", "Proveedor", Set.of("PROVEEDOR"), 40L, 1L));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
         when(proveedores.existsById(40L)).thenReturn(true);
         when(proveedores.existsById(41L)).thenReturn(true);
@@ -136,13 +136,13 @@ class DocumentoServiceTest {
 
     @Test
     void internosSegunSuRol() {
-        sesion(new UsuarioAutenticado(1L, "c@x.com", "Comprador", Set.of("COMPRADOR"), null));
+        sesion(new UsuarioAutenticado(1L, "c@x.com", "Comprador", Set.of("COMPRADOR"), null, 1L));
         when(repo.findByEntidadTipoAndEntidadIdOrderByCreadoEnDesc("PROVEEDOR", 41L)).thenReturn(List.of());
         assertTrue(service.listar(EntidadDocumento.PROVEEDOR, 41L).isEmpty()); // consulta
         assertThrows(AccesoDenegadoException.class, () -> service.subir(EntidadDocumento.PROVEEDOR, 41L,
                 new MockMultipartFile("archivo", "rut.pdf", "application/pdf", PDF))); // pero no sube
 
-        sesion(new UsuarioAutenticado(2L, "a@x.com", "Almacén", Set.of("ALMACENISTA"), null));
+        sesion(new UsuarioAutenticado(2L, "a@x.com", "Almacén", Set.of("ALMACENISTA"), null, 1L));
         assertThrows(AccesoDenegadoException.class, () -> service.listar(EntidadDocumento.PROVEEDOR, 41L));
     }
 

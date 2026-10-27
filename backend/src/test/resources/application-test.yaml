@@ -1,0 +1,14 @@
+# Perfil de las pruebas de integración contra MySQL real (aislamiento entre empresas).
+# Usa una base SEPARADA (supply_core_test): Flyway la borra y la recrea en cada ejecución.
+# La clave de MySQL sale de application-local.yaml o de DB_PASSWORD, igual que en desarrollo.
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/supply_core_test?createDatabaseIfNotExist=true&serverTimezone=America/Bogota&useUnicode=true&characterEncoding=utf8
+  flyway:
+    clean-disabled: false
+
+app:
+  admin:
+    password: ""                 # no se crea el administrador inicial
+  rfq:
+    cierre-automatico: false     # sin jobs en segundo plano durante las pruebas

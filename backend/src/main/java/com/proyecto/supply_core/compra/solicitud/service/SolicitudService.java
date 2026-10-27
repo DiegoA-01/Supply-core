@@ -24,7 +24,7 @@ import com.proyecto.supply_core.common.exception.AccesoDenegadoException;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.common.util.ConsecutivoGenerator;
-import com.proyecto.supply_core.common.util.EmpresaUnica;
+import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.common.util.Ordenamiento;
 import com.proyecto.supply_core.compra.solicitud.dto.LineaSolicitudRequest;
 import com.proyecto.supply_core.compra.solicitud.dto.SolicitudRequest;
@@ -125,7 +125,6 @@ public class SolicitudService {
     public SolicitudResponse crear(SolicitudRequest req) {
         UsuarioAutenticado sesion = SesionActual.usuario();
         SolicitudCompra s = new SolicitudCompra();
-        s.setEmpresaId(EmpresaUnica.ID);
         s.setCentroCostoId(centroCostoDe(sesion.id()));
         s.setUsuarioSolicitanteId(sesion.id());
         s.setConsecutivo(consecutivos.siguiente(ConsecutivoGenerator.SOLICITUD));

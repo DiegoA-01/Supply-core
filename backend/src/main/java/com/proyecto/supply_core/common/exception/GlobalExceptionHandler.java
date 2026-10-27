@@ -72,6 +72,17 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Demasiadas peticiones desde la misma IP a una ruta sensible.
+     *
+     * @param ex excepción lanzada por el limitador de peticiones
+     * @return 429
+     */
+    @ExceptionHandler(DemasiadasPeticionesException.class)
+    public ResponseEntity<ErrorResponse> demasiadasPeticiones(DemasiadasPeticionesException ex) {
+        return responder(HttpStatus.TOO_MANY_REQUESTS, ErrorResponse.of("DEMASIADAS_PETICIONES", ex.getMessage()));
+    }
+
+    /**
      * Autenticado pero sin permiso.
      *
      * @param ex excepción lanzada por el interceptor de roles o un Service

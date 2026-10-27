@@ -17,6 +17,7 @@ import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -27,6 +28,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import com.proyecto.supply_core.common.tenant.EmpresaDePrueba;
 import com.proyecto.supply_core.auditoria.dto.AuditoriaFiltro;
 import com.proyecto.supply_core.auditoria.entity.Auditoria;
 import com.proyecto.supply_core.auditoria.enums.AccionAuditoria;
@@ -39,6 +41,7 @@ import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.usuario.entity.Usuario;
 import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
 
+@ExtendWith(EmpresaDePrueba.class)
 class AuditoriaServiceTest {
 
     private final AuditoriaRepository repo = mock(AuditoriaRepository.class);
@@ -61,7 +64,7 @@ class AuditoriaServiceTest {
     @Test
     void exitoTomaElUsuarioDeLaSesionYLaIp() {
         request.setAttribute(SesionActual.ATRIBUTO,
-                new UsuarioAutenticado(3L, "a@x.com", "Ana", Set.of("ADMIN_SISTEMA"), null));
+                new UsuarioAutenticado(3L, "a@x.com", "Ana", Set.of("ADMIN_SISTEMA"), null, 1L));
 
         service.exito(AccionAuditoria.USUARIO_CREAR, EntidadAuditada.USUARIO, 9L, "correo=b@x.com");
 
@@ -100,8 +103,8 @@ class AuditoriaServiceTest {
     @Test
     @SuppressWarnings("unchecked")
     void buscarAgregaNombreYCorreoDelUsuario() {
-        Auditoria conUsuario = new Auditoria(3L, "USUARIO", 9L, "USUARIO_CREAR", ResultadoAuditoria.EXITO, null, null);
-        Auditoria anonima = new Auditoria(null, "USUARIO", null, "LOGIN", ResultadoAuditoria.FALLO, null, null);
+        Auditoria conUsuario = new Auditoria(1L, 3L, "USUARIO", 9L, "USUARIO_CREAR", ResultadoAuditoria.EXITO, null, null);
+        Auditoria anonima = new Auditoria(1L, null, "USUARIO", null, "LOGIN", ResultadoAuditoria.FALLO, null, null);
         Pageable pagina = PageRequest.of(0, 50, Sort.by("creadoEn").descending());
         when(repo.findAll(any(Specification.class), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(conUsuario, anonima), pagina, 2));

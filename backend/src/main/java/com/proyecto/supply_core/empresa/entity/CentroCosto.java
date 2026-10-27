@@ -1,5 +1,6 @@
 package com.proyecto.supply_core.empresa.entity;
 
+import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -25,11 +26,13 @@ public class CentroCosto {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "empresa_id", nullable = false)
+    /** Empresa dueña del registro. La asigna Hibernate al guardar y filtra toda consulta ({@code @TenantId}). */
+    @TenantId
+    @Column(name = "empresa_id", nullable = false, updatable = false)
     private Long empresaId;
 
     /** Único, en mayúsculas (p. ej. {@code ADM-01}). */
-    @Column(nullable = false, unique = true, length = 30)
+    @Column(nullable = false, length = 30)
     private String codigo;
 
     @Column(nullable = false, length = 150)

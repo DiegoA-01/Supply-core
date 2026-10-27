@@ -3,6 +3,7 @@ package com.proyecto.supply_core.notificacion.entity;
 import com.proyecto.supply_core.notificacion.enums.CanalNotificacion;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 
+import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -29,6 +30,11 @@ public class ConfigNotificacion {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** Empresa dueña del registro. La asigna Hibernate al guardar y filtra toda consulta ({@code @TenantId}). */
+    @TenantId
+    @Column(name = "empresa_id", nullable = false, updatable = false)
+    private Long empresaId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 80, updatable = false)

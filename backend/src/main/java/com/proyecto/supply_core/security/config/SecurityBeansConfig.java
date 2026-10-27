@@ -7,10 +7,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import com.proyecto.supply_core.security.jwt.JwtProperties;
+import com.proyecto.supply_core.security.jwt.SesionProperties;
 
 /** Beans de seguridad que no dependen de Spring Security (solo su módulo crypto). */
 @Configuration
-@EnableConfigurationProperties(JwtProperties.class)
+@EnableConfigurationProperties({ JwtProperties.class, SesionProperties.class })
 public class SecurityBeansConfig {
 
     /**

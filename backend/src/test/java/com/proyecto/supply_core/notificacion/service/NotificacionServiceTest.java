@@ -58,7 +58,7 @@ class NotificacionServiceTest {
     void sesion() {
         MockHttpServletRequest req = new MockHttpServletRequest();
         req.setAttribute(SesionActual.ATRIBUTO,
-                new UsuarioAutenticado(5L, "comp@x.com", "Comprador", Set.of("COMPRADOR"), null));
+                new UsuarioAutenticado(5L, "comp@x.com", "Comprador", Set.of("COMPRADOR"), null, 1L));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(req));
     }
 

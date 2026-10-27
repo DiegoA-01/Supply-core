@@ -1,0 +1,193 @@
+package com.proyecto.supply_core.reporte.repository;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
+
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.Repository;
+import org.springframework.data.repository.query.Param;
+
+import com.proyecto.supply_core.compra.orden.entity.OrdenCompra;
+import com.proyecto.supply_core.compra.orden.enums.EstadoOrden;
+import com.proyecto.supply_core.reporte.dto.GastoFila;
+import com.proyecto.supply_core.reporte.dto.GastoMesFila;
+import com.proyecto.supply_core.reporte.dto.InventarioFila;
+import com.proyecto.supply_core.reporte.dto.OrdenFila;
+import com.proyecto.supply_core.reporte.dto.SumaConsecutivo;
+
+/**
+ * Consultas agregadas de solo lectura para los reportes. Todas parten de entidades con {@code @TenantId}, así que
+ * Hibernate agrega la empresa del contexto a cada consulta. Los filtros opcionales valen {@code null} para "todos".
+ * Las fechas de emisión llegan como rango semiabierto {@code [desde, hasta)}.
+ */
+public interface ReporteRepository extends Repository<OrdenCompra, Long> {
+
+    /**
+     * Gasto de las órdenes vigentes agrupado por proveedor.
+     *
+     * @param excluidos   estados que no cuentan como gasto
+     * @param desde       emisión desde (incluida)
+     * @param hasta       emisión hasta (excluida)
+     * @param categoriaId categoría de las líneas
+     * @param proveedorId proveedor de la orden
+     * @return filas, de mayor a menor subtotal
+     */
+    @Query("""
+            select new com.proyecto.supply_core.reporte.dto.GastoFila(pr.id, pr.razonSocial, count(distinct o.id),
+                   sum(l.subtotal), sum(l.subtotal * l.impuestoPct / 100))
+            from OrdenCompra o join o.proveedor pr join o.lineas l join l.producto p
+            where o.estado not in :excluidos
+              and (:desde is null or o.creadoEn >= :desde)
+              and (:hasta is null or o.creadoEn < :hasta)
+              and (:categoriaId is null or p.categoria.id = :categoriaId)
+              and (:proveedorId is null or pr.id = :proveedorId)
+            group by pr.id, pr.razonSocial
+            order by sum(l.subtotal) desc
+            """)
+    List<GastoFila> gastoPorProveedor(@Param("excluidos") Collection<EstadoOrden> excluidos,
+            @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta,
+            @Param("categoriaId") Long categoriaId, @Param("proveedorId") Long proveedorId);
+
+    /**
+     * Gasto de las órdenes vigentes agrupado por categoría del producto.
+     *
+     * @param excluidos   estados que no cuentan como gasto
+     * @param desde       emisión desde (incluida)
+     * @param hasta       emisión hasta (excluida)
+     * @param categoriaId categoría de las líneas
+     * @param proveedorId proveedor de la orden
+     * @return filas, de mayor a menor subtotal
+     */
+    @Query("""
+            select new com.proyecto.supply_core.reporte.dto.GastoFila(c.id, c.nombre, count(distinct o.id),
+                   sum(l.subtotal), sum(l.subtotal * l.impuestoPct / 100))
+            from OrdenCompra o join o.lineas l join l.producto p join p.categoria c
+            where o.estado not in :excluidos
+              and (:desde is null or o.creadoEn >= :desde)
+              and (:hasta is null or o.creadoEn < :hasta)
+              and (:categoriaId is null or c.id = :categoriaId)
+              and (:proveedorId is null or o.proveedor.id = :proveedorId)
+            group by c.id, c.nombre
+            order by sum(l.subtotal) desc
+            """)
+    List<GastoFila> gastoPorCategoria(@Param("excluidos") Collection<EstadoOrden> excluidos,
+            @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta,
+            @Param("categoriaId") Long categoriaId, @Param("proveedorId") Long proveedorId);
+
+    /**
+     * Gasto de las órdenes vigentes agrupado por mes de emisión.
+     *
+     * @param excluidos   estados que no cuentan como gasto
+     * @param desde       emisión desde (incluida)
+     * @param hasta       emisión hasta (excluida)
+     * @param categoriaId categoría de las líneas
+     * @param proveedorId proveedor de la orden
+     * @return filas en orden cronológico
+     */
+    @Query("""
+            select new com.proyecto.supply_core.reporte.dto.GastoMesFila(year(o.creadoEn), month(o.creadoEn),
+                   count(distinct o.id), sum(l.subtotal), sum(l.subtotal * l.impuestoPct / 100))
+            from OrdenCompra o join o.lineas l join l.producto p
+            where o.estado not in :excluidos
+              and (:desde is null or o.creadoEn >= :desde)
+              and (:hasta is null or o.creadoEn < :hasta)
+              and (:categoriaId is null or p.categoria.id = :categoriaId)
+              and (:proveedorId is null or o.proveedor.id = :proveedorId)
+            group by year(o.creadoEn), month(o.creadoEn)
+            order by year(o.creadoEn), month(o.creadoEn)
+            """)
+    List<GastoMesFila> gastoPorMes(@Param("excluidos") Collection<EstadoOrden> excluidos,
+            @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta,
+            @Param("categoriaId") Long categoriaId, @Param("proveedorId") Long proveedorId);
+
+    /**
+     * Suma de pagos REGISTRADOS con fecha de pago en el rango.
+     *
+     * @param desde       fecha de pago desde (incluida)
+     * @param hasta       fecha de pago hasta (incluida)
+     * @param proveedorId proveedor de la orden
+     * @return pagado (0 si no hay pagos)
+     */
+    @Query("""
+            select coalesce(sum(pg.valor), 0) from Pago pg
+            where pg.estado = com.proyecto.supply_core.pago.enums.EstadoPago.REGISTRADO
+              and (:desde is null or pg.fechaPago >= :desde)
+              and (:hasta is null or pg.fechaPago <= :hasta)
+              and (:proveedorId is null or pg.orden.proveedor.id = :proveedorId)
+            """)
+    BigDecimal pagado(@Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta,
+            @Param("proveedorId") Long proveedorId);
+
+    /**
+     * Productos activos con su stock sumado de todas las bodegas.
+     *
+     * @param categoriaId categoría del producto
+     * @return filas por nombre de producto
+     */
+    @Query("""
+            select new com.proyecto.supply_core.reporte.dto.InventarioFila(p.id, p.codigo, p.nombre, c.nombre,
+                   u.codigo, coalesce(sum(s.cantidad), 0), p.stockMinimo, p.stockMaximo, p.costoReferencia)
+            from Producto p join p.categoria c join p.unidadMedida u
+                 left join StockProductoBodega s on s.producto = p
+            where p.activo = true
+              and (:categoriaId is null or c.id = :categoriaId)
+            group by p.id, p.codigo, p.nombre, c.nombre, u.codigo, p.stockMinimo, p.stockMaximo, p.costoReferencia
+            order by p.nombre
+            """)
+    List<InventarioFila> inventario(@Param("categoriaId") Long categoriaId);
+
+    /**
+     * Órdenes vigentes de un proveedor.
+     *
+     * @param proveedorId proveedor
+     * @param excluidos   estados que no cuentan
+     * @param desde       emisión desde (incluida)
+     * @param hasta       emisión hasta (excluida)
+     * @return órdenes, de la más reciente a la más antigua
+     */
+    @Query("""
+            select new com.proyecto.supply_core.reporte.dto.OrdenFila(o.id, o.consecutivo, o.creadoEn, o.estado, o.total)
+            from OrdenCompra o
+            where o.proveedor.id = :proveedorId
+              and o.estado not in :excluidos
+              and (:desde is null or o.creadoEn >= :desde)
+              and (:hasta is null or o.creadoEn < :hasta)
+            order by o.creadoEn desc, o.id desc
+            """)
+    List<OrdenFila> ordenesDelProveedor(@Param("proveedorId") Long proveedorId,
+            @Param("excluidos") Collection<EstadoOrden> excluidos, @Param("desde") LocalDateTime desde,
+            @Param("hasta") LocalDateTime hasta);
+
+    /**
+     * Pagos REGISTRADOS de un proveedor, sumados por orden (todas las versiones).
+     *
+     * @param proveedorId proveedor
+     * @return una fila por consecutivo
+     */
+    @Query("""
+            select new com.proyecto.supply_core.reporte.dto.SumaConsecutivo(pg.orden.consecutivo, sum(pg.valor))
+            from Pago pg
+            where pg.orden.proveedor.id = :proveedorId
+              and pg.estado = com.proyecto.supply_core.pago.enums.EstadoPago.REGISTRADO
+            group by pg.orden.consecutivo
+            """)
+    List<SumaConsecutivo> pagadoPorOrden(@Param("proveedorId") Long proveedorId);
+
+    /**
+     * Facturas no anuladas de un proveedor, sumadas por orden.
+     *
+     * @param proveedorId proveedor
+     * @return una fila por consecutivo
+     */
+    @Query("""
+            select new com.proyecto.supply_core.reporte.dto.SumaConsecutivo(f.orden.consecutivo, sum(f.total))
+            from FacturaProveedor f
+            where f.proveedor.id = :proveedorId
+              and f.estado <> com.proyecto.supply_core.factura.enums.EstadoFactura.ANULADA
+            group by f.orden.consecutivo
+            """)
+    List<SumaConsecutivo> facturadoPorOrden(@Param("proveedorId") Long proveedorId);
+}

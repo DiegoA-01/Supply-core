@@ -43,7 +43,17 @@ public enum EventoNotificacion {
     /** Se registró un pago de la orden (destino: usuarios del proveedor y comprador que emitió). */
     PAGO_REGISTRADO("Pago registrado"),
     /** Se anuló un pago de la orden (destino: usuarios del proveedor y comprador que emitió). */
-    PAGO_ANULADO("Pago anulado");
+    PAGO_ANULADO("Pago anulado"),
+    /** Se recibió mercancía de la orden, con sus rechazos y faltantes (destino: proveedor y comprador que emitió). */
+    RECEPCION_REGISTRADA("Mercancía recibida"),
+    /** Llegó más de lo pedido y espera decisión (destino: COMPRADOR). */
+    RECEPCION_EXCEDENTE("Mercancía de más por resolver"),
+    /** Se cerró la recepción de la orden y se evaluó al proveedor (destino: proveedor y comprador que emitió). */
+    RECEPCION_CERRADA("Recepción cerrada"),
+    /** Una factura no cuadra con lo recibido y espera la decisión de compras (destino: ADMIN_COMPRAS). */
+    FACTURA_EN_REVISION("Factura por revisar"),
+    /** Compras aprobó o anularon una factura (destino: el administrativo que la registró). */
+    FACTURA_DECIDIDA("Decisión sobre la factura");
 
     /** Asunto del correo. */
     private final String asunto;

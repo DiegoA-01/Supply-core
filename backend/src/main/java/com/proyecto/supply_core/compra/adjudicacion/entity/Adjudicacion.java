@@ -7,6 +7,7 @@ import com.proyecto.supply_core.compra.adjudicacion.enums.EstadoAdjudicacion;
 import com.proyecto.supply_core.compra.cotizacion.entity.Cotizacion;
 import com.proyecto.supply_core.compra.rfq.entity.Rfq;
 
+import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -37,6 +38,11 @@ public class Adjudicacion {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** Empresa dueña del registro. La asigna Hibernate al guardar y filtra toda consulta ({@code @TenantId}). */
+    @TenantId
+    @Column(name = "empresa_id", nullable = false, updatable = false)
+    private Long empresaId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "rfq_id", nullable = false, updatable = false)

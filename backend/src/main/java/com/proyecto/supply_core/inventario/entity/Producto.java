@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import com.proyecto.supply_core.catalogo.entity.CategoriaProducto;
 import com.proyecto.supply_core.catalogo.entity.UnidadMedida;
 
+import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -34,6 +35,11 @@ public class Producto {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** Empresa dueña del registro. La asigna Hibernate al guardar y filtra toda consulta ({@code @TenantId}). */
+    @TenantId
+    @Column(name = "empresa_id", nullable = false, updatable = false)
+    private Long empresaId;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "categoria_producto_id", nullable = false)
     private CategoriaProducto categoria;
@@ -44,7 +50,7 @@ public class Producto {
     private UnidadMedida unidadMedida;
 
     /** Único, en mayúsculas. */
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = false, length = 50)
     private String codigo;
 
     @Column(nullable = false, length = 200)

@@ -23,7 +23,6 @@ import com.proyecto.supply_core.common.exception.AccesoDenegadoException;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.common.exception.ParametroInvalidoException;
-import com.proyecto.supply_core.common.util.EmpresaUnica;
 import com.proyecto.supply_core.common.util.Ordenamiento;
 import com.proyecto.supply_core.catalogo.dto.CategoriaResponse;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
@@ -109,7 +108,6 @@ public class ProveedorService {
         Proveedor guardado = proveedorRepository.save(p);
 
         Usuario u = new Usuario();
-        u.setEmpresaId(EmpresaUnica.ID);
         u.setProveedorId(guardado.getId());
         u.setNombreCompleto(req.nombreContacto().trim());
         u.setCorreo(normalizarCorreo(req.correo()));

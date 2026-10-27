@@ -15,6 +15,7 @@ Lee solo la referencia que la tarea necesita. No abras `docs/` (PDF/PNG/SQL hist
 | Tablas, columnas, enums, qué tabla va en qué módulo | `references/modelo-datos.md` |
 | Crear código backend (módulo, entity, service, DTO) | `references/backend.md` |
 | Login, JWT, roles, permisos | `references/auth-jwt.md` |
+| SaaS multiempresa, roles por empresa, módulos, plan de fases | `references/saas.md` |
 | Cambiar el esquema | `references/flyway.md` |
 | IA, análisis, score, ranking | `references/ia.md` |
 | Angular | `references/frontend.md` |

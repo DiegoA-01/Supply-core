@@ -29,6 +29,7 @@ import com.proyecto.supply_core.auditoria.repository.AuditoriaSpecs;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.common.exception.ParametroInvalidoException;
+import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.common.util.Ordenamiento;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
@@ -125,7 +126,8 @@ public class AuditoriaService {
      */
     @Transactional(readOnly = true)
     public PageResponse<AuditoriaResponse> buscar(AuditoriaFiltro filtro, Pageable pageable) {
-        Page<Auditoria> pagina = auditoriaRepository.findAll(AuditoriaSpecs.conFiltro(filtro),
+        Page<Auditoria> pagina = auditoriaRepository.findAll(
+                AuditoriaSpecs.deEmpresa(EmpresaContexto.requerida()).and(AuditoriaSpecs.conFiltro(filtro)),
                 Ordenamiento.validar(pageable, CAMPOS_ORDENABLES));
         Map<Long, Usuario> usuarios = usuariosDe(pagina.getContent());
         return PageResponse.of(pagina, a -> responder(a, usuarios));
@@ -141,6 +143,7 @@ public class AuditoriaService {
     @Transactional(readOnly = true)
     public AuditoriaResponse obtener(Long id) {
         Auditoria a = auditoriaRepository.findById(id)
+                .filter(r -> Objects.equals(r.getEmpresaId(), EmpresaContexto.requerida()))
                 .orElseThrow(() -> new NoEncontradoException("Registro de auditoría", id));
         return responder(a, usuariosDe(List.of(a)));
     }
@@ -160,8 +163,23 @@ public class AuditoriaService {
      */
     private Auditoria nuevo(Long usuarioId, AccionAuditoria accion, EntidadAuditada entidad, Long entidadId,
             ResultadoAuditoria resultado, String detalle) {
-        return new Auditoria(usuarioId, entidad.name(), entidadId, accion.name(), resultado,
+        return new Auditoria(empresaDe(usuarioId), usuarioId, entidad.name(), entidadId, accion.name(), resultado,
                 recortar(ipActual(), LARGO_MAXIMO_IP), recortar(detalle, LARGO_MAXIMO_DETALLE));
+    }
+
+    /**
+     * Empresa a la que se atribuye el registro: la del contexto; si no hay (login, renovación de sesión),
+     * la del usuario que hizo la acción; si tampoco se sabe quién fue, {@code null}.
+     *
+     * @param usuarioId quién hizo la acción (puede ser {@code null})
+     * @return id de empresa o {@code null}
+     */
+    private Long empresaDe(Long usuarioId) {
+        Long actual = EmpresaContexto.opcional();
+        if (actual != null || usuarioId == null) {
+            return actual;
+        }
+        return usuarioRepository.findById(usuarioId).map(Usuario::getEmpresaId).orElse(null);
     }
 
     /**

@@ -7,6 +7,12 @@ package com.proyecto.supply_core.auditoria.enums;
 public enum AccionAuditoria {
     /** Inicio de sesión (EXITO o FALLO). */
     LOGIN,
+    /** Cierre de sesión (una sesión o todas las del usuario). */
+    LOGOUT,
+    /** Se presentó un refresh token ya usado: se revocó la sesión completa. */
+    REFRESH_REUTILIZADO,
+    /** La cuenta se bloqueó temporalmente por intentos fallidos de login. */
+    CUENTA_BLOQUEADA,
     /** Alta de usuario. */
     USUARIO_CREAR,
     /** Edición de datos o roles de un usuario. */
@@ -138,5 +144,21 @@ public enum AccionAuditoria {
     /** Comprobante adjuntado a un pago (cierra la evidencia pendiente). */
     PAGO_COMPROBANTE,
     /** Anulación de un pago registrado por error, con motivo. */
-    PAGO_ANULAR
+    PAGO_ANULAR,
+    /** El almacenista registró una recepción de mercancía. */
+    RECEPCION_REGISTRAR,
+    /** Compras resolvió el excedente de una línea de recepción (aceptar o devolver). */
+    RECEPCION_RESOLVER_EXCESO,
+    /** Se cerró la recepción de una orden y se evaluó al proveedor. */
+    RECEPCION_CERRAR,
+    /** Se registró la factura de un proveedor y se cruzó con lo recibido. */
+    FACTURA_REGISTRAR,
+    /** Se volvió a cruzar una factura con lo recibido (la recepción cambió). */
+    FACTURA_RECRUZAR,
+    /** Compras aprobó una factura que no cuadraba, con motivo. */
+    FACTURA_APROBAR,
+    /** Se anuló una factura registrada por error. */
+    FACTURA_ANULAR,
+    /** Se adjuntó el PDF de una factura. */
+    FACTURA_ARCHIVO
 }

@@ -2,6 +2,7 @@ package com.proyecto.supply_core.inventario.entity;
 
 import com.proyecto.supply_core.empresa.entity.Sede;
 
+import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -27,7 +28,9 @@ public class Bodega {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "empresa_id", nullable = false)
+    /** Empresa dueña del registro. La asigna Hibernate al guardar y filtra toda consulta ({@code @TenantId}). */
+    @TenantId
+    @Column(name = "empresa_id", nullable = false, updatable = false)
     private Long empresaId;
 
     /** Sede a la que pertenece (opcional). */

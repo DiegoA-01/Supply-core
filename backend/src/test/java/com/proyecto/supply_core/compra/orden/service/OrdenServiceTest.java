@@ -84,7 +84,7 @@ class OrdenServiceTest {
     @BeforeEach
     void setUp() {
         request = new MockHttpServletRequest();
-        sesion(new UsuarioAutenticado(30L, "c@x.com", "C", Set.of("COMPRADOR"), null));
+        sesion(new UsuarioAutenticado(30L, "c@x.com", "C", Set.of("COMPRADOR"), null, 1L));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
         UnidadMedida caja = unidad(2L, "CAJA24");
@@ -207,7 +207,7 @@ class OrdenServiceTest {
     @Test
     void flujoDelProveedorHastaDespachar() {
         var v1 = emitir();
-        sesion(new UsuarioAutenticado(77L, "p@x.com", "P", Set.of("PROVEEDOR"), 40L));
+        sesion(new UsuarioAutenticado(77L, "p@x.com", "P", Set.of("PROVEEDOR"), 40L, 1L));
 
         assertThrows(NegocioException.class, () -> proveedorService.despachar(v1.id(), null)); // aún no aceptada
         assertEquals(EstadoOrden.ACEPTADA_PROVEEDOR, proveedorService.aceptar(v1.id()).estado());
@@ -218,7 +218,7 @@ class OrdenServiceTest {
         verify(notificaciones, times(3)).notificar(eq(30L),
                 eq(EventoNotificacion.ORDEN_RESPUESTA_PROVEEDOR), anyString());
 
-        sesion(new UsuarioAutenticado(30L, "c@x.com", "C", Set.of("COMPRADOR"), null));
+        sesion(new UsuarioAutenticado(30L, "c@x.com", "C", Set.of("COMPRADOR"), null, 1L));
         assertEquals("TRANSICION_INVALIDA",
                 assertThrows(NegocioException.class, () -> service.cancelar(v1.id(), "tarde")).getCodigo());
     }
@@ -226,15 +226,15 @@ class OrdenServiceTest {
     @Test
     void proveedorAjenoYRechazoSinMotivo() {
         var v1 = emitir();
-        sesion(new UsuarioAutenticado(78L, "o@x.com", "O", Set.of("PROVEEDOR"), 41L));
+        sesion(new UsuarioAutenticado(78L, "o@x.com", "O", Set.of("PROVEEDOR"), 41L, 1L));
         assertThrows(NoEncontradoException.class, () -> proveedorService.aceptar(v1.id()));
         assertThrows(NoEncontradoException.class, () -> proveedorService.obtener(v1.id()));
 
-        sesion(new UsuarioAutenticado(77L, "p@x.com", "P", Set.of("PROVEEDOR"), 40L));
+        sesion(new UsuarioAutenticado(77L, "p@x.com", "P", Set.of("PROVEEDOR"), 40L, 1L));
         assertThrows(ParametroInvalidoException.class, () -> proveedorService.rechazar(v1.id(), " "));
         assertEquals(EstadoOrden.RECHAZADA_PROVEEDOR, proveedorService.rechazar(v1.id(), "Sin stock").estado());
 
-        sesion(new UsuarioAutenticado(30L, "c@x.com", "C", Set.of("COMPRADOR"), null));
+        sesion(new UsuarioAutenticado(30L, "c@x.com", "C", Set.of("COMPRADOR"), null, 1L));
         assertEquals(EstadoOrden.CANCELADA, service.cancelar(v1.id(), "Se compra a otro").estado());
     }
 
@@ -242,8 +242,8 @@ class OrdenServiceTest {
     void reglaDeDocumentos() {
         var v1 = emitir();
         OrdenReglaDocumentos regla = new OrdenReglaDocumentos(ordenes);
-        UsuarioAutenticado dueno = new UsuarioAutenticado(77L, "p@x.com", "P", Set.of("PROVEEDOR"), 40L);
-        UsuarioAutenticado bodega = new UsuarioAutenticado(5L, "b@x.com", "B", Set.of("ALMACENISTA"), null);
+        UsuarioAutenticado dueno = new UsuarioAutenticado(77L, "p@x.com", "P", Set.of("PROVEEDOR"), 40L, 1L);
+        UsuarioAutenticado bodega = new UsuarioAutenticado(5L, "b@x.com", "B", Set.of("ALMACENISTA"), null, 1L);
 
         assertThrows(AccesoDenegadoException.class, () -> regla.validarSubida(v1.id(), dueno)); // EMITIDA
         guardadas.get(0).setEstado(EstadoOrden.EN_PREPARACION);
@@ -251,6 +251,7 @@ class OrdenServiceTest {
         assertDoesNotThrow(() -> regla.validarLectura(v1.id(), bodega));
         assertThrows(AccesoDenegadoException.class, () -> regla.validarSubida(v1.id(), bodega));
         assertTrue(EstadoOrden.DESPACHADA.puedePasarA(EstadoOrden.RECIBIDA_PARCIAL));
+        assertTrue(EstadoOrden.RECIBIDA_PARCIAL.puedePasarA(EstadoOrden.CERRADA)); // cierre con faltante
     }
 
     private OrdenResponse emitir() {

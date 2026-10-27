@@ -8,11 +8,12 @@ import java.util.Set;
  * Estados de una orden de compra (ENUM de {@code orden_compra.estado}).
  * <pre>
  * EMITIDA → ACEPTADA_PROVEEDOR → EN_PREPARACION → DESPACHADA → RECIBIDA_PARCIAL | RECIBIDA_TOTAL → CERRADA
+ * RECIBIDA_PARCIAL → CERRADA (cierre con faltante, con motivo)
  * EMITIDA → RECHAZADA_PROVEEDOR
  * EMITIDA | ACEPTADA_PROVEEDOR | EN_PREPARACION | RECHAZADA_PROVEEDOR → CANCELADA
  * EMITIDA | ACEPTADA_PROVEEDOR | EN_PREPARACION | RECHAZADA_PROVEEDOR → REEMPLAZADA (nueva versión)
  * </pre>
- * Las recepciones (RECIBIDA_*) las maneja el paso 17.
+ * Las recepciones (RECIBIDA_*) y el cierre las maneja {@code RecepcionService}.
  */
 public enum EstadoOrden {
     /** Enviada al proveedor; espera su respuesta. */
@@ -43,7 +44,7 @@ public enum EstadoOrden {
             EN_PREPARACION, EnumSet.of(DESPACHADA, CANCELADA, REEMPLAZADA),
             RECHAZADA_PROVEEDOR, EnumSet.of(CANCELADA, REEMPLAZADA),
             DESPACHADA, EnumSet.of(RECIBIDA_PARCIAL, RECIBIDA_TOTAL),
-            RECIBIDA_PARCIAL, EnumSet.of(RECIBIDA_PARCIAL, RECIBIDA_TOTAL),
+            RECIBIDA_PARCIAL, EnumSet.of(RECIBIDA_PARCIAL, RECIBIDA_TOTAL, CERRADA),
             RECIBIDA_TOTAL, EnumSet.of(CERRADA));
 
     /**

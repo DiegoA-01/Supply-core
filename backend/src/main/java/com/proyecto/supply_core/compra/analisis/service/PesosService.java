@@ -14,7 +14,7 @@ import com.proyecto.supply_core.auditoria.enums.AccionAuditoria;
 import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.common.exception.NegocioException;
-import com.proyecto.supply_core.common.util.EmpresaUnica;
+import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.compra.analisis.dto.PesosResponse;
 import com.proyecto.supply_core.compra.analisis.entity.ConfigPesos;
 import com.proyecto.supply_core.compra.analisis.entity.CriterioEvaluacion;
@@ -66,7 +66,7 @@ public class PesosService {
      */
     @Transactional(readOnly = true)
     public ConfigPesos entidadVigente() {
-        return configRepository.findFirstByEmpresaIdAndActivoTrueOrderByVigenteDesdeDesc(EmpresaUnica.ID)
+        return configRepository.findFirstByEmpresaIdAndActivoTrueOrderByVigenteDesdeDesc(EmpresaContexto.requerida())
                 .orElseThrow(() -> new NegocioException("SIN_PESOS", "No hay una matriz de pesos vigente"));
     }
 
@@ -91,12 +91,11 @@ public class PesosService {
             throw new NegocioException("PESOS_NO_SUMAN_100", "Los pesos suman " + suma.toPlainString() + "; deben sumar 100");
         }
         LocalDateTime ahora = LocalDateTime.now();
-        configRepository.findFirstByEmpresaIdAndActivoTrueOrderByVigenteDesdeDesc(EmpresaUnica.ID).ifPresent(v -> {
+        configRepository.findFirstByEmpresaIdAndActivoTrueOrderByVigenteDesdeDesc(EmpresaContexto.requerida()).ifPresent(v -> {
             v.setActivo(false);
             v.setVigenteHasta(ahora);
         });
         ConfigPesos nueva = new ConfigPesos();
-        nueva.setEmpresaId(EmpresaUnica.ID);
         nueva.setVigenteDesde(ahora);
         criterios.forEach(c -> nueva.agregar(c, normalizados.get(c.getCodigo())));
         ConfigPesos guardada = configRepository.save(nueva);

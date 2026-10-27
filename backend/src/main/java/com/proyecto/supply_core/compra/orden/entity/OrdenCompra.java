@@ -10,6 +10,7 @@ import com.proyecto.supply_core.compra.orden.enums.EstadoOrden;
 import com.proyecto.supply_core.inventario.entity.Bodega;
 import com.proyecto.supply_core.proveedor.entity.Proveedor;
 
+import org.hibernate.annotations.TenantId;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -44,6 +45,11 @@ public class OrdenCompra {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** Empresa dueña del registro. La asigna Hibernate al guardar y filtra toda consulta ({@code @TenantId}). */
+    @TenantId
+    @Column(name = "empresa_id", nullable = false, updatable = false)
+    private Long empresaId;
 
     @Column(name = "adjudicacion_id", nullable = false, updatable = false)
     private Long adjudicacionId;

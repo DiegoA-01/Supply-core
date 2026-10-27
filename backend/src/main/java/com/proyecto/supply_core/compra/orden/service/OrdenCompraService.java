@@ -296,7 +296,7 @@ public class OrdenCompraService {
      * @param id orden
      * @return orden bloqueada
      */
-    OrdenCompra bloquear(Long id) {
+    public OrdenCompra bloquear(Long id) {
         ordenRepository.bloquear(id).orElseThrow(() -> new NoEncontradoException("Orden", id));
         return ordenRepository.findDetalleById(id).orElseThrow(() -> new NoEncontradoException("Orden", id));
     }
@@ -308,7 +308,7 @@ public class OrdenCompraService {
      * @param destino estado destino
      * @throws NegocioException si no está permitida
      */
-    static void exigirTransicion(OrdenCompra o, EstadoOrden destino) {
+    public static void exigirTransicion(OrdenCompra o, EstadoOrden destino) {
         if (!o.getEstado().puedePasarA(destino)) {
             throw new NegocioException("TRANSICION_INVALIDA", "La orden " + o.getConsecutivo() + " v" + o.getVersion()
                     + " está " + o.getEstado() + " y no puede pasar a " + destino);
@@ -322,7 +322,7 @@ public class OrdenCompraService {
      * @param estado      estado nuevo
      * @param observacion comentario
      */
-    void historial(OrdenCompra o, EstadoOrden estado, String observacion) {
+    public void historial(OrdenCompra o, EstadoOrden estado, String observacion) {
         historialRepository.save(new OrdenEstadoHistorial(o.getId(), estado, SesionActual.usuario().id(), observacion));
     }
 

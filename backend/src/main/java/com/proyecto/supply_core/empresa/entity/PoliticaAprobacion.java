@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import com.proyecto.supply_core.empresa.enums.TipoPolitica;
 import com.proyecto.supply_core.usuario.entity.Rol;
 
+import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -37,7 +38,9 @@ public class PoliticaAprobacion {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "empresa_id", nullable = false)
+    /** Empresa dueña del registro. La asigna Hibernate al guardar y filtra toda consulta ({@code @TenantId}). */
+    @TenantId
+    @Column(name = "empresa_id", nullable = false, updatable = false)
     private Long empresaId;
 
     @Enumerated(EnumType.STRING)

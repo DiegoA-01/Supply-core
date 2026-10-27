@@ -2,6 +2,7 @@ package com.proyecto.supply_core.security.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
@@ -12,6 +13,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +32,7 @@ import com.proyecto.supply_core.security.dto.LoginRequest;
 import com.proyecto.supply_core.security.dto.LoginResponse;
 import com.proyecto.supply_core.security.jwt.JwtProperties;
 import com.proyecto.supply_core.security.jwt.JwtUtil;
+import com.proyecto.supply_core.security.jwt.SesionProperties;
 import com.proyecto.supply_core.usuario.entity.Rol;
 import com.proyecto.supply_core.usuario.entity.Usuario;
 import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
@@ -40,18 +43,22 @@ class AuthServiceTest {
     private final UsuarioRepository repo = mock(UsuarioRepository.class);
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
     private final ProveedorRepository proveedores = mock(ProveedorRepository.class);
+    private final RefreshTokenService refreshTokens = mock(RefreshTokenService.class);
     private AuthService service;
     private Usuario usuario;
 
     @BeforeEach
     void setUp() {
         JwtUtil jwt = new JwtUtil(new JwtProperties("clave-de-prueba-de-al-menos-32-caracteres!!", 60));
-        service = new AuthService(repo, encoder, jwt, auditoria, proveedores);
+        when(refreshTokens.emitir(5L)).thenReturn("refresh-1");
+        service = new AuthService(repo, encoder, jwt, auditoria, proveedores, refreshTokens,
+                new SesionProperties(7, 3, 15, 20));
 
         Rol rol = new Rol();
         rol.setCodigo("COMPRADOR");
         usuario = new Usuario();
         usuario.setId(5L);
+        usuario.setEmpresaId(1L);
         usuario.setCorreo("ana@demo.com");
         usuario.setNombreCompleto("Ana");
         usuario.setHashPassword(encoder.encode("Secreta123"));
@@ -61,9 +68,10 @@ class AuthServiceTest {
 
     @Test
     void loginCorrectoDevuelveTokenYAuditaExito() {
-        LoginResponse r = service.login(new LoginRequest("ANA@demo.com", "Secreta123"));
+        LoginResponse r = service.login(new LoginRequest("demo", "ANA@demo.com", "Secreta123"));
 
         assertNotNull(r.token());
+        assertEquals("refresh-1", r.refreshToken());
         assertEquals("Bearer", r.tipo());
         assertEquals(5L, r.usuario().id());
         assertNotNull(usuario.getUltimoAcceso());
@@ -73,9 +81,9 @@ class AuthServiceTest {
     @Test
     void claveIncorrectaYCorreoInexistenteDanElMismoMensajeYSeAuditan() {
         NoAutenticadoException clave = assertThrows(NoAutenticadoException.class,
-                () -> service.login(new LoginRequest("ana@demo.com", "mala")));
+                () -> service.login(new LoginRequest("demo", "ana@demo.com", "mala")));
         NoAutenticadoException correo = assertThrows(NoAutenticadoException.class,
-                () -> service.login(new LoginRequest("nadie@demo.com", "Secreta123")));
+                () -> service.login(new LoginRequest("demo", "nadie@demo.com", "Secreta123")));
 
         assertEquals(AuthService.CREDENCIALES_INVALIDAS, clave.getMessage());
         assertEquals(clave.getMessage(), correo.getMessage());
@@ -89,13 +97,72 @@ class AuthServiceTest {
     void cuentaInactivaSeRechazaYSeAudita() {
         usuario.setActivo(false);
         NoAutenticadoException ex = assertThrows(NoAutenticadoException.class,
-                () -> service.login(new LoginRequest("ana@demo.com", "Secreta123")));
+                () -> service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123")));
 
         assertEquals(AuthService.CUENTA_INACTIVA, ex.getMessage());
         verify(auditoria).fallo(eq(5L), eq(AccionAuditoria.LOGIN), eq(EntidadAuditada.USUARIO), eq(5L),
                 contains("cuenta inactiva"));
         verify(auditoria, never()).exitoDe(eq(5L), eq(AccionAuditoria.LOGIN), eq(EntidadAuditada.USUARIO),
                 eq(5L), anyString());
+    }
+
+    @Test
+    void tresClavesMalasBloqueanLaCuentaYBloqueadaRechazaAunqueLaClaveSeaCorrecta() {
+        for (int i = 0; i < 3; i++) {
+            assertThrows(NoAutenticadoException.class,
+                    () -> service.login(new LoginRequest("demo", "ana@demo.com", "mala")));
+        }
+
+        assertNotNull(usuario.getBloqueadoHasta());
+        assertEquals(0, usuario.getIntentosFallidos());
+        verify(auditoria).fallo(eq(5L), eq(AccionAuditoria.CUENTA_BLOQUEADA), eq(EntidadAuditada.USUARIO), eq(5L),
+                anyString());
+
+        NoAutenticadoException ex = assertThrows(NoAutenticadoException.class,
+                () -> service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123")));
+        assertEquals(AuthService.CREDENCIALES_INVALIDAS, ex.getMessage());
+        verify(refreshTokens, never()).emitir(5L);
+    }
+
+    @Test
+    void loginCorrectoReiniciaElContadorDeFallos() {
+        assertThrows(NoAutenticadoException.class, () -> service.login(new LoginRequest("demo", "ana@demo.com", "mala")));
+        assertEquals(1, usuario.getIntentosFallidos());
+
+        service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123"));
+
+        assertEquals(0, usuario.getIntentosFallidos());
+        assertNull(usuario.getBloqueadoHasta());
+    }
+
+    @Test
+    void elBloqueoVencidoYaNoImpideEntrar() {
+        usuario.setBloqueadoHasta(LocalDateTime.now().minusMinutes(1));
+
+        assertNotNull(service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123")).token());
+        assertNull(usuario.getBloqueadoHasta());
+    }
+
+    @Test
+    void refrescarEntregaJwtNuevoYElRefreshRotado() {
+        when(refreshTokens.rotar("viejo")).thenReturn(new RefreshTokenService.Renovacion(5L, "nuevo"));
+        when(repo.findWithRolesById(5L)).thenReturn(Optional.of(usuario));
+
+        LoginResponse r = service.refrescar("viejo");
+
+        assertNotNull(r.token());
+        assertEquals("nuevo", r.refreshToken());
+    }
+
+    @Test
+    void refrescarConUsuarioDesactivadoCierraTodasLasSesiones() {
+        when(refreshTokens.rotar("viejo")).thenReturn(new RefreshTokenService.Renovacion(5L, "nuevo"));
+        when(repo.findWithRolesById(5L)).thenReturn(Optional.of(usuario));
+        usuario.setActivo(false);
+
+        assertThrows(NoAutenticadoException.class, () -> service.refrescar("viejo"));
+
+        verify(refreshTokens).cerrarTodas(5L);
     }
 
     @Test
@@ -108,11 +175,11 @@ class AuthServiceTest {
                 EstadoProveedor.RECHAZADO, EstadoProveedor.SUSPENDIDO }) {
             p.setEstado(estado);
             var ex = assertThrows(NoAutenticadoException.class,
-                    () -> service.login(new LoginRequest("ana@demo.com", "Secreta123")));
+                    () -> service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123")));
             assertEquals(AuthService.mensajeProveedor(estado), ex.getMessage());
         }
 
         p.setEstado(EstadoProveedor.HABILITADO);
-        assertEquals(40L, service.login(new LoginRequest("ana@demo.com", "Secreta123")).usuario().proveedorId());
+        assertEquals(40L, service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123")).usuario().proveedorId());
     }
 }

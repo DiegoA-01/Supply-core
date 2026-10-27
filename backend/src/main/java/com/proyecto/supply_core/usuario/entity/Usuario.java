@@ -5,6 +5,8 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.hibernate.annotations.TenantId;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -36,7 +38,9 @@ public class Usuario {
 
     // FKs de otros módulos como Long mientras esos módulos no existan (empresa: paso 4,
     // proveedor: paso 9). Se pasarán a @ManyToOne cuando se creen sus entidades.
-    @Column(name = "empresa_id", nullable = false)
+    /** Empresa del usuario. La asigna Hibernate al guardar y filtra toda consulta ({@code @TenantId}). */
+    @TenantId
+    @Column(name = "empresa_id", nullable = false, updatable = false)
     private Long empresaId;
 
     @Column(name = "centro_costo_id")
@@ -49,8 +53,8 @@ public class Usuario {
     @Column(name = "nombre_completo", nullable = false, length = 200)
     private String nombreCompleto;
 
-    /** Siempre en minúsculas y sin espacios (lo normaliza el Service). */
-    @Column(nullable = false, unique = true, length = 150)
+    /** Siempre en minúsculas y sin espacios (lo normaliza el Service). Único dentro de la empresa. */
+    @Column(nullable = false, length = 150)
     private String correo;
 
     /** Hash BCrypt; nunca la contraseña real. */
@@ -62,6 +66,14 @@ public class Usuario {
 
     @Column(name = "ultimo_acceso")
     private LocalDateTime ultimoAcceso;
+
+    /** Fallos de login seguidos; vuelve a cero al entrar bien o al bloquearse la cuenta. */
+    @Column(name = "intentos_fallidos", nullable = false)
+    private int intentosFallidos;
+
+    /** Mientras sea futura, el login se rechaza aunque la clave sea correcta. */
+    @Column(name = "bloqueado_hasta")
+    private LocalDateTime bloqueadoHasta;
 
     @Column(name = "creado_en", nullable = false, updatable = false)
     private LocalDateTime creadoEn;

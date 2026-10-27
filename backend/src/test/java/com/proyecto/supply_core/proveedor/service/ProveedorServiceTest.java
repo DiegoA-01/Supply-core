@@ -68,7 +68,7 @@ class ProveedorServiceTest {
     @BeforeEach
     void setUp() {
         request = new MockHttpServletRequest();
-        sesion(new UsuarioAutenticado(1L, "compras@x.com", "Compras", Set.of("ADMIN_COMPRAS"), null));
+        sesion(new UsuarioAutenticado(1L, "compras@x.com", "Compras", Set.of("ADMIN_COMPRAS"), null, 1L));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
         when(proveedores.save(any())).thenAnswer(inv -> {
             Proveedor p = inv.getArgument(0);
@@ -173,7 +173,7 @@ class ProveedorServiceTest {
     void miProveedorExigeUsuarioDeProveedor() {
         assertThrows(AccesoDenegadoException.class, service::miProveedor);
 
-        sesion(new UsuarioAutenticado(77L, "v@t.com", "Laura", Set.of("PROVEEDOR"), 40L));
+        sesion(new UsuarioAutenticado(77L, "v@t.com", "Laura", Set.of("PROVEEDOR"), 40L, 1L));
         proveedor(EstadoProveedor.HABILITADO);
         assertEquals(40L, service.miProveedor().id());
     }
@@ -207,7 +207,7 @@ class ProveedorServiceTest {
         cat.setId(3L);
         cat.setNombre("Tecnología");
         when(categorias.findByIdInAndActivoTrue(anyCollection())).thenReturn(List.of(cat));
-        sesion(new UsuarioAutenticado(77L, "v@t.com", "Laura", Set.of("PROVEEDOR"), 40L));
+        sesion(new UsuarioAutenticado(77L, "v@t.com", "Laura", Set.of("PROVEEDOR"), 40L, 1L));
         proveedor(EstadoProveedor.HABILITADO);
 
         assertEquals(40L, service.actualizarMio(req).id());

@@ -71,7 +71,7 @@ class DespachoServiceTest {
     void setUp() {
         MockHttpServletRequest req = new MockHttpServletRequest();
         req.setAttribute(SesionActual.ATRIBUTO,
-                new UsuarioAutenticado(7L, "alm@x.com", "Bodeguero", Set.of("ALMACENISTA"), null));
+                new UsuarioAutenticado(7L, "alm@x.com", "Bodeguero", Set.of("ALMACENISTA"), null, 1L));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(req));
 
         principal = new Bodega();

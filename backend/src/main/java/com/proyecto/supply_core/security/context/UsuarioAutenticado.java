@@ -10,13 +10,15 @@ import java.util.Set;
  * @param nombre      nombre completo
  * @param roles       códigos de rol (ver {@link Roles})
  * @param proveedorId id del proveedor si es usuario del portal; {@code null} si es interno
+ * @param empresaId   empresa (tenant) a la que pertenece; todo lo que consulta queda limitado a ella
  */
 public record UsuarioAutenticado(
         Long id,
         String correo,
         String nombre,
         Set<String> roles,
-        Long proveedorId) {
+        Long proveedorId,
+        Long empresaId) {
 
     /**
      * Copia defensiva para que los roles no se puedan modificar durante la petición.
@@ -26,9 +28,13 @@ public record UsuarioAutenticado(
      * @param nombre      nombre completo
      * @param roles       códigos de rol
      * @param proveedorId id del proveedor o {@code null}
+     * @param empresaId   empresa del usuario (obligatoria)
      */
     public UsuarioAutenticado {
         roles = roles == null ? Set.of() : Set.copyOf(roles);
+        if (empresaId == null) {
+            throw new IllegalArgumentException("El usuario debe pertenecer a una empresa");
+        }
     }
 
     /**

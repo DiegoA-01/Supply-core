@@ -12,10 +12,11 @@ import java.math.BigDecimal;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+import com.proyecto.supply_core.common.tenant.EmpresaDePrueba;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.common.exception.NegocioException;
-import com.proyecto.supply_core.common.util.EmpresaUnica;
 import com.proyecto.supply_core.empresa.dto.CentroCostoRequest;
 import com.proyecto.supply_core.empresa.dto.CentroCostoUpdateRequest;
 import com.proyecto.supply_core.empresa.dto.SedeRequest;
@@ -25,6 +26,7 @@ import com.proyecto.supply_core.empresa.repository.CentroCostoRepository;
 import com.proyecto.supply_core.empresa.repository.SedeRepository;
 import com.proyecto.supply_core.inventario.repository.BodegaRepository;
 
+@ExtendWith(EmpresaDePrueba.class)
 class SedeYCentroCostoServiceTest {
 
     private final SedeRepository sedes = mock(SedeRepository.class);
@@ -35,7 +37,7 @@ class SedeYCentroCostoServiceTest {
 
     @Test
     void sedeConNombreRepetidoSeRechazaEnAltaYEdicion() {
-        when(sedes.existsByEmpresaIdAndNombreIgnoreCase(EmpresaUnica.ID, "Principal")).thenReturn(true);
+        when(sedes.existsByEmpresaIdAndNombreIgnoreCase(1L, "Principal")).thenReturn(true);
         assertEquals("NOMBRE_DUPLICADO", assertThrows(NegocioException.class,
                 () -> sedeService.crear(new SedeRequest(" Principal ", null, null, null))).getCodigo());
 
@@ -43,7 +45,7 @@ class SedeYCentroCostoServiceTest {
         s.setId(2L);
         s.setNombre("Norte");
         when(sedes.findById(2L)).thenReturn(Optional.of(s));
-        when(sedes.existsByEmpresaIdAndNombreIgnoreCaseAndIdNot(EmpresaUnica.ID, "Principal", 2L)).thenReturn(true);
+        when(sedes.existsByEmpresaIdAndNombreIgnoreCaseAndIdNot(1L, "Principal", 2L)).thenReturn(true);
         assertThrows(NegocioException.class,
                 () -> sedeService.actualizar(2L, new SedeRequest("Principal", null, null, null)));
         verifyNoInteractions(auditoria);

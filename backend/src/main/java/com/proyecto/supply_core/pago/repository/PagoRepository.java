@@ -85,4 +85,32 @@ public interface PagoRepository extends JpaRepository<Pago, Long> {
     Page<Pago> buscar(@Param("estado") EstadoPago estado, @Param("evidenciaPendiente") Boolean evidenciaPendiente,
             @Param("proveedorId") Long proveedorId, @Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta,
             Pageable pageable);
+
+    /**
+     * Suma de los anticipos REGISTRADOS de todas las versiones de una orden.
+     *
+     * @param consecutivo OC-000001
+     * @return anticipado (0 si no hay)
+     */
+    @Query("""
+            select coalesce(sum(p.valor), 0) from Pago p
+            where p.orden.consecutivo = :consecutivo
+              and p.estado = com.proyecto.supply_core.pago.enums.EstadoPago.REGISTRADO
+              and p.tipo = com.proyecto.supply_core.pago.enums.TipoPago.ANTICIPO
+            """)
+    BigDecimal anticipadoPorConsecutivo(@Param("consecutivo") String consecutivo);
+
+    /**
+     * Indica si la orden ya tiene un pago final registrado (no anulado).
+     *
+     * @param consecutivo OC-000001
+     * @return {@code true} si existe
+     */
+    @Query("""
+            select count(p) > 0 from Pago p
+            where p.orden.consecutivo = :consecutivo
+              and p.estado = com.proyecto.supply_core.pago.enums.EstadoPago.REGISTRADO
+              and p.tipo = com.proyecto.supply_core.pago.enums.TipoPago.PAGO_FINAL
+            """)
+    boolean hayPagoFinalRegistrado(@Param("consecutivo") String consecutivo);
 }

@@ -210,9 +210,9 @@ class CotizacionServiceTest {
     @Test
     void reglaDeDocumentosRespetaDuenoYSobreCerrado() {
         service.guardar(9L, req());
-        UsuarioAutenticado dueno = new UsuarioAutenticado(9L, "p@x.com", "P", Set.of("PROVEEDOR"), 40L);
-        UsuarioAutenticado otro = new UsuarioAutenticado(8L, "o@x.com", "O", Set.of("PROVEEDOR"), 41L);
-        UsuarioAutenticado comprador = new UsuarioAutenticado(30L, "c@x.com", "C", Set.of("COMPRADOR"), null);
+        UsuarioAutenticado dueno = new UsuarioAutenticado(9L, "p@x.com", "P", Set.of("PROVEEDOR"), 40L, 1L);
+        UsuarioAutenticado otro = new UsuarioAutenticado(8L, "o@x.com", "O", Set.of("PROVEEDOR"), 41L, 1L);
+        UsuarioAutenticado comprador = new UsuarioAutenticado(30L, "c@x.com", "C", Set.of("COMPRADOR"), null, 1L);
 
         assertDoesNotThrow(() -> regla.validarSubida(77L, dueno));
         assertThrows(AccesoDenegadoException.class, () -> regla.validarSubida(77L, otro));
@@ -233,6 +233,6 @@ class CotizacionServiceTest {
 
     private void sesionProveedor(Long proveedorId) {
         request.setAttribute(SesionActual.ATRIBUTO,
-                new UsuarioAutenticado(9L, "p@x.com", "Proveedor", Set.of("PROVEEDOR"), proveedorId));
+                new UsuarioAutenticado(9L, "p@x.com", "Proveedor", Set.of("PROVEEDOR"), proveedorId, 1L));
     }
 }

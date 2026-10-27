@@ -101,7 +101,7 @@ public class MovimientoInventarioService {
     }
 
     /**
-     * Entrada por recepción de una orden de compra (lo llamará {@code RecepcionService}, paso 17).
+     * Entrada por recepción de una orden de compra (la llama {@code RecepcionService}).
      * Es el único camino por el que una compra aumenta el stock.
      *
      * @param productoId     producto recibido
@@ -119,7 +119,8 @@ public class MovimientoInventarioService {
     }
 
     /**
-     * Salida por devolución al proveedor (desde la recepción, paso 17).
+     * Salida por devolución al proveedor de mercancía que ya había entrado al stock. Lo rechazado en la
+     * recepción nunca entró, así que no pasa por aquí.
      *
      * @param productoId     producto devuelto
      * @param bodegaId       bodega de la que sale

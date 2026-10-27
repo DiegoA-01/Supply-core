@@ -84,7 +84,7 @@ class ExtraccionServiceTest {
     @BeforeEach
     void setUp() {
         MockHttpServletRequest req = new MockHttpServletRequest();
-        req.setAttribute(SesionActual.ATRIBUTO, new UsuarioAutenticado(30L, "c@x.com", "C", Set.of("COMPRADOR"), null));
+        req.setAttribute(SesionActual.ATRIBUTO, new UsuarioAutenticado(30L, "c@x.com", "C", Set.of("COMPRADOR"), null, 1L));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(req));
 
         rfq = new Rfq();

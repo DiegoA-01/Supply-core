@@ -14,5 +14,7 @@ public enum EntidadDocumento {
     /** Comprobante de pago — paso 16. */
     PAGO,
     /** Evidencia fotográfica de la recepción — paso 17. */
-    RECEPCION
+    RECEPCION,
+    /** PDF de la factura del proveedor — paso 17-bis. */
+    FACTURA
 }

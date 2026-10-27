@@ -3,6 +3,7 @@
 Resumen fiel del documento funcional (`docs/proyecto supply-core.pdf`, no abrir).
 
 ## Roles (códigos en tabla `rol`)
+SaaS: estos roles son un catálogo global; el admin de cada empresa los asigna a SUS usuarios (ver `saas.md`). ADMIN_SISTEMA = administrador de la empresa. CAJERO (V16) = registra ventas/entregas en caja. El dueño de la plataforma no es un rol: es `usuario_plataforma`.
 ADMIN_SISTEMA (usuarios, seguridad, catálogos; no decide compras) · ADMIN_COMPRAS (políticas, categorías, proveedores habilitados) · SOLICITANTE · COMPRADOR (RFQ, análisis, orden) · APROBADOR (aprueba según límite) · ALMACENISTA (recepción, movimientos) · ADMINISTRATIVO (registra pago) · PROVEEDOR (portal: cotiza, confirma, despacha) · AUDITOR (solo lectura).
 Segregación: no registra el pago quien solicitó, aprobó la solicitud, adjudicó, aprobó la adjudicación o emitió alguna versión de la orden (validado en `PagoService`).
 
@@ -20,11 +21,12 @@ Necesidad (stock < mínimo o manual) → Solicitud → Aprobación → RFQ → P
 - **UC-08 Analizar (IA)** · COMPRADOR · ≥1 cotización ENVIADA · dato crítico con confianza baja ⇒ confirmación obligatoria antes de publicar · precio atípico = alerta, nunca exclusión · publica ranking con detalle por criterio.
 - **UC-09 Adjudicar** · COMPRADOR/APROBADOR · requiere análisis PUBLICADO · justificación obligatoria si no sigue recomendación · monto > límite ⇒ PENDIENTE_APROBACION.
 - **UC-10 Emitir orden** · COMPRADOR · requiere adjudicación APROBADA · proveedor, líneas, precios, lugar y fecha de entrega · inmutable; modificar = nueva versión con motivo (la anterior → REEMPLAZADA) · notifica al proveedor.
-- **UC-11 Registrar pago** · ADMINISTRATIVO · orden emitida · método, valor, fecha, referencia, comprobante opcional · sin comprobante: REGISTRADO + `evidencia_pendiente=1`. No hay pasarela ni contabilidad.
+- **UC-11 Registrar pago** · ADMINISTRATIVO · orden emitida · método, valor, fecha, referencia y **tipo**: ANTICIPO (antes de recibir; la suma de anticipos no supera `empresa.tope_anticipo_pct` del total, 50 % por defecto) o PAGO_FINAL (orden recibida + factura CUADRADA o APROBADA; no supera lo que falta por pagar de la factura) · comprobante opcional: sin comprobante REGISTRADO + `evidencia_pendiente=1` · no hay pasarela ni contabilidad.
+- **Factura y cruce de tres vías** · ADMINISTRATIVO registra la factura del proveedor de una orden con recepciones · el sistema calcula lo esperado (cantidad aceptada × precio de la orden + impuesto) y la compara con el total: CUADRADA si la diferencia cabe en la tolerancia de la empresa (`tolerancia_factura_pct` o `tolerancia_factura_monto`), si no EN_REVISION y ADMIN_COMPRAS decide (aprueba con motivo, nunca quien la registró) · anular con motivo si no hay pago final.
 - **UC-12 Confirmar/despachar** · PROVEEDOR · ACEPTADA_PROVEEDOR → EN_PREPARACION → DESPACHADA (+evidencia) · rechazo ⇒ RECHAZADA_PROVEEDOR y notifica al comprador.
-- **UC-13 Recepción** · ALMACENISTA · orden DESPACHADA · cantidad recibida/faltante/rechazada por línea + evidencia foto · genera ENTRADA_COMPRA solo por lo aceptado · parcial ⇒ RECIBIDA_PARCIAL con saldo abierto · exceso ⇒ línea EN_REVISION, no suma stock.
+- **UC-13 Recepción** · ALMACENISTA · orden DESPACHADA o RECIBIDA_PARCIAL (varias entregas) · por línea: recibido, rechazado (motivo obligatorio: DANADO, NO_CUMPLE_ESPECIFICACION, VENCIDO, CANTIDAD_ERRADA, OTRO) y evidencia opcional (documento RECEPCION) · Java reparte: aceptada (lo bueno hasta completar el pedido, única que genera ENTRADA_COMPRA), excedente (línea EN_REVISION, no suma stock hasta que COMPRADOR/ADMIN_COMPRAS acepte o devuelva), faltante · lo rechazado nunca entra al stock y queda como devolución pendiente al proveedor · actualiza `costo_referencia` con el último precio de la orden · parcial ⇒ RECIBIDA_PARCIAL con saldo abierto · cierre (ALMACENISTA/ADMIN_COMPRAS): sin excedente pendiente; con faltante exige motivo (RECIBIDA_PARCIAL → CERRADA); al cerrar se evalúa al proveedor.
 - **UC-14 Evaluar proveedor** · sistema al cerrar recepción/orden · puntualidad (vs `fecha_entrega_esperada`), cumplimiento, incidencias, calidad, precio, respuesta → score · sin datos ⇒ NULL, nunca valor por defecto · actualiza `proveedor.score_actual`.
-- **UC-15 Dashboards** · AUDITOR/gerencia · gasto, inventario, proveedores; filtros fecha/categoría/proveedor · sin datos = estado vacío, no error · solo lectura.
+- **UC-15 Dashboards** · AUDITOR/gerencia · gasto, inventario, proveedores; filtros fecha/categoría/proveedor · sin datos = estado vacío, no error · solo lectura · implementado: gasto (órdenes vigentes), inventario, ranking de proveedores y estado de cuenta por proveedor (`/api/reportes/*`).
 - **UC-16 Auditoría** · AUDITOR · buscar por usuario/entidad/acción/fechas · sin permiso ⇒ bloquear módulo · registros inalterables.
 
 ## Máquinas de estado
@@ -37,4 +39,4 @@ Necesidad (stock < mínimo o manual) → Solicitud → Aprobación → RFQ → P
 Cada transición: validar estado origen en el Service, registrar auditoría, notificar si aplica.
 
 ## Fuera de alcance
-Ventas, multiempresa/SaaS, marketplace, pasarela de pagos, facturación DIAN, microservicios, ML propio/agentes autónomos.
+Marketplace, pasarela para pagar a proveedores, microservicios, ML propio/agentes autónomos. Facturación DIAN y multimoneda: fases futuras (`saas.md`). Reglas por construir (presupuesto, contratos, delegación/SLA, reorden, calidad en recepción, tolerancia configurable): ver `saas.md` › "Reglas de negocio para competir". **Multiempresa/SaaS ya está dentro del alcance** (decisión 2026-10-23, ver `saas.md`); la pasarela solo cobrará la suscripción.

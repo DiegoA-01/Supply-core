@@ -232,6 +232,6 @@ class AdjudicacionServiceTest {
     }
 
     private void sesion(Long id, String rol) {
-        request.setAttribute(SesionActual.ATRIBUTO, new UsuarioAutenticado(id, "u@x.com", "U", Set.of(rol), null));
+        request.setAttribute(SesionActual.ATRIBUTO, new UsuarioAutenticado(id, "u@x.com", "U", Set.of(rol), null, 1L));
     }
 }

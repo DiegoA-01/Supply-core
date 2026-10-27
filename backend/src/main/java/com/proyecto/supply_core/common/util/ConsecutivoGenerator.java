@@ -1,15 +1,18 @@
 package com.proyecto.supply_core.common.util;
 
+import java.util.Set;
+
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.proyecto.supply_core.common.exception.NegocioException;
+import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 
 /**
  * Genera consecutivos legibles (SOL-000001, RFQ-000001, OC-000001) sin duplicados aunque
  * dos usuarios guarden al mismo tiempo: el incremento es atómico en MySQL
- * ({@code UPDATE ... LAST_INSERT_ID}) sobre la tabla {@code consecutivo} (migración V3).
+ * ({@code UPDATE ... LAST_INSERT_ID}) sobre la tabla {@code consecutivo} (V3, por empresa desde V17).
  */
 @Component
 public class ConsecutivoGenerator {
@@ -23,6 +26,8 @@ public class ConsecutivoGenerator {
     /** Prefijo de despachos (remisiones de salida). */
     public static final String DESPACHO = "DES";
 
+    private static final Set<String> PREFIJOS = Set.of(SOLICITUD, RFQ, ORDEN_COMPRA, DESPACHO);
+
     private final JdbcTemplate jdbc;
 
     /**
@@ -33,20 +38,22 @@ public class ConsecutivoGenerator {
     }
 
     /**
-     * Reserva el siguiente número del prefijo. Debe correr dentro de una transacción para que
-     * el UPDATE y el {@code LAST_INSERT_ID()} usen la misma conexión; si no hay una, se abre.
+     * Reserva el siguiente número del prefijo para la empresa del contexto (cada empresa lleva su propia
+     * numeración; la fila se crea sola la primera vez). Debe correr dentro de una transacción para que
+     * el INSERT ... ON DUPLICATE KEY y el {@code LAST_INSERT_ID()} usen la misma conexión; si no hay una, se abre.
      *
      * @param prefijo uno de {@link #SOLICITUD}, {@link #RFQ}, {@link #ORDEN_COMPRA}, {@link #DESPACHO}
      * @return consecutivo formateado, p. ej. {@code SOL-000001}
-     * @throws NegocioException si el prefijo no está registrado en la tabla {@code consecutivo}
+     * @throws NegocioException si el prefijo no es uno de los conocidos
+     * @throws IllegalStateException si el hilo no tiene empresa en el contexto
      */
     @Transactional
     public String siguiente(String prefijo) {
-        int filas = jdbc.update(
-                "UPDATE consecutivo SET ultimo = LAST_INSERT_ID(ultimo + 1) WHERE prefijo = ?", prefijo);
-        if (filas == 0) {
+        if (!PREFIJOS.contains(prefijo)) {
             throw new NegocioException("CONSECUTIVO", "No existe el consecutivo " + prefijo);
         }
+        jdbc.update("INSERT INTO consecutivo (empresa_id, prefijo, ultimo) VALUES (?, ?, LAST_INSERT_ID(1)) "
+                + "ON DUPLICATE KEY UPDATE ultimo = LAST_INSERT_ID(ultimo + 1)", EmpresaContexto.requerida(), prefijo);
         Long numero = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
         return formatear(prefijo, numero);
     }

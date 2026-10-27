@@ -12,6 +12,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.inventario.entity.StockProductoBodega;
 
 import jakarta.persistence.LockModeType;
@@ -41,15 +42,31 @@ public interface StockProductoBodegaRepository extends JpaRepository<StockProduc
      * Crea la fila con cantidad 0 si no existe; si ya existe no hace nada.
      * Es atómico en MySQL, así dos movimientos simultáneos sobre un par nuevo no chocan.
      *
+     * La fila queda en la empresa del contexto (el SQL nativo no pasa por el filtro de Hibernate, por eso
+     * la empresa se escribe aquí de forma explícita).
+     *
+     * @param productoId producto
+     * @param bodegaId   bodega
+     */
+    default void crearSiNoExiste(Long productoId, Long bodegaId) {
+        insertarSiNoExiste(EmpresaContexto.requerida(), productoId, bodegaId);
+    }
+
+    /**
+     * Inserción nativa de {@link #crearSiNoExiste}.
+     *
+     * @param empresaId  empresa dueña de la fila
      * @param productoId producto
      * @param bodegaId   bodega
      */
     @Modifying
     @Query(value = """
-            INSERT INTO stock_producto_bodega (producto_id, bodega_id, cantidad) VALUES (:productoId, :bodegaId, 0)
+            INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad)
+            VALUES (:empresaId, :productoId, :bodegaId, 0)
             ON DUPLICATE KEY UPDATE cantidad = cantidad
             """, nativeQuery = true)
-    void crearSiNoExiste(@Param("productoId") Long productoId, @Param("bodegaId") Long bodegaId);
+    void insertarSiNoExiste(@Param("empresaId") Long empresaId, @Param("productoId") Long productoId,
+            @Param("bodegaId") Long bodegaId);
 
     /**
      * Lee la fila bloqueándola ({@code SELECT ... FOR UPDATE}) hasta el fin de la transacción:

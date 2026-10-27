@@ -14,7 +14,7 @@ import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
-import com.proyecto.supply_core.common.util.EmpresaUnica;
+import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.empresa.dto.PoliticaAplicableResponse;
 import com.proyecto.supply_core.empresa.dto.PoliticaAprobacionRequest;
 import com.proyecto.supply_core.empresa.dto.PoliticaAprobacionResponse;
@@ -57,7 +57,7 @@ public class PoliticaAprobacionService {
      */
     @Transactional(readOnly = true)
     public List<PoliticaAprobacionResponse> listar() {
-        return politicaRepository.findByEmpresaIdOrderByTipoAscMontoDesdeAsc(EmpresaUnica.ID).stream()
+        return politicaRepository.findByEmpresaIdOrderByTipoAscMontoDesdeAsc(EmpresaContexto.requerida()).stream()
                 .map(PoliticaAprobacionResponse::of).toList();
     }
 
@@ -87,7 +87,6 @@ public class PoliticaAprobacionService {
         validarSinSuperposicion(req.tipo(), desde, hasta, null);
 
         PoliticaAprobacion p = new PoliticaAprobacion();
-        p.setEmpresaId(EmpresaUnica.ID);
         p.setTipo(req.tipo());
         p.setRolAprobador(rol(req.rolAprobador()));
         p.setMontoDesde(desde);
@@ -156,7 +155,7 @@ public class PoliticaAprobacionService {
     @Transactional(readOnly = true)
     public Optional<PoliticaAprobacion> aplicable(TipoPolitica tipo, BigDecimal monto) {
         BigDecimal valor = monto(monto);
-        return politicaRepository.findByEmpresaIdAndTipoAndActivoTrue(EmpresaUnica.ID, tipo).stream()
+        return politicaRepository.findByEmpresaIdAndTipoAndActivoTrue(EmpresaContexto.requerida(), tipo).stream()
                 .filter(p -> p.cubre(valor)).findFirst();
     }
 
@@ -169,7 +168,7 @@ public class PoliticaAprobacionService {
      */
     @Transactional(readOnly = true)
     public Optional<PoliticaAprobacion> deMayorTramo(TipoPolitica tipo) {
-        return politicaRepository.findByEmpresaIdAndTipoAndActivoTrue(EmpresaUnica.ID, tipo).stream()
+        return politicaRepository.findByEmpresaIdAndTipoAndActivoTrue(EmpresaContexto.requerida(), tipo).stream()
                 .max(Comparator.comparing(PoliticaAprobacion::getMontoDesde));
     }
 
@@ -199,7 +198,7 @@ public class PoliticaAprobacionService {
      * @throws NegocioException si hay superposición, indicando con cuál política
      */
     private void validarSinSuperposicion(TipoPolitica tipo, BigDecimal desde, BigDecimal hasta, Long excluirId) {
-        politicaRepository.findByEmpresaIdAndTipoAndActivoTrue(EmpresaUnica.ID, tipo).stream()
+        politicaRepository.findByEmpresaIdAndTipoAndActivoTrue(EmpresaContexto.requerida(), tipo).stream()
                 .filter(p -> !p.getId().equals(excluirId))
                 .filter(p -> p.seSuperponeCon(desde, hasta))
                 .findFirst()

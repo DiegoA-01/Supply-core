@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import com.proyecto.supply_core.pago.entity.Pago;
 import com.proyecto.supply_core.pago.enums.EstadoPago;
 import com.proyecto.supply_core.pago.enums.MetodoPago;
+import com.proyecto.supply_core.pago.enums.TipoPago;
 
 /**
  * Pago de una orden.
@@ -18,6 +19,7 @@ import com.proyecto.supply_core.pago.enums.MetodoPago;
  * @param proveedorRazonSocial   proveedor
  * @param usuarioId              quién lo registró
  * @param metodo                 medio de pago
+ * @param tipo                   ANTICIPO o PAGO_FINAL
  * @param valor                  valor
  * @param fechaPago              fecha del pago
  * @param referencia             referencia
@@ -30,7 +32,7 @@ import com.proyecto.supply_core.pago.enums.MetodoPago;
  * @param creadoEn               cuándo se registró
  */
 public record PagoResponse(Long id, Long ordenId, String ordenConsecutivo, int ordenVersion,
-        String proveedorRazonSocial, Long usuarioId, MetodoPago metodo, BigDecimal valor, LocalDate fechaPago,
+        String proveedorRazonSocial, Long usuarioId, MetodoPago metodo, TipoPago tipo, BigDecimal valor, LocalDate fechaPago,
         String referencia, EstadoPago estado, boolean evidenciaPendiente, Long comprobanteDocumentoId,
         String motivoAnulacion, Long anuladoPorUsuarioId, LocalDateTime anuladoEn, LocalDateTime creadoEn) {
 
@@ -43,7 +45,7 @@ public record PagoResponse(Long id, Long ordenId, String ordenConsecutivo, int o
     public static PagoResponse of(Pago p) {
         return new PagoResponse(p.getId(), p.getOrden().getId(), p.getOrden().getConsecutivo(),
                 p.getOrden().getVersion(), p.getOrden().getProveedor().getRazonSocial(), p.getUsuarioId(),
-                p.getMetodo(), p.getValor(), p.getFechaPago(), p.getReferencia(), p.getEstado(),
+                p.getMetodo(), p.getTipo(), p.getValor(), p.getFechaPago(), p.getReferencia(), p.getEstado(),
                 p.isEvidenciaPendiente(), p.getComprobanteDocumentoId(), p.getMotivoAnulacion(),
                 p.getAnuladoPorUsuarioId(), p.getAnuladoEn(), p.getCreadoEn());
     }

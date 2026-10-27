@@ -8,6 +8,7 @@ import java.util.Set;
 import com.proyecto.supply_core.catalogo.entity.CategoriaProducto;
 import com.proyecto.supply_core.proveedor.enums.EstadoProveedor;
 
+import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -39,11 +40,16 @@ public class Proveedor {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** Empresa dueña del registro. La asigna Hibernate al guardar y filtra toda consulta ({@code @TenantId}). */
+    @TenantId
+    @Column(name = "empresa_id", nullable = false, updatable = false)
+    private Long empresaId;
+
     @Column(name = "razon_social", nullable = false, length = 200)
     private String razonSocial;
 
     /** Sin puntos ni espacios; dígito de verificación opcional tras guion (900123456-7). */
-    @Column(nullable = false, unique = true, length = 30)
+    @Column(nullable = false, length = 30)
     private String nit;
 
     @Column(name = "correo_contacto", length = 150)

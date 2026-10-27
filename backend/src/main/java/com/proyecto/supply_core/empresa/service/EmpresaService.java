@@ -10,7 +10,7 @@ import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
-import com.proyecto.supply_core.common.util.EmpresaUnica;
+import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.empresa.dto.EmpresaRequest;
 import com.proyecto.supply_core.empresa.dto.EmpresaResponse;
 import com.proyecto.supply_core.empresa.entity.Empresa;
@@ -63,6 +63,15 @@ public class EmpresaService {
         e.setDireccionPrincipal(req.direccionPrincipal() == null || req.direccionPrincipal().isBlank()
                 ? null : req.direccionPrincipal().trim());
         e.setMonedaBase(req.monedaBase().trim().toUpperCase(Locale.ROOT));
+        if (req.topeAnticipoPct() != null) {
+            e.setTopeAnticipoPct(req.topeAnticipoPct());
+        }
+        if (req.toleranciaFacturaPct() != null) {
+            e.setToleranciaFacturaPct(req.toleranciaFacturaPct());
+        }
+        if (req.toleranciaFacturaMonto() != null) {
+            e.setToleranciaFacturaMonto(req.toleranciaFacturaMonto());
+        }
         auditoriaService.exito(AccionAuditoria.EMPRESA_EDITAR, EntidadAuditada.EMPRESA, e.getId(),
                 "antes: " + antes + " | después: " + describir(e));
         return EmpresaResponse.of(e);
@@ -75,8 +84,8 @@ public class EmpresaService {
      * @throws NoEncontradoException si no existe (migración V2 no aplicada)
      */
     private Empresa buscar() {
-        return empresaRepository.findById(EmpresaUnica.ID)
-                .orElseThrow(() -> new NoEncontradoException("Empresa", EmpresaUnica.ID));
+        return empresaRepository.findById(EmpresaContexto.requerida())
+                .orElseThrow(() -> new NoEncontradoException("Empresa", EmpresaContexto.requerida()));
     }
 
     /**
@@ -86,6 +95,8 @@ public class EmpresaService {
      * @return texto con razón social, NIT y moneda
      */
     private static String describir(Empresa e) {
-        return "razonSocial=" + e.getRazonSocial() + ", nit=" + e.getNit() + ", moneda=" + e.getMonedaBase();
+        return "razonSocial=" + e.getRazonSocial() + ", nit=" + e.getNit() + ", moneda=" + e.getMonedaBase()
+                + ", topeAnticipoPct=" + e.getTopeAnticipoPct() + ", toleranciaFacturaPct=" + e.getToleranciaFacturaPct()
+                + ", toleranciaFacturaMonto=" + e.getToleranciaFacturaMonto();
     }
 }

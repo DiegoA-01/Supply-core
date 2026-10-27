@@ -73,7 +73,7 @@ class MovimientoInventarioServiceTest {
     void setUp() {
         MockHttpServletRequest req = new MockHttpServletRequest();
         req.setAttribute(SesionActual.ATRIBUTO,
-                new UsuarioAutenticado(7L, "alm@x.com", "Almacén", Set.of("ALMACENISTA"), null));
+                new UsuarioAutenticado(7L, "alm@x.com", "Almacén", Set.of("ALMACENISTA"), null, 1L));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(req));
 
         UnidadMedida und = new UnidadMedida();

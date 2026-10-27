@@ -24,6 +24,8 @@ public final class Roles {
     public static final String PROVEEDOR = "PROVEEDOR";
     /** Consulta trazabilidad e indicadores; solo lectura. */
     public static final String AUDITOR = "AUDITOR";
+    /** Cobra y registra ventas o entregas en caja (V16). */
+    public static final String CAJERO = "CAJERO";
 
     /** Clase de constantes: no se instancia. */
     private Roles() {

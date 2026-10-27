@@ -103,12 +103,12 @@ class EvaluacionProveedorServiceTest {
     void elPortalSoloVeLasSuyas() {
         MockHttpServletRequest req = new MockHttpServletRequest();
         req.setAttribute(SesionActual.ATRIBUTO,
-                new UsuarioAutenticado(1L, "c@x.com", "Compras", Set.of("ADMIN_COMPRAS"), null));
+                new UsuarioAutenticado(1L, "c@x.com", "Compras", Set.of("ADMIN_COMPRAS"), null, 1L));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(req));
         assertThrows(AccesoDenegadoException.class, () -> service.mias(PageRequest.of(0, 20)));
 
         req.setAttribute(SesionActual.ATRIBUTO,
-                new UsuarioAutenticado(9L, "p@x.com", "Prov", Set.of("PROVEEDOR"), 40L));
+                new UsuarioAutenticado(9L, "p@x.com", "Prov", Set.of("PROVEEDOR"), 40L, 1L));
         when(proveedores.existsById(40L)).thenReturn(true);
         when(evaluaciones.findByProveedorId(any(), any())).thenReturn(Page.empty());
 

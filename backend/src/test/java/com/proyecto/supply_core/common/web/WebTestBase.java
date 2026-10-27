@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.proyecto.supply_core.catalogo.repository.CategoriaProductoRepository;
 import com.proyecto.supply_core.catalogo.repository.UnidadMedidaRepository;
 import com.proyecto.supply_core.empresa.repository.CentroCostoRepository;
+import com.proyecto.supply_core.empresa.repository.EmpresaRepository;
 import com.proyecto.supply_core.empresa.repository.SedeRepository;
 import com.proyecto.supply_core.inventario.repository.ProductoRepository;
 import com.proyecto.supply_core.proveedor.repository.ProveedorRepository;
@@ -37,6 +38,9 @@ public abstract class WebTestBase {
 
     @MockitoBean
     protected UsuarioRepository usuarioRepository;
+
+    @MockitoBean
+    protected EmpresaRepository empresaRepository;
 
     @MockitoBean
     protected RolRepository rolRepository;
@@ -67,7 +71,7 @@ public abstract class WebTestBase {
      */
     protected String bearer(String... roles) {
         return "Bearer " + jwtUtil.generar(new UsuarioAutenticado(1L, "usuario@prueba.com", "Usuario Prueba",
-                Set.of(roles), null));
+                Set.of(roles), null, 1L));
     }
 
     /**
@@ -78,6 +82,6 @@ public abstract class WebTestBase {
      */
     protected String bearerProveedor(Long proveedorId) {
         return "Bearer " + jwtUtil.generar(new UsuarioAutenticado(9L, "proveedor@prueba.com", "Proveedor Prueba",
-                Set.of("PROVEEDOR"), proveedorId));
+                Set.of("PROVEEDOR"), proveedorId, 1L));
     }
 }

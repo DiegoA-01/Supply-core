@@ -77,7 +77,7 @@ class RfqServiceTest {
     @BeforeEach
     void setUp() {
         request = new MockHttpServletRequest();
-        sesion(new UsuarioAutenticado(30L, "c@x.com", "Comprador", Set.of("COMPRADOR"), null));
+        sesion(new UsuarioAutenticado(30L, "c@x.com", "Comprador", Set.of("COMPRADOR"), null, 1L));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
         papeleria = new CategoriaProducto();
@@ -232,13 +232,13 @@ class RfqServiceTest {
     @Test
     void elProveedorSoloVeLasQueLeInvitaronYYaAbiertas() {
         service.crear(crear(datos(null, null)));
-        sesion(new UsuarioAutenticado(77L, "p@x.com", "Prov", Set.of("PROVEEDOR"), 40L));
+        sesion(new UsuarioAutenticado(77L, "p@x.com", "Prov", Set.of("PROVEEDOR"), 40L, 1L));
         assertThrows(NoEncontradoException.class, () -> service.obtenerParaProveedor(9L)); // BORRADOR
 
         guardada.setEstado(EstadoRfq.ABIERTA);
         assertEquals("RFQ-000001", service.obtenerParaProveedor(9L).consecutivo());
 
-        sesion(new UsuarioAutenticado(78L, "o@x.com", "Otro", Set.of("PROVEEDOR"), 41L));
+        sesion(new UsuarioAutenticado(78L, "o@x.com", "Otro", Set.of("PROVEEDOR"), 41L, 1L));
         assertThrows(NoEncontradoException.class, () -> service.obtenerParaProveedor(9L));
     }
 

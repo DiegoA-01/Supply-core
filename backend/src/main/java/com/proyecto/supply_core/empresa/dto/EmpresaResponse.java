@@ -1,5 +1,6 @@
 package com.proyecto.supply_core.empresa.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.proyecto.supply_core.empresa.entity.Empresa;
@@ -12,10 +13,14 @@ import com.proyecto.supply_core.empresa.entity.Empresa;
  * @param nit                NIT
  * @param direccionPrincipal dirección principal
  * @param monedaBase         moneda (ISO 4217)
+ * @param topeAnticipoPct    tope de los anticipos (% del total de la orden)
+ * @param toleranciaFacturaPct   tolerancia del cruce de la factura en %
+ * @param toleranciaFacturaMonto tolerancia del cruce de la factura en monto fijo
  * @param creadoEn           fecha de creación
  */
 public record EmpresaResponse(Long id, String razonSocial, String nit, String direccionPrincipal,
-        String monedaBase, LocalDateTime creadoEn) {
+        String monedaBase, BigDecimal topeAnticipoPct, BigDecimal toleranciaFacturaPct,
+        BigDecimal toleranciaFacturaMonto, LocalDateTime creadoEn) {
 
     /**
      * Convierte la entidad en DTO.
@@ -25,6 +30,7 @@ public record EmpresaResponse(Long id, String razonSocial, String nit, String di
      */
     public static EmpresaResponse of(Empresa e) {
         return new EmpresaResponse(e.getId(), e.getRazonSocial(), e.getNit(), e.getDireccionPrincipal(),
-                e.getMonedaBase(), e.getCreadoEn());
+                e.getMonedaBase(), e.getTopeAnticipoPct(), e.getToleranciaFacturaPct(), e.getToleranciaFacturaMonto(),
+                e.getCreadoEn());
     }
 }

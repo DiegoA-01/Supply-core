@@ -18,6 +18,16 @@ public final class AuditoriaSpecs {
     }
 
     /**
+     * Limita la consulta a los registros de una empresa (la auditoría de otra empresa nunca se ve).
+     *
+     * @param empresaId empresa dueña de los registros
+     * @return especificación para combinar con los demás filtros
+     */
+    public static Specification<Auditoria> deEmpresa(Long empresaId) {
+        return (root, query, cb) -> cb.equal(root.get("empresaId"), empresaId);
+    }
+
+    /**
      * Combina con AND los filtros presentes; los nulos se ignoran.
      *
      * @param f filtros ya validados

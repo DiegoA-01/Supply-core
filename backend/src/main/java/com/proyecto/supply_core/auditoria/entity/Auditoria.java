@@ -35,6 +35,10 @@ public class Auditoria {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** Empresa del usuario que hizo la acción; {@code null} si no se conoce (p. ej. login con un correo desconocido). */
+    @Column(name = "empresa_id", updatable = false)
+    private Long empresaId;
+
     /** Quién ejecutó la acción; {@code null} si fue anónima (p. ej. login con correo inexistente). */
     @Column(name = "usuario_id", updatable = false)
     private Long usuarioId;
@@ -64,6 +68,7 @@ public class Auditoria {
     /**
      * Crea un registro listo para insertar.
      *
+     * @param empresaId empresa de quien lo hizo (puede ser {@code null} si no se conoce)
      * @param usuarioId quién lo hizo (puede ser {@code null})
      * @param entidad   tipo de entidad afectada
      * @param entidadId id del registro afectado (puede ser {@code null})
@@ -72,8 +77,9 @@ public class Auditoria {
      * @param ip        IP de origen (puede ser {@code null})
      * @param detalle   contexto legible, sin datos sensibles (puede ser {@code null})
      */
-    public Auditoria(Long usuarioId, String entidad, Long entidadId, String accion,
+    public Auditoria(Long empresaId, Long usuarioId, String entidad, Long entidadId, String accion,
             ResultadoAuditoria resultado, String ip, String detalle) {
+        this.empresaId = empresaId;
         this.usuarioId = usuarioId;
         this.entidad = entidad;
         this.entidadId = entidadId;

@@ -25,6 +25,7 @@ import com.proyecto.supply_core.pago.dto.PagoResponse;
 import com.proyecto.supply_core.pago.dto.PagosOrdenResponse;
 import com.proyecto.supply_core.pago.enums.EstadoPago;
 import com.proyecto.supply_core.pago.enums.MetodoPago;
+import com.proyecto.supply_core.pago.enums.TipoPago;
 import com.proyecto.supply_core.pago.service.PagoService;
 
 @WebMvcTest({ PagoController.class, PortalPagoController.class })
@@ -34,14 +35,14 @@ class PagoControllerTest extends WebTestBase {
     private PagoService pagoService;
 
     private final PagoResponse pago = new PagoResponse(900L, 11L, "OC-000001", 1, "Tech SAS", 60L,
-            MetodoPago.TRANSFERENCIA, new BigDecimal("400.00"), LocalDate.now(), "TR-123", EstadoPago.REGISTRADO, true,
+            MetodoPago.TRANSFERENCIA, TipoPago.ANTICIPO, new BigDecimal("400.00"), LocalDate.now(), "TR-123", EstadoPago.REGISTRADO, true,
             null, null, null, null, null);
 
     @Test
     void registrarSoloAdministrativoYValidado() throws Exception {
         when(pagoService.registrar(eq(11L), any())).thenReturn(pago);
         String valido = """
-                {"metodo":"TRANSFERENCIA","valor":400,"fechaPago":"%s","referencia":"TR-123"}""".formatted(LocalDate.now());
+                {"metodo":"TRANSFERENCIA","tipo":"ANTICIPO","valor":400,"fechaPago":"%s","referencia":"TR-123"}""".formatted(LocalDate.now());
 
         mvc.perform(post("/api/ordenes/11/pagos").header(HttpHeaders.AUTHORIZATION, bearer("ADMINISTRATIVO"))
                         .contentType(MediaType.APPLICATION_JSON).content(valido))
@@ -55,6 +56,7 @@ class PagoControllerTest extends WebTestBase {
                         .content("{\"valor\":0,\"fechaPago\":\"2999-01-01\",\"referencia\":\"x\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detalles", hasItem("metodo: es obligatorio")))
+                .andExpect(jsonPath("$.detalles", hasItem("tipo: es obligatorio")))
                 .andExpect(jsonPath("$.detalles", hasItem("valor: debe ser mayor que cero")))
                 .andExpect(jsonPath("$.detalles", hasItem("fechaPago: no puede ser una fecha futura")));
     }

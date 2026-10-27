@@ -56,6 +56,8 @@ class ProveedorControllerTest extends WebTestBase {
 
     @BeforeEach
     void categoriaUnoActiva() {
+        when(empresaRepository.idPorCodigoPublico("demo")).thenReturn(java.util.Optional.of(1L));
+        when(empresaRepository.idPorCodigoPublico("no-existe")).thenReturn(java.util.Optional.empty());
         when(categoriaRepository.findByIdInAndActivoTrue(anyCollection())).thenAnswer(inv -> {
             Collection<Long> ids = inv.getArgument(0);
             return ids.stream().filter(id -> id == 1L).map(id -> {
@@ -73,16 +75,23 @@ class ProveedorControllerTest extends WebTestBase {
         when(proveedorService.registrar(any()))
                 .thenReturn(new RegistroProveedorResponse(40L, EstadoProveedor.PENDIENTE, "Registro recibido."));
 
-        mvc.perform(post("/api/portal/registro").contentType(MediaType.APPLICATION_JSON).content(REGISTRO_VALIDO))
+        mvc.perform(post("/api/portal/registro/demo").contentType(MediaType.APPLICATION_JSON).content(REGISTRO_VALIDO))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.estado").value("PENDIENTE"));
+    }
+
+    @Test
+    void registroConCodigoDeEmpresaDesconocidoDevuelve404() throws Exception {
+        mvc.perform(post("/api/portal/registro/no-existe").contentType(MediaType.APPLICATION_JSON).content(REGISTRO_VALIDO))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.mensaje").value("La empresa indicada no existe"));
     }
 
     @Test
     void categoriasDelRegistroSonPublicas() throws Exception {
         when(proveedorService.categoriasDisponibles()).thenReturn(List.of(new CategoriaResponse(1L, "Tecnología", true)));
 
-        mvc.perform(get("/api/portal/registro/categorias"))
+        mvc.perform(get("/api/portal/registro/demo/categorias"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].nombre").value("Tecnología"));
     }
@@ -92,7 +101,7 @@ class ProveedorControllerTest extends WebTestBase {
         when(proveedorRepository.existsByNitIgnoreCase("900123456-7")).thenReturn(true);
         when(usuarioRepository.existsByCorreoIgnoreCase("ventas@tech.com")).thenReturn(true);
 
-        mvc.perform(post("/api/portal/registro").contentType(MediaType.APPLICATION_JSON).content(REGISTRO_VALIDO))
+        mvc.perform(post("/api/portal/registro/demo").contentType(MediaType.APPLICATION_JSON).content(REGISTRO_VALIDO))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detalles", hasItems(
                         "nit: ya está registrado por otro proveedor",
@@ -102,7 +111,7 @@ class ProveedorControllerTest extends WebTestBase {
 
     @Test
     void registroInvalidoReportaCadaCampo() throws Exception {
-        mvc.perform(post("/api/portal/registro").contentType(MediaType.APPLICATION_JSON).content("""
+        mvc.perform(post("/api/portal/registro/demo").contentType(MediaType.APPLICATION_JSON).content("""
                         {"razonSocial":"","nit":"90.012","telefono":"abc","categoriaIds":[1,999],
                          "nombreContacto":"","correo":"x","password":"abc"}"""))
                 .andExpect(status().isBadRequest())

@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 import com.proyecto.supply_core.pago.enums.MetodoPago;
+import com.proyecto.supply_core.pago.enums.TipoPago;
 
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
@@ -18,6 +19,7 @@ import jakarta.validation.constraints.Size;
  * @param valor      valor pagado (mayor que cero, 2 decimales)
  * @param fechaPago  fecha en que se pagó (hoy o antes)
  * @param referencia número de transferencia, cheque o similar (opcional)
+ * @param tipo       ANTICIPO (antes de recibir, con tope) o PAGO_FINAL (contra una factura que cuadre con lo recibido)
  */
 public record RegistrarPagoRequest(
         @NotNull(message = "es obligatorio")
@@ -33,5 +35,8 @@ public record RegistrarPagoRequest(
         LocalDate fechaPago,
 
         @Size(max = 100, message = "máximo 100 caracteres")
-        String referencia) {
+        String referencia,
+
+        @NotNull(message = "es obligatorio")
+        TipoPago tipo) {
 }

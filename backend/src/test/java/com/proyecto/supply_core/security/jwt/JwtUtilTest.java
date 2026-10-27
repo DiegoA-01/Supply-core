@@ -25,7 +25,7 @@ class JwtUtilTest {
     private static final String SECRETO = "clave-de-prueba-de-al-menos-32-caracteres!!";
     private static final Instant T0 = Instant.parse("2026-10-01T12:00:00Z");
     private final UsuarioAutenticado usuario =
-            new UsuarioAutenticado(7L, "ana@demo.com", "Ana", Set.of("COMPRADOR", "APROBADOR"), null);
+            new UsuarioAutenticado(7L, "ana@demo.com", "Ana", Set.of("COMPRADOR", "APROBADOR"), null, 1L);
 
     private JwtUtil jwt(String secreto, Instant ahora) {
         return new JwtUtil(new JwtProperties(secreto, 60), Clock.fixed(ahora, ZoneOffset.UTC));
@@ -46,7 +46,7 @@ class JwtUtilTest {
     @Test
     void conservaElProveedor() {
         JwtUtil util = jwt(SECRETO, T0);
-        var proveedor = new UsuarioAutenticado(9L, "p@x.com", "P", Set.of("PROVEEDOR"), 42L);
+        var proveedor = new UsuarioAutenticado(9L, "p@x.com", "P", Set.of("PROVEEDOR"), 42L, 1L);
         assertEquals(42L, util.validar(util.generar(proveedor)).proveedorId());
     }
 
@@ -55,7 +55,7 @@ class JwtUtilTest {
         JwtUtil util = jwt(SECRETO, T0);
         String[] partes = util.generar(usuario).split("\\.");
         String otroPayload = util.generar(new UsuarioAutenticado(1L, "x@x.com", "X",
-                Set.of("ADMIN_SISTEMA"), null)).split("\\.")[1];
+                Set.of("ADMIN_SISTEMA"), null, 1L)).split("\\.")[1];
 
         assertThrows(NoAutenticadoException.class,
                 () -> util.validar(partes[0] + "." + otroPayload + "." + partes[2]));

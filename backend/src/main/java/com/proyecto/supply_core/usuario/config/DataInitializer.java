@@ -8,9 +8,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
-import com.proyecto.supply_core.common.util.EmpresaUnica;
+import com.proyecto.supply_core.common.tenant.EmpresaContexto;
+import com.proyecto.supply_core.empresa.repository.EmpresaRepository;
 import com.proyecto.supply_core.security.context.Roles;
 import com.proyecto.supply_core.usuario.entity.Usuario;
 import com.proyecto.supply_core.usuario.repository.RolRepository;
@@ -19,6 +19,7 @@ import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
 /**
  * Crea el administrador del sistema la primera vez que arranca la app.
  * La contraseña viene de {@code ADMIN_PASSWORD} (nunca del código ni de una migración SQL).
+ * El administrador inicial pertenece a la primera empresa; las demás las creará la consola de la plataforma.
  */
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -28,6 +29,7 @@ public class DataInitializer implements CommandLineRunner {
     private static final int LARGO_MAXIMO = 72; // límite de BCrypt
 
     private final UsuarioRepository usuarioRepository;
+    private final EmpresaRepository empresaRepository;
     private final RolRepository rolRepository;
     private final PasswordEncoder passwordEncoder;
     private final String adminEmail;
@@ -35,16 +37,18 @@ public class DataInitializer implements CommandLineRunner {
 
     /**
      * @param usuarioRepository acceso a usuarios
+     * @param empresaRepository acceso a empresas (el admin inicial es de la primera)
      * @param rolRepository     acceso a roles
      * @param passwordEncoder   hash BCrypt
      * @param adminEmail        {@code app.admin.email}
      * @param adminPassword     {@code app.admin.password} (vacío = no crear)
      */
-    public DataInitializer(UsuarioRepository usuarioRepository, RolRepository rolRepository,
-            PasswordEncoder passwordEncoder,
+    public DataInitializer(UsuarioRepository usuarioRepository, EmpresaRepository empresaRepository,
+            RolRepository rolRepository, PasswordEncoder passwordEncoder,
             @Value("${app.admin.email}") String adminEmail,
             @Value("${app.admin.password}") String adminPassword) {
         this.usuarioRepository = usuarioRepository;
+        this.empresaRepository = empresaRepository;
         this.rolRepository = rolRepository;
         this.passwordEncoder = passwordEncoder;
         this.adminEmail = adminEmail.trim().toLowerCase(Locale.ROOT);
@@ -52,13 +56,24 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     /**
-     * Si no existe ningún ADMIN_SISTEMA y hay contraseña configurada válida, lo crea.
+     * Si la primera empresa no tiene ningún ADMIN_SISTEMA y hay contraseña configurada válida, lo crea.
+     * Corre al arrancar, sin petición: elige la empresa por su cuenta y trabaja dentro de ella.
      *
      * @param args argumentos de arranque (no se usan)
      */
     @Override
-    @Transactional
     public void run(String... args) {
+        Long empresaId = EmpresaContexto.sinEmpresa(() -> empresaRepository.todosLosIds().stream().findFirst())
+                .orElse(null);
+        if (empresaId == null) {
+            log.warn("No hay ninguna empresa registrada: no se creó el administrador inicial");
+            return;
+        }
+        EmpresaContexto.como(empresaId, this::crearAdminSiHaceFalta);
+    }
+
+    /** Crea el administrador de la empresa del contexto si todavía no tiene uno. */
+    private void crearAdminSiHaceFalta() {
         if (usuarioRepository.existsByRoles_Codigo(Roles.ADMIN_SISTEMA)) {
             return;
         }
@@ -72,7 +87,6 @@ public class DataInitializer implements CommandLineRunner {
             return;
         }
         Usuario admin = new Usuario();
-        admin.setEmpresaId(EmpresaUnica.ID);
         admin.setNombreCompleto("Administrador del sistema");
         admin.setCorreo(adminEmail);
         admin.setHashPassword(passwordEncoder.encode(adminPassword));

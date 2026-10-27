@@ -43,6 +43,7 @@ public class JwtUtil {
     private static final String CLAIM_NOMBRE = "nombre";
     private static final String CLAIM_ROLES = "roles";
     private static final String CLAIM_PROVEEDOR = "prov";
+    private static final String CLAIM_EMPRESA = "emp";
 
     private final SecretKey clave;
     private final long expiracionSegundos;
@@ -93,6 +94,7 @@ public class JwtUtil {
                 .claim(CLAIM_NOMBRE, u.nombre())
                 .claim(CLAIM_ROLES, u.roles())
                 .claim(CLAIM_PROVEEDOR, u.proveedorId()) // null = no se incluye
+                .claim(CLAIM_EMPRESA, u.empresaId())
                 .issuedAt(Date.from(ahora))
                 .expiration(Date.from(ahora.plusSeconds(expiracionSegundos)))
                 .signWith(clave, Jwts.SIG.HS256)
@@ -117,12 +119,17 @@ public class JwtUtil {
         }
         try {
             Number proveedor = claims.get(CLAIM_PROVEEDOR, Number.class);
+            Number empresa = claims.get(CLAIM_EMPRESA, Number.class);
+            if (empresa == null) {
+                throw invalido(); // un token sin empresa (anterior a SaaS) ya no sirve: debe iniciar sesión de nuevo
+            }
             return new UsuarioAutenticado(
                     Long.valueOf(claims.getSubject()),
                     claims.get(CLAIM_CORREO, String.class),
                     claims.get(CLAIM_NOMBRE, String.class),
                     roles(claims.get(CLAIM_ROLES)),
-                    proveedor == null ? null : proveedor.longValue());
+                    proveedor == null ? null : proveedor.longValue(),
+                    empresa.longValue());
         } catch (JwtException | NumberFormatException e) {
             throw invalido(); // firma válida pero contenido inesperado: se trata como inválido
         }

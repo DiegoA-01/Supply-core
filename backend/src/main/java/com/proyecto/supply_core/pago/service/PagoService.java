@@ -1,6 +1,7 @@
 package com.proyecto.supply_core.pago.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
@@ -24,6 +25,7 @@ import com.proyecto.supply_core.common.exception.AccesoDenegadoException;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.common.exception.ParametroInvalidoException;
+import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.common.util.Ordenamiento;
 import com.proyecto.supply_core.compra.adjudicacion.entity.Adjudicacion;
 import com.proyecto.supply_core.compra.adjudicacion.repository.AdjudicacionRepository;
@@ -36,6 +38,10 @@ import com.proyecto.supply_core.compra.solicitud.repository.AprobacionSolicitudR
 import com.proyecto.supply_core.documento.dto.DocumentoResponse;
 import com.proyecto.supply_core.documento.enums.EntidadDocumento;
 import com.proyecto.supply_core.documento.service.DocumentoService;
+import com.proyecto.supply_core.empresa.entity.Empresa;
+import com.proyecto.supply_core.empresa.repository.EmpresaRepository;
+import com.proyecto.supply_core.factura.entity.FacturaProveedor;
+import com.proyecto.supply_core.factura.service.FacturaService;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
 import com.proyecto.supply_core.pago.dto.PagoResponse;
@@ -43,6 +49,7 @@ import com.proyecto.supply_core.pago.dto.PagosOrdenResponse;
 import com.proyecto.supply_core.pago.dto.RegistrarPagoRequest;
 import com.proyecto.supply_core.pago.entity.Pago;
 import com.proyecto.supply_core.pago.enums.EstadoPago;
+import com.proyecto.supply_core.pago.enums.TipoPago;
 import com.proyecto.supply_core.pago.repository.PagoRepository;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
@@ -58,6 +65,9 @@ import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
  *   <li>Segregación de funciones: no registra el pago quien pidió la compra, quien la aprobó (solicitud o
  *       adjudicación), quien adjudicó ni quien emitió alguna versión de la orden.</li>
  *   <li>Un pago no se borra ni se edita: si fue un error se anula con motivo y deja de sumar.</li>
+ *   <li>Hay dos tipos. El ANTICIPO se paga antes de recibir y la suma de anticipos no supera el tope de la empresa
+ *       (% del total de la orden). El PAGO_FINAL solo se registra con la orden ya recibida y una factura CUADRADA
+ *       o APROBADA; no puede superar lo que falta por pagar de esa factura (descuenta lo ya pagado).</li>
  * </ul>
  */
 @Service
@@ -68,6 +78,10 @@ public class PagoService {
     private static final Set<EstadoOrden> PAGABLES = EnumSet.of(EstadoOrden.EMITIDA, EstadoOrden.ACEPTADA_PROVEEDOR,
             EstadoOrden.EN_PREPARACION, EstadoOrden.DESPACHADA, EstadoOrden.RECIBIDA_PARCIAL,
             EstadoOrden.RECIBIDA_TOTAL, EstadoOrden.CERRADA);
+    /** Estados de la orden en los que se puede registrar el pago final (ya hay recepciones). */
+    private static final Set<EstadoOrden> FINALES = EnumSet.of(EstadoOrden.RECIBIDA_PARCIAL, EstadoOrden.RECIBIDA_TOTAL,
+            EstadoOrden.CERRADA);
+    private static final BigDecimal CIEN = BigDecimal.valueOf(100);
     /** Campos por los que se puede ordenar. */
     private static final Set<String> CAMPOS_ORDENABLES = Set.of("fechaPago", "creadoEn", "valor", "estado");
 
@@ -79,6 +93,8 @@ public class PagoService {
     private final DocumentoService documentoService;
     private final AuditoriaService auditoriaService;
     private final NotificacionService notificacionService;
+    private final EmpresaRepository empresaRepository;
+    private final FacturaService facturaService;
 
     /**
      * @param pagoRepository         pagos
@@ -89,11 +105,16 @@ public class PagoService {
      * @param documentoService       comprobantes
      * @param auditoriaService       registro de acciones
      * @param notificacionService    avisos
+     * @param empresaRepository      tope de anticipos de la empresa
+     * @param facturaService         factura que respalda el pago final
      */
     public PagoService(PagoRepository pagoRepository, OrdenCompraRepository ordenRepository,
             AdjudicacionRepository adjudicacionRepository, AprobacionSolicitudRepository aprobacionRepository,
             UsuarioRepository usuarioRepository, DocumentoService documentoService, AuditoriaService auditoriaService,
-            NotificacionService notificacionService) {
+            NotificacionService notificacionService, EmpresaRepository empresaRepository,
+            FacturaService facturaService) {
+        this.empresaRepository = empresaRepository;
+        this.facturaService = facturaService;
         this.pagoRepository = pagoRepository;
         this.ordenRepository = ordenRepository;
         this.adjudicacionRepository = adjudicacionRepository;
@@ -139,8 +160,11 @@ public class PagoService {
                     + " supera el saldo de la orden " + o.getConsecutivo() + " ($ " + saldo.toPlainString() + ")");
         }
 
+        exigirReglasDelTipo(o, req);
+
         Pago p = new Pago();
         p.setOrden(o);
+        p.setTipo(req.tipo());
         p.setUsuarioId(usuario.id());
         p.setMetodo(req.metodo());
         p.setValor(req.valor());
@@ -153,7 +177,7 @@ public class PagoService {
                 + " (" + guardado.getMetodo() + ") a la orden " + o.getConsecutivo() + "; saldo $ "
                 + saldo.subtract(guardado.getValor()).toPlainString());
         auditoriaService.exito(AccionAuditoria.PAGO_REGISTRAR, EntidadAuditada.PAGO, guardado.getId(),
-                o.getConsecutivo() + " v" + o.getVersion() + "; valor=" + guardado.getValor() + "; metodo="
+                o.getConsecutivo() + " v" + o.getVersion() + "; tipo=" + guardado.getTipo() + "; valor=" + guardado.getValor() + "; metodo="
                         + guardado.getMetodo() + "; referencia=" + guardado.getReferencia());
         log.info("Pago {} de {} registrado a {}", guardado.getId(), guardado.getValor(), o.getConsecutivo());
         return PagoResponse.of(guardado);
@@ -269,6 +293,41 @@ public class PagoService {
     }
 
     // ----------------------------------------------------------------- apoyo
+
+    /**
+     * Aplica las reglas propias del tipo de pago. ANTICIPO: la suma de anticipos no supera el tope de la empresa.
+     * PAGO_FINAL: la orden ya tiene recepciones, hay una factura que cuadra y el pago no supera lo que falta por
+     * pagar de esa factura.
+     *
+     * @param o   orden que se paga
+     * @param req datos del pago
+     * @throws NegocioException si no se cumple la regla del tipo
+     */
+    private void exigirReglasDelTipo(OrdenCompra o, RegistrarPagoRequest req) {
+        if (req.tipo() == TipoPago.PAGO_FINAL) {
+            if (!FINALES.contains(o.getEstado())) {
+                throw new NegocioException("PAGO_FINAL_SIN_RECEPCION", "La orden " + o.getConsecutivo() + " está "
+                        + o.getEstado() + "; el pago final solo se registra después de recibir");
+            }
+            FacturaProveedor factura = facturaService.exigirPagable(o);
+            BigDecimal saldoFactura = factura.getTotal().subtract(pagoRepository.pagadoPorConsecutivo(o.getConsecutivo()));
+            if (req.valor().compareTo(saldoFactura) > 0) {
+                throw new NegocioException("PAGO_EXCEDE_FACTURA", "El pago de $ " + req.valor().toPlainString()
+                        + " supera lo que falta por pagar de la factura " + factura.getNumero() + " ($ "
+                        + saldoFactura.max(BigDecimal.ZERO).toPlainString() + ")");
+            }
+            return;
+        }
+        Empresa empresa = empresaRepository.findById(EmpresaContexto.requerida())
+                .orElseThrow(() -> new NoEncontradoException("Empresa", EmpresaContexto.requerida()));
+        BigDecimal tope = o.getTotal().multiply(empresa.getTopeAnticipoPct()).divide(CIEN, 2, RoundingMode.HALF_UP);
+        BigDecimal anticipado = pagoRepository.anticipadoPorConsecutivo(o.getConsecutivo());
+        if (anticipado.add(req.valor()).compareTo(tope) > 0) {
+            throw new NegocioException("ANTICIPO_EXCEDE_TOPE", "Los anticipos de la orden " + o.getConsecutivo()
+                    + " no pueden superar $ " + tope.toPlainString() + " (" + empresa.getTopeAnticipoPct().stripTrailingZeros().toPlainString()
+                    + " % del total); ya van $ " + anticipado.toPlainString() + ". El resto se paga contra factura");
+        }
+    }
 
     /**
      * Resumen de pagos del consecutivo de la orden.

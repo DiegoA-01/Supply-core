@@ -17,7 +17,9 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+import com.proyecto.supply_core.common.tenant.EmpresaDePrueba;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.compra.analisis.entity.ConfigPesos;
@@ -25,6 +27,7 @@ import com.proyecto.supply_core.compra.analisis.entity.CriterioEvaluacion;
 import com.proyecto.supply_core.compra.analisis.repository.ConfigPesosRepository;
 import com.proyecto.supply_core.compra.analisis.repository.CriterioRepository;
 
+@ExtendWith(EmpresaDePrueba.class)
 class PesosServiceTest {
 
     private final ConfigPesosRepository configs = mock(ConfigPesosRepository.class);

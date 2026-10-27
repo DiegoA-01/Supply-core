@@ -41,7 +41,12 @@ app:
     allowed-origins: ${CORS_ORIGINS:http://localhost:4200}
   jwt:
     secret: ${JWT_SECRET:}            # ≥ 32 caracteres; vacío = aleatorio (solo desarrollo)
-    expiracion-minutos: ${JWT_EXPIRACION_MINUTOS:480}
+    expiracion-minutos: ${JWT_EXPIRACION_MINUTOS:15}   # JWT corto; la sesión se renueva con el refresh token
+  sesion:
+    refresh-dias: ${REFRESH_DIAS:7}                    # vigencia del refresh token
+    max-intentos: ${LOGIN_MAX_INTENTOS:5}              # fallos seguidos que bloquean la cuenta
+    bloqueo-minutos: ${LOGIN_BLOQUEO_MINUTOS:15}       # duración del bloqueo
+    limite-por-minuto: ${RATE_LIMITE_POR_MINUTO:20}    # peticiones/min por IP a login, refresh y registro
   storage:
     ruta: ${STORAGE_RUTA:./almacenamiento}   # archivos de documentos (fuera de la BD y de git)
     tamano-maximo-bytes: 10485760             # 10 MB

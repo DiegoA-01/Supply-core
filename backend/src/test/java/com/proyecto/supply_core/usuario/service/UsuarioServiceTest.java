@@ -56,7 +56,7 @@ class UsuarioServiceTest {
     void setUp() {
         MockHttpServletRequest req = new MockHttpServletRequest();
         req.setAttribute(SesionActual.ATRIBUTO,
-                new UsuarioAutenticado(ADMIN_ID, "admin@x.com", "Admin", Set.of("ADMIN_SISTEMA"), null));
+                new UsuarioAutenticado(ADMIN_ID, "admin@x.com", "Admin", Set.of("ADMIN_SISTEMA"), null, 1L));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(req));
 
         admin = usuario(ADMIN_ID, "admin@x.com", rol("ADMIN_SISTEMA"));

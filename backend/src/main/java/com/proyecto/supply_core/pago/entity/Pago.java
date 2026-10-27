@@ -7,7 +7,9 @@ import java.time.LocalDateTime;
 import com.proyecto.supply_core.compra.orden.entity.OrdenCompra;
 import com.proyecto.supply_core.pago.enums.EstadoPago;
 import com.proyecto.supply_core.pago.enums.MetodoPago;
+import com.proyecto.supply_core.pago.enums.TipoPago;
 
+import org.hibernate.annotations.TenantId;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -39,10 +41,20 @@ public class Pago {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /** Empresa dueña del registro. La asigna Hibernate al guardar y filtra toda consulta ({@code @TenantId}). */
+    @TenantId
+    @Column(name = "empresa_id", nullable = false, updatable = false)
+    private Long empresaId;
+
     /** Versión de la orden vigente cuando se pagó. */
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "orden_compra_id", nullable = false, updatable = false)
     private OrdenCompra orden;
+
+    /** ANTICIPO (antes de recibir, con tope) o PAGO_FINAL (contra factura, después de recibir). */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20, updatable = false)
+    private TipoPago tipo = TipoPago.ANTICIPO;
 
     /** ADMINISTRATIVO que lo registró. */
     @Column(name = "usuario_id", nullable = false, updatable = false)

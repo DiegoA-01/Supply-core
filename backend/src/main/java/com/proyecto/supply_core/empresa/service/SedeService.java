@@ -10,7 +10,7 @@ import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
-import com.proyecto.supply_core.common.util.EmpresaUnica;
+import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.empresa.dto.SedeRequest;
 import com.proyecto.supply_core.empresa.dto.SedeResponse;
 import com.proyecto.supply_core.empresa.entity.Sede;
@@ -46,8 +46,8 @@ public class SedeService {
     @Transactional(readOnly = true)
     public List<SedeResponse> listar(Boolean activo) {
         List<Sede> sedes = activo == null
-                ? sedeRepository.findByEmpresaIdOrderByNombreAsc(EmpresaUnica.ID)
-                : sedeRepository.findByEmpresaIdAndActivoOrderByNombreAsc(EmpresaUnica.ID, activo);
+                ? sedeRepository.findByEmpresaIdOrderByNombreAsc(EmpresaContexto.requerida())
+                : sedeRepository.findByEmpresaIdAndActivoOrderByNombreAsc(EmpresaContexto.requerida(), activo);
         return sedes.stream().map(SedeResponse::of).toList();
     }
 
@@ -73,11 +73,10 @@ public class SedeService {
     @Transactional
     public SedeResponse crear(SedeRequest req) {
         String nombre = req.nombre().trim();
-        if (sedeRepository.existsByEmpresaIdAndNombreIgnoreCase(EmpresaUnica.ID, nombre)) {
+        if (sedeRepository.existsByEmpresaIdAndNombreIgnoreCase(EmpresaContexto.requerida(), nombre)) {
             throw new NegocioException("NOMBRE_DUPLICADO", "Ya existe una sede llamada " + nombre);
         }
         Sede s = new Sede();
-        s.setEmpresaId(EmpresaUnica.ID);
         aplicar(s, req);
         Sede guardada = sedeRepository.save(s);
         auditoriaService.exito(AccionAuditoria.SEDE_CREAR, EntidadAuditada.SEDE, guardada.getId(), "nombre=" + nombre);
@@ -97,7 +96,7 @@ public class SedeService {
     public SedeResponse actualizar(Long id, SedeRequest req) {
         Sede s = buscar(id);
         String nombre = req.nombre().trim();
-        if (sedeRepository.existsByEmpresaIdAndNombreIgnoreCaseAndIdNot(EmpresaUnica.ID, nombre, id)) {
+        if (sedeRepository.existsByEmpresaIdAndNombreIgnoreCaseAndIdNot(EmpresaContexto.requerida(), nombre, id)) {
             throw new NegocioException("NOMBRE_DUPLICADO", "Ya existe una sede llamada " + nombre);
         }
         String antes = s.getNombre();

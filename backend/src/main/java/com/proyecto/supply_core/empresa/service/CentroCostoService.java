@@ -11,7 +11,7 @@ import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
-import com.proyecto.supply_core.common.util.EmpresaUnica;
+import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.empresa.dto.CentroCostoRequest;
 import com.proyecto.supply_core.empresa.dto.CentroCostoResponse;
 import com.proyecto.supply_core.empresa.dto.CentroCostoUpdateRequest;
@@ -47,8 +47,8 @@ public class CentroCostoService {
     @Transactional(readOnly = true)
     public List<CentroCostoResponse> listar(Boolean activo) {
         List<CentroCosto> centros = activo == null
-                ? centroCostoRepository.findByEmpresaIdOrderByCodigoAsc(EmpresaUnica.ID)
-                : centroCostoRepository.findByEmpresaIdAndActivoOrderByCodigoAsc(EmpresaUnica.ID, activo);
+                ? centroCostoRepository.findByEmpresaIdOrderByCodigoAsc(EmpresaContexto.requerida())
+                : centroCostoRepository.findByEmpresaIdAndActivoOrderByCodigoAsc(EmpresaContexto.requerida(), activo);
         return centros.stream().map(CentroCostoResponse::of).toList();
     }
 
@@ -73,7 +73,6 @@ public class CentroCostoService {
     @Transactional
     public CentroCostoResponse crear(CentroCostoRequest req) {
         CentroCosto c = new CentroCosto();
-        c.setEmpresaId(EmpresaUnica.ID);
         c.setCodigo(normalizarCodigo(req.codigo()));
         c.setNombre(req.nombre().trim());
         CentroCosto guardado = centroCostoRepository.save(c);

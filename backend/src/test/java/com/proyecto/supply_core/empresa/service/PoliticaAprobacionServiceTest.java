@@ -19,12 +19,13 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+import com.proyecto.supply_core.common.tenant.EmpresaDePrueba;
 import com.proyecto.supply_core.auditoria.enums.AccionAuditoria;
 import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.common.exception.NegocioException;
-import com.proyecto.supply_core.common.util.EmpresaUnica;
 import com.proyecto.supply_core.empresa.dto.PoliticaAprobacionRequest;
 import com.proyecto.supply_core.empresa.entity.PoliticaAprobacion;
 import com.proyecto.supply_core.empresa.enums.TipoPolitica;
@@ -32,6 +33,7 @@ import com.proyecto.supply_core.empresa.repository.PoliticaAprobacionRepository;
 import com.proyecto.supply_core.usuario.entity.Rol;
 import com.proyecto.supply_core.usuario.repository.RolRepository;
 
+@ExtendWith(EmpresaDePrueba.class)
 class PoliticaAprobacionServiceTest {
 
     private final PoliticaAprobacionRepository repo = mock(PoliticaAprobacionRepository.class);
@@ -46,7 +48,7 @@ class PoliticaAprobacionServiceTest {
         aprobador = new Rol();
         aprobador.setCodigo("APROBADOR");
         when(roles.findByCodigo("APROBADOR")).thenReturn(Optional.of(aprobador));
-        when(repo.findByEmpresaIdAndTipoAndActivoTrue(EmpresaUnica.ID, TipoPolitica.SOLICITUD))
+        when(repo.findByEmpresaIdAndTipoAndActivoTrue(1L, TipoPolitica.SOLICITUD))
                 .thenReturn(activasSolicitud);
         when(repo.save(any())).thenAnswer(inv -> {
             PoliticaAprobacion p = inv.getArgument(0);
@@ -82,7 +84,7 @@ class PoliticaAprobacionServiceTest {
 
     @Test
     void otroTipoNoCuentaParaLaSuperposicion() {
-        when(repo.findByEmpresaIdAndTipoAndActivoTrue(EmpresaUnica.ID, TipoPolitica.ADJUDICACION))
+        when(repo.findByEmpresaIdAndTipoAndActivoTrue(1L, TipoPolitica.ADJUDICACION))
                 .thenReturn(List.of());
         var r = service.crear(new PoliticaAprobacionRequest(TipoPolitica.ADJUDICACION, "aprobador",
                 new BigDecimal("0"), new BigDecimal("1000000")));
@@ -138,7 +140,7 @@ class PoliticaAprobacionServiceTest {
     private PoliticaAprobacion politica(Long id, String desde, String hasta) {
         PoliticaAprobacion p = new PoliticaAprobacion();
         p.setId(id);
-        p.setEmpresaId(EmpresaUnica.ID);
+        p.setEmpresaId(1L);
         p.setTipo(TipoPolitica.SOLICITUD);
         p.setRolAprobador(aprobador);
         p.setMontoDesde(new BigDecimal(desde).setScale(2));

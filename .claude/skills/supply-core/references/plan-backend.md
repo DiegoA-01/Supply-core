@@ -201,23 +201,60 @@ pago/  entity: Pago · service: PagoService · controller: /api/ordenes/{id}/pag
 - Reglas: valor > 0; sin comprobante ⇒ `evidencia_pendiente=1`; segregación con solicitante/aprobador si la política lo pide.
 - Hecho: `POST/GET /api/ordenes/{id}/pagos`, `GET /api/pagos` (filtros), `GET /api/pagos/{id}`, `POST /api/pagos/{id}/comprobante`, `POST /api/pagos/{id}/anular`, portal `GET /api/portal/ordenes/{id}/pagos`. Decisiones del usuario: pagos desde EMITIDA (anticipos/parciales, Σ ≤ total vigente), anular con motivo (V15 ANULADO), segregación a todos los involucrados.
 
-## Paso 17 — `recepcion/` · UC-13
+## Paso 17 — `recepcion/` · UC-13 · ✅ (2026-10-23, V18)
 ```
-recepcion/  entity: Recepcion, RecepcionLinea · service: RecepcionService · controller: /api/ordenes/{id}/recepciones
+recepcion/  entity: Recepcion (@TenantId), RecepcionLinea · service: RecepcionService, CalculadoraRecepcion, RecepcionReglaDocumentos
+            controller: RecepcionController (/api/ordenes/{id}/recepciones, /api/recepciones), PortalRecepcionController
 ```
-- Reglas: orden DESPACHADA; por línea recibida/faltante/rechazada; llama a `MovimientoInventarioService.registrarEntradaCompra` solo por lo aceptado; exceso ⇒ EN_REVISION; parcial/total actualiza orden; al cerrar dispara `EvaluacionProveedorService`.
+- Orden DESPACHADA o RECIBIDA_PARCIAL; varias recepciones por orden. Por línea se informa recibido y rechazado (con `MotivoRechazo` obligatorio); Java reparte: aceptada = lo bueno hasta completar el pedido, excedente = lo bueno que sobra (línea EN_REVISION, no suma stock), faltante = lo que aún falta.
+- Solo lo aceptado sube el stock (`registrarEntradaCompra`, referencia RECEPCION). Lo rechazado nunca entra: queda como devolución pendiente al proveedor, con su motivo (no hay movimiento de stock porque nunca ingresó). Cada recepción pone `producto.costo_referencia` = último precio de la orden.
+- La orden pasa a RECIBIDA_PARCIAL o RECIBIDA_TOTAL. `POST .../recepciones/cerrar` (ALMACENISTA o ADMIN_COMPRAS): exige que no haya excedente sin resolver; con faltante (RECIBIDA_PARCIAL → CERRADA) exige motivo; al cerrar evalúa al proveedor (puntualidad, cumplimiento, incidencias y calidad calculados en `CalculadoraRecepcion`; precio y respuesta sin datos).
+- Excedente: `POST /api/recepciones/lineas/{id}/resolver-exceso` (COMPRADOR o ADMIN_COMPRAS) ACEPTAR (entra al stock) o DEVOLVER, con motivo.
+- Roles: registra ALMACENISTA; consultan compras, administrativo, aprobador y auditor; el proveedor ve las de sus órdenes en `/api/portal/ordenes/{id}/recepciones` con los motivos de rechazo. Evidencia fotográfica: `/api/documentos` con entidad RECEPCION (`RecepcionReglaDocumentos`).
+- Avisos: RECEPCION_REGISTRADA (proveedor y comprador emisor), RECEPCION_EXCEDENTE (rol COMPRADOR), RECEPCION_CERRADA. Auditoría: RECEPCION_REGISTRAR, RECEPCION_RESOLVER_EXCESO, RECEPCION_CERRAR.
 
-## Paso 18 — `reporte/` · UC-15
+## Paso 17-bis — factura y cruce de tres vías · ✅ (2026-10-23, V19)
+```
+factura/  entity: FacturaProveedor (@TenantId) · service: FacturaService, CalculadoraFactura, FacturaReglaDocumentos
+          controller: FacturaController (/api/ordenes/{id}/facturas, /api/facturas), PortalFacturaController
+pago/     + enum TipoPago (ANTICIPO, PAGO_FINAL) · columna pago.tipo
+empresa/  + tope_anticipo_pct, tolerancia_factura_pct, tolerancia_factura_monto (editables en PUT /api/empresa)
+```
+- **Anticipo:** `tipo = ANTICIPO` desde que se emite la orden; la suma de anticipos REGISTRADOS (todas las versiones) no supera `tope_anticipo_pct` (50 % por defecto) del total vigente ⇒ 409 `ANTICIPO_EXCEDE_TOPE`.
+- **Factura:** la registra ADMINISTRATIVO sobre una orden con recepciones (RECIBIDA_PARCIAL, RECIBIDA_TOTAL o CERRADA). Una factura vigente por orden; número único por proveedor mientras no esté anulada. `CalculadoraFactura` calcula lo esperado (Σ cantidad aceptada × precio de la orden + impuesto por línea) y compara con el total: dentro de la tolerancia (porcentaje del esperado O monto fijo, lo que cubra) ⇒ CUADRADA; si no ⇒ EN_REVISION y avisa a ADMIN_COMPRAS. Sin nada aceptado nunca cuadra.
+- **EN_REVISION:** ADMIN_COMPRAS aprueba con motivo (APROBADA); quien registró la factura no puede aprobarla (segregación). `recruzar` la vuelve a cruzar si la recepción cambió. Una factura equivocada se anula con motivo (no si ya hay un pago final registrado) y su número se puede volver a registrar. PDF: `POST /api/facturas/{id}/archivo` (una vez).
+- **Pago final:** `tipo = PAGO_FINAL` solo con la orden RECIBIDA_PARCIAL/RECIBIDA_TOTAL/CERRADA y una factura CUADRADA o APROBADA (`FacturaService.exigirPagable` recalcula el cruce de una CUADRADA: si la recepción cambió y ya no cuadra ⇒ 409 `FACTURA_NO_CUADRA`). No supera lo que falta por pagar de la factura (descuenta los anticipos) ni el saldo de la orden. Sin factura ⇒ 409 `FACTURA_REQUERIDA`; en revisión ⇒ `FACTURA_EN_REVISION`.
+- Avisos FACTURA_EN_REVISION (rol ADMIN_COMPRAS) y FACTURA_DECIDIDA (quien la registró). Auditoría: FACTURA_REGISTRAR, FACTURA_RECRUZAR, FACTURA_APROBAR, FACTURA_ANULAR, FACTURA_ARCHIVO. Portal: `/api/portal/ordenes/{id}/facturas`.
+- Límite conocido: una sola factura vigente por orden; si el proveedor factura por entregas, debe emitir una factura que cubra lo recibido.
+
+## Paso 18 — `reporte/` · UC-15 · ✅ (2026-10-27, sin migración)
 ```
 reporte/  dto: GastoResponse, InventarioResumen, ProveedorRanking · service: ReporteService (consultas agregadas, solo lectura)
           controller: /api/reportes/{gasto|inventario|proveedores}?desde&hasta&categoria&proveedor
 ```
-- Reglas: sin datos = lista vacía, nunca error.
+- Reglas: sin datos = lista vacía, nunca error. Gasto = líneas de órdenes vigentes (sin CANCELADA, RECHAZADA_PROVEEDOR, REEMPLAZADA), subtotal + impuesto de línea. Estado de cuenta: saldo = (factura vigente, o total de la orden si no hay) − pagado. Ranking: proveedores con órdenes en el período, por score (sin score al final). Límite conocido: el inventario no se pagina.
+
+## Ajustes a pasos pendientes (decisión 2026-10-23)
+- **Paso 17 (recepción):** cada línea rechazada exige motivo (catálogo) y foto opcional; lo rechazado llama a `registrarDevolucionProveedor` y alimenta el indicador de calidad del score.
+- **Paso 17-bis:** tolerancia del cruce configurable por empresa (`tolerancia_factura_pct`, por defecto 1 %).
+
+## Pasos 18-a a 18-d — compras avanzadas (después de reportes, detalle en `saas.md`)
+- **18-a `presupuesto/`:** presupuesto por centro de costo y período; al enviar la solicitud se compara con lo comprometido; 409 `PRESUPUESTO_EXCEDIDO`; excepción con justificación y auditoría.
+- **18-b `contrato/`:** contratos y precios pactados con vigencia y tope; orden directa o RFQ con precio de referencia; nunca se aplica un precio vencido.
+- **18-c `delegacion/` + SLA:** delegación de aprobación por fechas y job de escalamiento por horas (aviso al 80 %, escala al vencer); segregación de funciones intacta.
+- **18-d reorden:** sugerir solicitud al cruzar el mínimo (máximo − stock − pendiente); solo sugiere, la persona decide.
+- **Fases futuras:** factura electrónica DIAN (vía proveedor tecnológico) y multimoneda con tasa congelada en el análisis.
+
+## Fases SaaS (decisión 2026-10-23, detalle en `saas.md`)
+Entre el 18 y el 19 van la **fase 1** (`empresa_id` en el JWT y en todas las tablas, filtro central por tenant, consecutivos y archivos por empresa, pruebas de fuga) y la **fase 2** (consola de plataforma, planes, módulos, `@RequiereModulo`), para que el cierre (19) pruebe multiempresa. Recepción (17) y factura (17-bis) ya se escriben con `empresa_id`. La seguridad de sesión (refresh, bloqueo, rate limit, V16) y la fase 1 (aislamiento por empresa con `@TenantId`, V17) ya están hechas: todo módulo nuevo agrega `@TenantId` a sus entidades de negocio y su prueba en `AislamientoEmpresasTest`.
 
 ## Paso 19 — Cierre
 - Pruebas: unitarias de cada Service (reglas y transiciones), integración del flujo completo (solicitud → recepción).
 - Seguridad: revisar `@RequiereRol` en todos los endpoints y el filtro por `proveedor_id` en el portal.
 - Swagger completo, README actualizado.
+- IA: la extracción también trae el total impreso (texto); Java lo compara con Σ líneas y si difiere > 1 % ⇒ REQUIERE_REVISION con alerta `TOTAL_NO_CUADRA`.
+- BD: script `docs/sql/permisos.sql` con dos usuarios (`supply_migrator` para Flyway vía `spring.flyway.user`, `supply_app` sin UPDATE/DELETE en `auditoria`, `movimiento_inventario`, `aprobacion_solicitud`, `orden_compra_estado_historial`, `evaluacion_proveedor`, `documento`).
+- Documento de exposición: una sola numeración (pasos 0–19), tabla de los 9 roles, ER partido en tres, explicar IVA/moneda única COP, referencias polimórficas (índice ya existe) y cierre de RFQ seguro con dos instancias (`FOR UPDATE` + re-verificación).
 
 ---
 

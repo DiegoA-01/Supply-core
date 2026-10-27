@@ -53,6 +53,13 @@ import com.proyecto.supply_core.pago.dto.PagoResponse;
 import com.proyecto.supply_core.pago.dto.RegistrarPagoRequest;
 import com.proyecto.supply_core.pago.entity.Pago;
 import com.proyecto.supply_core.pago.enums.EstadoPago;
+import com.proyecto.supply_core.pago.enums.TipoPago;
+import com.proyecto.supply_core.empresa.entity.Empresa;
+import com.proyecto.supply_core.empresa.repository.EmpresaRepository;
+import com.proyecto.supply_core.factura.entity.FacturaProveedor;
+import com.proyecto.supply_core.factura.service.FacturaService;
+import com.proyecto.supply_core.common.tenant.EmpresaDePrueba;
+import org.junit.jupiter.api.extension.ExtendWith;
 import com.proyecto.supply_core.pago.enums.MetodoPago;
 import com.proyecto.supply_core.pago.repository.PagoRepository;
 import com.proyecto.supply_core.proveedor.entity.Proveedor;
@@ -61,6 +68,7 @@ import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.usuario.entity.Usuario;
 import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
 
+@ExtendWith(EmpresaDePrueba.class)
 class PagoServiceTest {
 
     private static final Long SOLICITANTE = 10L;
@@ -77,8 +85,10 @@ class PagoServiceTest {
     private final DocumentoService documentos = mock(DocumentoService.class);
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
     private final NotificacionService notificaciones = mock(NotificacionService.class);
+    private final EmpresaRepository empresas = mock(EmpresaRepository.class);
+    private final FacturaService facturas = mock(FacturaService.class);
     private final PagoService service = new PagoService(pagos, ordenes, adjudicaciones, aprobaciones, usuarios,
-            documentos, auditoria, notificaciones);
+            documentos, auditoria, notificaciones, empresas, facturas);
 
     private MockHttpServletRequest request;
     private OrdenCompra orden;
@@ -123,6 +133,8 @@ class PagoServiceTest {
         portal.setId(77L);
         when(usuarios.findByProveedorId(40L)).thenReturn(List.of(portal));
         when(pagos.pagadoPorConsecutivo("OC-000001")).thenReturn(BigDecimal.ZERO);
+        when(pagos.anticipadoPorConsecutivo("OC-000001")).thenReturn(BigDecimal.ZERO);
+        empresa("100"); // tope de anticipos al 100 %: los demás casos no dependen del tope
         when(pagos.save(any())).thenAnswer(i -> {
             Pago p = i.getArgument(0);
             p.setId(900L);
@@ -174,7 +186,7 @@ class PagoServiceTest {
     @Test
     void fechaNoAnteriorALaEmision() {
         RegistrarPagoRequest req = new RegistrarPagoRequest(MetodoPago.CHEQUE, BigDecimal.TEN,
-                LocalDate.now().minusDays(6), "CH-1");
+                LocalDate.now().minusDays(6), "CH-1", TipoPago.ANTICIPO);
         assertThrows(ParametroInvalidoException.class, () -> service.registrar(11L, req));
     }
 
@@ -239,10 +251,10 @@ class PagoServiceTest {
     void reglaDeDocumentos() {
         registrar("100");
         PagoReglaDocumentos regla = new PagoReglaDocumentos(pagos);
-        UsuarioAutenticado admin = new UsuarioAutenticado(ADMINISTRATIVO, "a@x.com", "A", Set.of("ADMINISTRATIVO"), null);
-        UsuarioAutenticado bodega = new UsuarioAutenticado(5L, "b@x.com", "B", Set.of("ALMACENISTA"), null);
-        UsuarioAutenticado dueno = new UsuarioAutenticado(77L, "p@x.com", "P", Set.of("PROVEEDOR"), 40L);
-        UsuarioAutenticado ajeno = new UsuarioAutenticado(78L, "o@x.com", "O", Set.of("PROVEEDOR"), 41L);
+        UsuarioAutenticado admin = new UsuarioAutenticado(ADMINISTRATIVO, "a@x.com", "A", Set.of("ADMINISTRATIVO"), null, 1L);
+        UsuarioAutenticado bodega = new UsuarioAutenticado(5L, "b@x.com", "B", Set.of("ALMACENISTA"), null, 1L);
+        UsuarioAutenticado dueno = new UsuarioAutenticado(77L, "p@x.com", "P", Set.of("PROVEEDOR"), 40L, 1L);
+        UsuarioAutenticado ajeno = new UsuarioAutenticado(78L, "o@x.com", "O", Set.of("PROVEEDOR"), 41L, 1L);
 
         assertDoesNotThrow(() -> regla.validarSubida(900L, admin));
         assertThrows(AccesoDenegadoException.class, () -> regla.validarSubida(900L, dueno));
@@ -252,11 +264,97 @@ class PagoServiceTest {
     }
 
     private PagoResponse registrar(String valor) {
+        return registrar(valor, TipoPago.ANTICIPO);
+    }
+
+    private PagoResponse registrar(String valor, TipoPago tipo) {
         return service.registrar(11L, new RegistrarPagoRequest(MetodoPago.TRANSFERENCIA, new BigDecimal(valor),
-                LocalDate.now(), " TR-123 "));
+                LocalDate.now(), " TR-123 ", tipo));
+    }
+
+    private void empresa(String topeAnticipoPct) {
+        Empresa e = new Empresa();
+        e.setId(1L);
+        e.setTopeAnticipoPct(new BigDecimal(topeAnticipoPct));
+        when(empresas.findById(1L)).thenReturn(Optional.of(e));
+    }
+
+    private FacturaProveedor factura(String total) {
+        FacturaProveedor f = new FacturaProveedor();
+        f.setId(5L);
+        f.setNumero("FE-100");
+        f.setTotal(new BigDecimal(total));
+        return f;
     }
 
     private void sesion(Long id, String rol, Long proveedorId) {
-        request.setAttribute(SesionActual.ATRIBUTO, new UsuarioAutenticado(id, "u@x.com", "U", Set.of(rol), proveedorId));
+        request.setAttribute(SesionActual.ATRIBUTO, new UsuarioAutenticado(id, "u@x.com", "U", Set.of(rol), proveedorId, 1L));
+    }
+
+    // ------------------------------------------------------------------ tipo de pago (17-bis)
+
+    @Test
+    void elAnticipoNoSuperaElTopeDeLaEmpresa() {
+        empresa("50");
+
+        assertEquals("ANTICIPO_EXCEDE_TOPE", assertThrows(NegocioException.class, () -> registrar("500.01")).getCodigo());
+        assertDoesNotThrow(() -> registrar("500.00")); // justo en el tope (50 % de 1000)
+
+        when(pagos.anticipadoPorConsecutivo("OC-000001")).thenReturn(new BigDecimal("400.00"));
+        assertEquals("ANTICIPO_EXCEDE_TOPE", assertThrows(NegocioException.class, () -> registrar("100.01")).getCodigo());
+        assertDoesNotThrow(() -> registrar("100.00"));
+    }
+
+    @Test
+    void unAnticipoQuedaRegistradoConSuTipo() {
+        PagoResponse r = registrar("100.00");
+
+        assertEquals(TipoPago.ANTICIPO, r.tipo());
+    }
+
+    @Test
+    void elPagoFinalSoloSeHaceDespuesDeRecibir() {
+        for (EstadoOrden antes : new EstadoOrden[] { EstadoOrden.EMITIDA, EstadoOrden.ACEPTADA_PROVEEDOR,
+                EstadoOrden.EN_PREPARACION, EstadoOrden.DESPACHADA }) {
+            orden.setEstado(antes);
+            assertEquals("PAGO_FINAL_SIN_RECEPCION", assertThrows(NegocioException.class,
+                    () -> registrar("10", TipoPago.PAGO_FINAL)).getCodigo(), antes.name());
+        }
+        verify(facturas, never()).exigirPagable(any());
+        verify(pagos, never()).save(any());
+    }
+
+    @Test
+    void elPagoFinalExigeUnaFacturaQueCuadre() {
+        orden.setEstado(EstadoOrden.RECIBIDA_TOTAL);
+        when(facturas.exigirPagable(orden)).thenThrow(new NegocioException("FACTURA_REQUERIDA", "Sin factura"));
+
+        assertEquals("FACTURA_REQUERIDA", assertThrows(NegocioException.class,
+                () -> registrar("10", TipoPago.PAGO_FINAL)).getCodigo());
+        verify(pagos, never()).save(any());
+    }
+
+    @Test
+    void elPagoFinalDescuentaLoYaPagadoYNoSuperaLaFactura() {
+        orden.setEstado(EstadoOrden.RECIBIDA_TOTAL);
+        when(facturas.exigirPagable(orden)).thenReturn(factura("800.00"));
+        when(pagos.pagadoPorConsecutivo("OC-000001")).thenReturn(new BigDecimal("300.00")); // falta 500 de la factura
+
+        assertEquals("PAGO_EXCEDE_FACTURA", assertThrows(NegocioException.class,
+                () -> registrar("500.01", TipoPago.PAGO_FINAL)).getCodigo());
+        PagoResponse r = registrar("500.00", TipoPago.PAGO_FINAL);
+
+        assertEquals(TipoPago.PAGO_FINAL, r.tipo());
+        verify(auditoria).exito(eq(AccionAuditoria.PAGO_REGISTRAR), any(), eq(900L), org.mockito.ArgumentMatchers.contains("tipo=PAGO_FINAL"));
+    }
+
+    @Test
+    void elPagoFinalTampocoSuperaElSaldoDeLaOrden() {
+        orden.setEstado(EstadoOrden.CERRADA);
+        when(facturas.exigirPagable(orden)).thenReturn(factura("5000.00")); // factura mayor que la orden
+        when(pagos.pagadoPorConsecutivo("OC-000001")).thenReturn(new BigDecimal("900.00"));
+
+        assertEquals("PAGO_EXCEDE_SALDO", assertThrows(NegocioException.class,
+                () -> registrar("100.01", TipoPago.PAGO_FINAL)).getCodigo());
     }
 }

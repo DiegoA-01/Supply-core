@@ -22,7 +22,7 @@ import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.common.util.ConsecutivoGenerator;
-import com.proyecto.supply_core.common.util.EmpresaUnica;
+import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.common.util.Ordenamiento;
 import com.proyecto.supply_core.despacho.dto.DespachoRequest;
 import com.proyecto.supply_core.despacho.dto.DespachoResponse;
@@ -104,7 +104,6 @@ public class DespachoService {
     @Transactional
     public DespachoResponse crear(DespachoRequest req) {
         Despacho d = new Despacho();
-        d.setEmpresaId(EmpresaUnica.ID);
         d.setUsuarioId(SesionActual.usuario().id());
         d.setConsecutivo(consecutivos.siguiente(ConsecutivoGenerator.DESPACHO));
         copiar(d, req);

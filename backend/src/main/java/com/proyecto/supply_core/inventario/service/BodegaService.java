@@ -11,7 +11,7 @@ import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
-import com.proyecto.supply_core.common.util.EmpresaUnica;
+import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.empresa.entity.Sede;
 import com.proyecto.supply_core.empresa.repository.SedeRepository;
 import com.proyecto.supply_core.inventario.dto.BodegaRequest;
@@ -52,8 +52,8 @@ public class BodegaService {
     @Transactional(readOnly = true)
     public List<BodegaResponse> listar(Boolean activo) {
         List<Bodega> bodegas = activo == null
-                ? bodegaRepository.findByEmpresaIdOrderByNombreAsc(EmpresaUnica.ID)
-                : bodegaRepository.findByEmpresaIdAndActivoOrderByNombreAsc(EmpresaUnica.ID, activo);
+                ? bodegaRepository.findByEmpresaIdOrderByNombreAsc(EmpresaContexto.requerida())
+                : bodegaRepository.findByEmpresaIdAndActivoOrderByNombreAsc(EmpresaContexto.requerida(), activo);
         return bodegas.stream().map(BodegaResponse::of).toList();
     }
 
@@ -79,11 +79,10 @@ public class BodegaService {
     @Transactional
     public BodegaResponse crear(BodegaRequest req) {
         String nombre = req.nombre().trim();
-        if (bodegaRepository.existsByEmpresaIdAndNombreIgnoreCase(EmpresaUnica.ID, nombre)) {
+        if (bodegaRepository.existsByEmpresaIdAndNombreIgnoreCase(EmpresaContexto.requerida(), nombre)) {
             throw new NegocioException("NOMBRE_DUPLICADO", "Ya existe una bodega llamada " + nombre);
         }
         Bodega b = new Bodega();
-        b.setEmpresaId(EmpresaUnica.ID);
         aplicar(b, req);
         Bodega guardada = bodegaRepository.save(b);
         auditoriaService.exito(AccionAuditoria.BODEGA_CREAR, EntidadAuditada.BODEGA, guardada.getId(), "nombre=" + nombre);
@@ -103,7 +102,7 @@ public class BodegaService {
     public BodegaResponse actualizar(Long id, BodegaRequest req) {
         Bodega b = buscar(id);
         String nombre = req.nombre().trim();
-        if (bodegaRepository.existsByEmpresaIdAndNombreIgnoreCaseAndIdNot(EmpresaUnica.ID, nombre, id)) {
+        if (bodegaRepository.existsByEmpresaIdAndNombreIgnoreCaseAndIdNot(EmpresaContexto.requerida(), nombre, id)) {
             throw new NegocioException("NOMBRE_DUPLICADO", "Ya existe una bodega llamada " + nombre);
         }
         String antes = b.getNombre();

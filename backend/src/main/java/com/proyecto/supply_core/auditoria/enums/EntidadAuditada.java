@@ -48,5 +48,9 @@ public enum EntidadAuditada {
     /** Tabla {@code orden_compra}. */
     ORDEN_COMPRA,
     /** Tabla {@code pago}. */
-    PAGO
+    PAGO,
+    /** Tabla {@code recepcion}. */
+    RECEPCION,
+    /** Tabla {@code factura_proveedor}. */
+    FACTURA
 }

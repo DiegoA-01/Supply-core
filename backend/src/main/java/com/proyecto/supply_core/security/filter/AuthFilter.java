@@ -11,6 +11,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
 import com.proyecto.supply_core.common.exception.NoAutenticadoException;
+import com.proyecto.supply_core.common.exception.NoEncontradoException;
+import com.proyecto.supply_core.common.tenant.EmpresaContexto;
+import com.proyecto.supply_core.empresa.repository.EmpresaRepository;
+import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.jwt.JwtUtil;
 
@@ -28,38 +32,55 @@ public class AuthFilter extends OncePerRequestFilter {
 
     private static final String PREFIJO = "Bearer ";
     /** Rutas sin token: login y autorregistro de proveedores (que no otorga acceso hasta ser aprobado). */
-    private static final List<String> RUTAS_PUBLICAS = List.of("/api/auth/login", "/api/portal/registro/**");
+    private static final List<String> RUTAS_PUBLICAS = List.of("/api/auth/login", "/api/auth/refresh",
+            "/api/portal/registro/**");
+
+    /** El autorregistro lleva el código público de la empresa en la ruta: {@code /api/portal/registro/{codigo}/...}. */
+    private static final String PREFIJO_REGISTRO = "/api/portal/registro/";
 
     private final JwtUtil jwtUtil;
+    private final EmpresaRepository empresaRepository;
     private final HandlerExceptionResolver exceptionResolver;
     private final AntPathMatcher matcher = new AntPathMatcher();
 
     /**
      * @param jwtUtil           validador de tokens
+     * @param empresaRepository resuelve la empresa del autorregistro público por su código
      * @param exceptionResolver resolver de Spring MVC que invoca al {@code @RestControllerAdvice}
      */
-    public AuthFilter(JwtUtil jwtUtil,
+    public AuthFilter(JwtUtil jwtUtil, EmpresaRepository empresaRepository,
             @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) {
         this.jwtUtil = jwtUtil;
+        this.empresaRepository = empresaRepository;
         this.exceptionResolver = exceptionResolver;
     }
 
     /**
-     * Excluye lo que no es API, el preflight CORS y las rutas públicas.
+     * Excluye lo que no es API y el preflight CORS.
      *
      * @param request petición entrante
-     * @return {@code true} si el filtro no debe exigir token
+     * @return {@code true} si el filtro no debe actuar
      */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String ruta = request.getRequestURI().substring(request.getContextPath().length());
-        return !ruta.startsWith("/api/")
-                || "OPTIONS".equalsIgnoreCase(request.getMethod())
-                || RUTAS_PUBLICAS.stream().anyMatch(p -> matcher.match(p, ruta));
+        String ruta = ruta(request);
+        return !ruta.startsWith("/api/") || "OPTIONS".equalsIgnoreCase(request.getMethod());
     }
 
     /**
-     * Valida el token y deja el usuario en la petición; si falla responde 401 sin continuar.
+     * Ruta de la petición sin el context path.
+     *
+     * @param request petición entrante
+     * @return ruta relativa a la aplicación
+     */
+    private static String ruta(HttpServletRequest request) {
+        return request.getRequestURI().substring(request.getContextPath().length());
+    }
+
+    /**
+     * En rutas públicas trabaja sin empresa (login, renovación y registro resuelven la empresa por su cuenta);
+     * en las demás valida el token, deja el usuario en la petición y fija la empresa del JWT como contexto
+     * de toda la petición. Si falla responde 401 sin continuar. El contexto siempre se limpia al terminar.
      *
      * @param request  petición entrante
      * @param response respuesta
@@ -71,16 +92,51 @@ public class AuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
             FilterChain chain) throws ServletException, IOException {
         try {
-            String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-            if (header == null || !header.startsWith(PREFIJO)) {
-                throw new NoAutenticadoException("Debe iniciar sesión");
+            String ruta = ruta(request);
+            if (ruta.startsWith(PREFIJO_REGISTRO)) {
+                EmpresaContexto.fijar(empresaDelRegistro(ruta));
+            } else if (esPublica(ruta)) {
+                EmpresaContexto.fijarSinEmpresa();
+            } else {
+                String header = request.getHeader(HttpHeaders.AUTHORIZATION);
+                if (header == null || !header.startsWith(PREFIJO)) {
+                    throw new NoAutenticadoException("Debe iniciar sesión");
+                }
+                UsuarioAutenticado usuario = jwtUtil.validar(header.substring(PREFIJO.length()).trim());
+                request.setAttribute(SesionActual.ATRIBUTO, usuario);
+                EmpresaContexto.fijar(usuario.empresaId());
             }
-            request.setAttribute(SesionActual.ATRIBUTO,
-                    jwtUtil.validar(header.substring(PREFIJO.length()).trim()));
-        } catch (NoAutenticadoException ex) {
+            chain.doFilter(request, response);
+        } catch (NoAutenticadoException | NoEncontradoException ex) {
             exceptionResolver.resolveException(request, response, null, ex);
-            return;
+        } finally {
+            EmpresaContexto.limpiar();
         }
-        chain.doFilter(request, response);
+    }
+
+    /**
+     * Empresa a la que se registra el proveedor, según el código público de la ruta. Se resuelve sin empresa
+     * (es una consulta sobre la tabla de empresas) y el resto de la petición ya corre dentro de esa empresa.
+     *
+     * @param ruta ruta {@code /api/portal/registro/{codigo}/...}
+     * @return id de la empresa
+     * @throws NoEncontradoException si el código no corresponde a ninguna empresa
+     */
+    private Long empresaDelRegistro(String ruta) {
+        String resto = ruta.substring(PREFIJO_REGISTRO.length());
+        String codigo = resto.contains("/") ? resto.substring(0, resto.indexOf('/')) : resto;
+        EmpresaContexto.fijarSinEmpresa();
+        return empresaRepository.idPorCodigoPublico(codigo)
+                .orElseThrow(() -> new NoEncontradoException("La empresa indicada no existe"));
+    }
+
+    /**
+     * Indica si la ruta no exige token.
+     *
+     * @param ruta ruta relativa a la aplicación
+     * @return {@code true} si es una ruta pública
+     */
+    private boolean esPublica(String ruta) {
+        return RUTAS_PUBLICAS.stream().anyMatch(p -> matcher.match(p, ruta));
     }
 }
