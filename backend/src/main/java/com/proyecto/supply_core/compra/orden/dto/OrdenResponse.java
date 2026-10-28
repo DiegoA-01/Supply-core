@@ -18,7 +18,9 @@ import com.proyecto.supply_core.compra.orden.enums.EstadoOrden;
  * @param ordenPadreId         versión anterior
  * @param motivoVersion        motivo del cambio de versión
  * @param estado               estado
- * @param adjudicacionId       adjudicación de origen
+ * @param adjudicacionId       adjudicación de origen ({@code null} en una orden directa de contrato)
+ * @param contratoId           contrato de origen (solo en una orden directa)
+ * @param solicitudId          solicitud de origen (solo en una orden directa)
  * @param proveedorId          proveedor
  * @param proveedorRazonSocial razón social
  * @param bodegaDestinoId      bodega destino
@@ -33,8 +35,8 @@ import com.proyecto.supply_core.compra.orden.enums.EstadoOrden;
  * @param historial            cambios de estado
  */
 public record OrdenResponse(Long id, String consecutivo, int version, Long ordenPadreId, String motivoVersion,
-        EstadoOrden estado, Long adjudicacionId, Long proveedorId, String proveedorRazonSocial, Long bodegaDestinoId,
-        String bodegaDestinoNombre, String lugarEntrega, LocalDate fechaEntregaEsperada, BigDecimal subtotal,
+        EstadoOrden estado, Long adjudicacionId, Long contratoId, Long solicitudId, Long proveedorId,
+        String proveedorRazonSocial, Long bodegaDestinoId, String bodegaDestinoNombre, String lugarEntrega, LocalDate fechaEntregaEsperada, BigDecimal subtotal,
         BigDecimal impuestos, BigDecimal total, LocalDateTime creadoEn, List<Linea> lineas, List<Cambio> historial) {
 
     /**
@@ -46,8 +48,9 @@ public record OrdenResponse(Long id, String consecutivo, int version, Long orden
      */
     public static OrdenResponse of(OrdenCompra o, List<OrdenEstadoHistorial> historial) {
         return new OrdenResponse(o.getId(), o.getConsecutivo(), o.getVersion(), o.getOrdenPadreId(), o.getMotivoVersion(),
-                o.getEstado(), o.getAdjudicacionId(), o.getProveedor().getId(), o.getProveedor().getRazonSocial(),
-                o.getBodegaDestino().getId(), o.getBodegaDestino().getNombre(), o.getLugarEntrega(),
+                o.getEstado(), o.getAdjudicacionId(), o.getContratoId(), o.getSolicitudId(), o.getProveedor().getId(),
+                o.getProveedor().getRazonSocial(), o.getBodegaDestino().getId(), o.getBodegaDestino().getNombre(),
+                o.getLugarEntrega(),
                 o.getFechaEntregaEsperada(), o.getSubtotal(), o.getImpuestos(), o.getTotal(), o.getCreadoEn(),
                 o.getLineas().stream().map(l -> new Linea(l.getId(), l.getProducto().getId(), l.getProducto().getCodigo(),
                         l.getProducto().getNombre(), l.getProducto().getUnidadMedida().getCodigo(), l.getCantidad(),

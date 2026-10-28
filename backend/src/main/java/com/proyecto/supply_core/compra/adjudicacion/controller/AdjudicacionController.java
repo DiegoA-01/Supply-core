@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.compra.adjudicacion.dto.AdjudicacionResponse;
 import com.proyecto.supply_core.compra.adjudicacion.dto.AdjudicarRequest;
@@ -27,6 +29,7 @@ import jakarta.validation.constraints.Positive;
 /**
  * Adjudicación (UC-09). Adjudica el COMPRADOR; decide el rol de la política (verificado en el Service).
  */
+@RequiereModulo(Modulos.RFQ_COTIZACIONES)
 @RestController
 @RequestMapping("/api")
 @UsuarioInterno

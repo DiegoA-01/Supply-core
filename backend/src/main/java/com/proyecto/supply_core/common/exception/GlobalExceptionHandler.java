@@ -90,7 +90,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(AccesoDenegadoException.class)
     public ResponseEntity<ErrorResponse> accesoDenegado(AccesoDenegadoException ex) {
-        return responder(HttpStatus.FORBIDDEN, ErrorResponse.of("ACCESO_DENEGADO", ex.getMessage()));
+        return responder(HttpStatus.FORBIDDEN, ErrorResponse.of(ex.getCodigo(), ex.getMessage()));
     }
 
     /**

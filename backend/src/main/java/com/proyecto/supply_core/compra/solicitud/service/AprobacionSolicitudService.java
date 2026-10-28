@@ -24,6 +24,7 @@ import com.proyecto.supply_core.compra.solicitud.enums.DecisionAprobacion;
 import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
 import com.proyecto.supply_core.compra.solicitud.repository.AprobacionSolicitudRepository;
 import com.proyecto.supply_core.compra.solicitud.repository.SolicitudCompraRepository;
+import com.proyecto.supply_core.delegacion.service.DelegacionService;
 import com.proyecto.supply_core.empresa.repository.PoliticaAprobacionRepository;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
@@ -51,6 +52,7 @@ public class AprobacionSolicitudService {
     private final PoliticaAprobacionRepository politicaRepository;
     private final AuditoriaService auditoriaService;
     private final NotificacionService notificacionService;
+    private final DelegacionService delegaciones;
 
     /**
      * @param solicitudService     carga y respuesta de solicitudes
@@ -59,10 +61,13 @@ public class AprobacionSolicitudService {
      * @param politicaRepository   política asignada (rol aprobador)
      * @param auditoriaService     registro de decisiones
      * @param notificacionService  avisos al solicitante y a compras
+     * @param delegaciones         autoridad delegada para decidir (18-c)
      */
     public AprobacionSolicitudService(SolicitudService solicitudService, SolicitudCompraRepository solicitudRepository,
             AprobacionSolicitudRepository aprobacionRepository, PoliticaAprobacionRepository politicaRepository,
-            AuditoriaService auditoriaService, NotificacionService notificacionService) {
+            AuditoriaService auditoriaService, NotificacionService notificacionService,
+            DelegacionService delegaciones) {
+        this.delegaciones = delegaciones;
         this.solicitudService = solicitudService;
         this.solicitudRepository = solicitudRepository;
         this.aprobacionRepository = aprobacionRepository;
@@ -78,7 +83,8 @@ public class AprobacionSolicitudService {
      * @param req decisión validada (observaciones obligatorias al rechazar o devolver)
      * @return solicitud con su nuevo estado e historial
      * @throws NegocioException        si no está pendiente de aprobación
-     * @throws AccesoDenegadoException si es el solicitante o no tiene el rol aprobador de la política
+     * @throws AccesoDenegadoException si es el solicitante o no tiene el rol aprobador de la política ni una
+     *                                 delegación vigente que se lo dé
      */
     @Transactional
     public SolicitudResponse decidir(Long id, DecisionRequest req) {
@@ -94,19 +100,19 @@ public class AprobacionSolicitudService {
         String rolAprobador = politicaRepository.findWithRolById(s.getPoliticaAprobacionId())
                 .map(p -> p.getRolAprobador().getCodigo())
                 .orElseThrow(() -> new IllegalStateException("Solicitud " + id + " sin política asignada"));
-        if (!sesion.tieneAlgunRol(rolAprobador)) {
-            throw new AccesoDenegadoException("Esta solicitud la aprueba el rol " + rolAprobador);
-        }
+        // con su propio rol o por una delegación vigente (nunca la de quien pidió la solicitud)
+        Long delegacionId = delegaciones.autorizar(sesion, rolAprobador, s.getUsuarioSolicitanteId()).orElse(null);
 
         DecisionAprobacion decision = req.decision();
         String observaciones = req.observaciones() == null || req.observaciones().isBlank()
                 ? null : req.observaciones().trim();
         aprobacionRepository.save(new AprobacionSolicitud(id, sesion.id(), s.getPoliticaAprobacionId(), decision,
-                observaciones));
+                observaciones, delegacionId));
         s.setEstado(decision.estadoResultante());
 
         auditoriaService.exito(AccionAuditoria.SOLICITUD_DECIDIR, EntidadAuditada.SOLICITUD_COMPRA, id,
-                s.getConsecutivo() + "; decision=" + decision + (observaciones == null ? "" : "; obs=" + observaciones));
+                s.getConsecutivo() + "; decision=" + decision + (observaciones == null ? "" : "; obs=" + observaciones)
+                        + (delegacionId == null ? "" : "; porDelegacion=" + delegacionId));
         notificacionService.notificar(s.getUsuarioSolicitanteId(), EventoNotificacion.SOLICITUD_DECIDIDA,
                 "Su solicitud " + s.getConsecutivo() + " fue " + decision
                         + (observaciones == null ? "" : ": " + observaciones));
@@ -128,7 +134,7 @@ public class AprobacionSolicitudService {
     @Transactional(readOnly = true)
     public PageResponse<SolicitudResumenResponse> pendientes(Pageable pageable) {
         UsuarioAutenticado sesion = SesionActual.usuario();
-        return PageResponse.of(solicitudRepository.pendientesPara(sesion.roles(), sesion.id(),
+        return PageResponse.of(solicitudRepository.pendientesPara(delegaciones.rolesEfectivos(sesion), sesion.id(),
                 Ordenamiento.validar(pageable, CAMPOS_ORDENABLES)), SolicitudResumenResponse::of);
     }
 }

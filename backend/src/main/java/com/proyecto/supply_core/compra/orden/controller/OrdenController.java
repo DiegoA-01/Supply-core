@@ -13,7 +13,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.common.dto.PageResponse;
+import com.proyecto.supply_core.compra.orden.dto.EmitirDirectaRequest;
 import com.proyecto.supply_core.compra.orden.dto.EmitirOrdenRequest;
 import com.proyecto.supply_core.compra.orden.dto.MotivoOrdenRequest;
 import com.proyecto.supply_core.compra.orden.dto.NuevaVersionRequest;
@@ -21,6 +24,7 @@ import com.proyecto.supply_core.compra.orden.dto.OrdenResponse;
 import com.proyecto.supply_core.compra.orden.dto.OrdenResumenResponse;
 import com.proyecto.supply_core.compra.orden.enums.EstadoOrden;
 import com.proyecto.supply_core.compra.orden.service.OrdenCompraService;
+import com.proyecto.supply_core.compra.orden.service.OrdenDirectaService;
 import com.proyecto.supply_core.security.annotation.RequiereRol;
 import com.proyecto.supply_core.security.context.Roles;
 
@@ -31,6 +35,7 @@ import jakarta.validation.constraints.Positive;
  * Órdenes de compra (UC-10). Emite, versiona y cancela el COMPRADOR; consultan compras, bodega,
  * administrativo, aprobadores y auditoría.
  */
+@RequiereModulo(Modulos.ORDENES_PAGOS)
 @RestController
 @RequestMapping("/api/ordenes")
 @RequiereRol({ Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.ALMACENISTA, Roles.ADMINISTRATIVO, Roles.APROBADOR,
@@ -38,12 +43,28 @@ import jakarta.validation.constraints.Positive;
 public class OrdenController {
 
     private final OrdenCompraService ordenService;
+    private final OrdenDirectaService directaService;
 
     /**
-     * @param ordenService lógica de órdenes
+     * @param ordenService   lógica de órdenes
+     * @param directaService orden directa al precio pactado de un contrato
      */
-    public OrdenController(OrdenCompraService ordenService) {
+    public OrdenController(OrdenCompraService ordenService, OrdenDirectaService directaService) {
         this.ordenService = ordenService;
+        this.directaService = directaService;
+    }
+
+    /**
+     * Emite una orden directa al precio pactado de un contrato, sin RFQ, desde una solicitud aprobada.
+     *
+     * @param request solicitud, contrato, bodega y entrega
+     * @return orden EMITIDA
+     */
+    @PostMapping("/directa")
+    @ResponseStatus(HttpStatus.CREATED)
+    @RequiereRol(Roles.COMPRADOR)
+    public OrdenResponse emitirDirecta(@Valid @RequestBody EmitirDirectaRequest request) {
+        return directaService.emitir(request);
     }
 
     /**

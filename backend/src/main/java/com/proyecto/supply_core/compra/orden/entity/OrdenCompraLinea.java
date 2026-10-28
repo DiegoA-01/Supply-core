@@ -40,6 +40,10 @@ public class OrdenCompraLinea {
     @Column(name = "cotizacion_linea_id", updatable = false)
     private Long cotizacionLineaId;
 
+    /** Precio pactado de contrato del que viene (orden directa); {@code null} en las demás. Descuenta del tope. */
+    @Column(name = "contrato_precio_id", updatable = false)
+    private Long contratoPrecioId;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "producto_id", nullable = false, updatable = false)
     private Producto producto;

@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.inventario.dto.ProductoRequest;
 import com.proyecto.supply_core.inventario.dto.ProductoResponse;
@@ -30,6 +32,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 
 /** UC-02 Catálogo de productos: cualquier usuario interno consulta; ADMIN_COMPRAS administra. */
+@RequiereModulo(Modulos.INVENTARIO)
 @RestController
 @RequestMapping("/api/productos")
 @UsuarioInterno

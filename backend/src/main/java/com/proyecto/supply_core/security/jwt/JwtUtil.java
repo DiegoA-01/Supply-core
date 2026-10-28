@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.proyecto.supply_core.common.exception.NoAutenticadoException;
+import com.proyecto.supply_core.security.context.PlataformaAutenticada;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 
 import io.jsonwebtoken.Claims;
@@ -44,6 +45,12 @@ public class JwtUtil {
     private static final String CLAIM_ROLES = "roles";
     private static final String CLAIM_PROVEEDOR = "prov";
     private static final String CLAIM_EMPRESA = "emp";
+    /** Marca de un token de la plataforma: los de empresa no la llevan y los de plataforma no llevan {@code emp}. */
+    private static final String CLAIM_PLATAFORMA = "plat";
+    /** Marca del desafío de MFA: sirve solo para entregar el código, no para llamar a la API. */
+    private static final String CLAIM_DESAFIO_MFA = "mfa";
+    /** Tiempo para escribir el código de MFA después de acertar la contraseña. */
+    private static final long VIGENCIA_DESAFIO_SEGUNDOS = 300;
 
     private final SecretKey clave;
     private final long expiracionSegundos;
@@ -99,6 +106,100 @@ public class JwtUtil {
                 .expiration(Date.from(ahora.plusSeconds(expiracionSegundos)))
                 .signWith(clave, Jwts.SIG.HS256)
                 .compact();
+    }
+
+    /**
+     * Emite el token de sesión de un usuario de la plataforma. No lleva empresa: no sirve en la API de ninguna empresa.
+     *
+     * @param u usuario de la plataforma
+     * @return JWT compacto
+     */
+    public String generarPlataforma(PlataformaAutenticada u) {
+        Instant ahora = reloj.instant();
+        return Jwts.builder()
+                .issuer(EMISOR)
+                .subject(String.valueOf(u.id()))
+                .claim(CLAIM_CORREO, u.correo())
+                .claim(CLAIM_NOMBRE, u.nombre())
+                .claim(CLAIM_PLATAFORMA, Boolean.TRUE)
+                .issuedAt(Date.from(ahora))
+                .expiration(Date.from(ahora.plusSeconds(expiracionSegundos)))
+                .signWith(clave, Jwts.SIG.HS256)
+                .compact();
+    }
+
+    /**
+     * Valida un token de sesión de la plataforma. Un token de empresa o un desafío de MFA no pasan.
+     *
+     * @param token JWT recibido (sin el prefijo "Bearer ")
+     * @return usuario de la plataforma
+     * @throws NoAutenticadoException si el token no es de la plataforma, está alterado o expiró
+     */
+    public PlataformaAutenticada validarPlataforma(String token) {
+        Claims claims = leer(token);
+        try {
+            if (!Boolean.TRUE.equals(claims.get(CLAIM_PLATAFORMA, Boolean.class))) {
+                throw invalido();
+            }
+            return new PlataformaAutenticada(Long.valueOf(claims.getSubject()), claims.get(CLAIM_CORREO, String.class),
+                    claims.get(CLAIM_NOMBRE, String.class));
+        } catch (JwtException | NumberFormatException e) {
+            throw invalido();
+        }
+    }
+
+    /**
+     * Emite el desafío que se canjea por la sesión al escribir el código de MFA. Dura pocos minutos.
+     *
+     * @param usuarioId usuario de la plataforma que acertó la contraseña
+     * @return JWT compacto de corta vida
+     */
+    public String generarDesafioMfa(Long usuarioId) {
+        Instant ahora = reloj.instant();
+        return Jwts.builder()
+                .issuer(EMISOR)
+                .subject(String.valueOf(usuarioId))
+                .claim(CLAIM_DESAFIO_MFA, Boolean.TRUE)
+                .issuedAt(Date.from(ahora))
+                .expiration(Date.from(ahora.plusSeconds(VIGENCIA_DESAFIO_SEGUNDOS)))
+                .signWith(clave, Jwts.SIG.HS256)
+                .compact();
+    }
+
+    /**
+     * Valida un desafío de MFA y devuelve el usuario al que pertenece.
+     *
+     * @param token desafío entregado al acertar la contraseña
+     * @return id del usuario de la plataforma
+     * @throws NoAutenticadoException si no es un desafío, está alterado o expiró
+     */
+    public Long validarDesafioMfa(String token) {
+        Claims claims = leer(token);
+        try {
+            if (!Boolean.TRUE.equals(claims.get(CLAIM_DESAFIO_MFA, Boolean.class))) {
+                throw invalido();
+            }
+            return Long.valueOf(claims.getSubject());
+        } catch (JwtException | NumberFormatException e) {
+            throw invalido();
+        }
+    }
+
+    /**
+     * Verifica firma, emisor y vigencia y devuelve el contenido.
+     *
+     * @param token JWT recibido
+     * @return claims
+     * @throws NoAutenticadoException si el token está mal formado, alterado, es de otro emisor o expiró
+     */
+    private Claims leer(String token) {
+        try {
+            return parser.parseSignedClaims(token).getPayload();
+        } catch (ExpiredJwtException e) {
+            throw new NoAutenticadoException("La sesión expiró, inicie sesión de nuevo");
+        } catch (JwtException | IllegalArgumentException e) {
+            throw invalido();
+        }
     }
 
     /**

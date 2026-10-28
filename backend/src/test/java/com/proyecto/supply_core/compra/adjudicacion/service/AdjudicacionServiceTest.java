@@ -47,6 +47,8 @@ import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
 import com.proyecto.supply_core.compra.solicitud.repository.SolicitudCompraRepository;
 import com.proyecto.supply_core.empresa.entity.PoliticaAprobacion;
 import com.proyecto.supply_core.empresa.enums.TipoPolitica;
+import com.proyecto.supply_core.delegacion.repository.DelegacionRepository;
+import com.proyecto.supply_core.delegacion.service.DelegacionService;
 import com.proyecto.supply_core.empresa.repository.PoliticaAprobacionRepository;
 import com.proyecto.supply_core.empresa.service.PoliticaAprobacionService;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
@@ -70,7 +72,9 @@ class AdjudicacionServiceTest {
     private final UsuarioRepository usuarios = mock(UsuarioRepository.class);
     private final NotificacionService notificaciones = mock(NotificacionService.class);
     private final AdjudicacionService service = new AdjudicacionService(adjudicaciones, analisisRepo, rfqs, solicitudes,
-            cotizaciones, politicas, politicaRepo, usuarios, mock(AuditoriaService.class), notificaciones);
+            cotizaciones, politicas, politicaRepo, usuarios, mock(AuditoriaService.class), notificaciones,
+            new DelegacionService(mock(DelegacionRepository.class), usuarios, politicaRepo,
+                    mock(AuditoriaService.class), notificaciones));
 
     private MockHttpServletRequest request;
     private Rfq rfq;

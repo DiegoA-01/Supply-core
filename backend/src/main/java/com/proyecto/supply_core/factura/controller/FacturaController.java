@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.factura.dto.FacturaResponse;
 import com.proyecto.supply_core.factura.dto.MotivoFacturaRequest;
@@ -34,6 +36,7 @@ import jakarta.validation.constraints.Positive;
  * Facturas de proveedores y cruce de tres vías. Registra, cruza y anula el ADMINISTRATIVO; aprueba las que no
  * cuadran ADMIN_COMPRAS; consultan compras, aprobadores y auditoría.
  */
+@RequiereModulo(Modulos.ORDENES_PAGOS)
 @RestController
 @RequestMapping("/api")
 @RequiereRol({ Roles.ADMINISTRATIVO, Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.APROBADOR, Roles.AUDITOR })

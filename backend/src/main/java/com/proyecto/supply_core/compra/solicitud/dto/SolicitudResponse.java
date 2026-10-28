@@ -22,6 +22,9 @@ import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
  * @param montoEstimado        monto estimado (al enviar)
  * @param montoIncompleto      si faltó el costo de algún producto
  * @param politicaAprobacionId política asignada al enviar
+ * @param excedePresupuesto    si al enviarla excedía el presupuesto del centro de costo
+ * @param justificacionExcepcion justificación de la excepción ({@code null} si se envió sin ella)
+ * @param escaladaEn           cuándo venció el SLA y pasó a la política de mayor tramo ({@code null} si no)
  * @param enviadoEn            fecha de envío
  * @param creadoEn             fecha de creación
  * @param lineas               líneas
@@ -29,8 +32,9 @@ import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
  */
 public record SolicitudResponse(Long id, String consecutivo, EstadoSolicitud estado, Long centroCostoId,
         Long usuarioSolicitanteId, String motivo, LocalDate fechaRequerida, BigDecimal montoEstimado,
-        boolean montoIncompleto, Long politicaAprobacionId, LocalDateTime enviadoEn, LocalDateTime creadoEn,
-        List<LineaSolicitudResponse> lineas, List<AprobacionResponse> aprobaciones) {
+        boolean montoIncompleto, Long politicaAprobacionId, boolean excedePresupuesto, String justificacionExcepcion,
+        LocalDateTime escaladaEn, LocalDateTime enviadoEn, LocalDateTime creadoEn, List<LineaSolicitudResponse> lineas,
+        List<AprobacionResponse> aprobaciones) {
 
     /**
      * Convierte la entidad (líneas con producto y unidad cargados).
@@ -42,7 +46,8 @@ public record SolicitudResponse(Long id, String consecutivo, EstadoSolicitud est
     public static SolicitudResponse of(SolicitudCompra s, List<AprobacionSolicitud> aprobaciones) {
         return new SolicitudResponse(s.getId(), s.getConsecutivo(), s.getEstado(), s.getCentroCostoId(),
                 s.getUsuarioSolicitanteId(), s.getMotivo(), s.getFechaRequerida(), s.getMontoEstimado(),
-                s.isMontoIncompleto(), s.getPoliticaAprobacionId(), s.getEnviadoEn(), s.getCreadoEn(),
+                s.isMontoIncompleto(), s.getPoliticaAprobacionId(), s.isExcedePresupuesto(),
+                s.getJustificacionExcepcion(), s.getEscaladaEn(), s.getEnviadoEn(), s.getCreadoEn(),
                 s.getLineas().stream().map(LineaSolicitudResponse::of).toList(),
                 aprobaciones.stream().map(AprobacionResponse::of).toList());
     }

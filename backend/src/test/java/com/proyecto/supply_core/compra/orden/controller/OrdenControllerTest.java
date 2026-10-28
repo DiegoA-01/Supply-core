@@ -24,6 +24,7 @@ import com.proyecto.supply_core.common.web.WebTestBase;
 import com.proyecto.supply_core.compra.orden.dto.OrdenResponse;
 import com.proyecto.supply_core.compra.orden.enums.EstadoOrden;
 import com.proyecto.supply_core.compra.orden.service.OrdenCompraService;
+import com.proyecto.supply_core.compra.orden.service.OrdenDirectaService;
 import com.proyecto.supply_core.compra.orden.service.OrdenProveedorService;
 
 @WebMvcTest({ OrdenController.class, PortalOrdenController.class })
@@ -35,8 +36,11 @@ class OrdenControllerTest extends WebTestBase {
     @MockitoBean
     private OrdenProveedorService proveedorService;
 
+    @MockitoBean
+    private OrdenDirectaService directaService;
+
     private final OrdenResponse emitida = new OrdenResponse(11L, "OC-000001", 1, null, null, EstadoOrden.EMITIDA, 50L,
-            40L, "Tech SAS", 1L, "Principal", "Calle 10", LocalDate.now().plusDays(5), new BigDecimal("21600.00"),
+            null, null, 40L, "Tech SAS", 1L, "Principal", "Calle 10", LocalDate.now().plusDays(5), new BigDecimal("21600.00"),
             new BigDecimal("4104.00"), new BigDecimal("25704.00"), null, List.of(), List.of());
 
     @Test
@@ -58,6 +62,28 @@ class OrdenControllerTest extends WebTestBase {
                         .content("{\"adjudicacionId\":50,\"bodegaDestinoId\":1,\"lugarEntrega\":\"\",\"fechaEntregaEsperada\":\"2000-01-01\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detalles", hasItem("fechaEntregaEsperada: debe ser una fecha futura")));
+    }
+
+    @Test
+    void laOrdenDirectaDeContratoEsSoloDelCompradorYValida() throws Exception {
+        when(directaService.emitir(any())).thenReturn(emitida);
+        String valido = """
+                {"solicitudId":7,"contratoId":5,"bodegaDestinoId":1,"lugarEntrega":"Calle 10","fechaEntregaEsperada":"%s"}"""
+                .formatted(LocalDate.now().plusDays(5));
+
+        mvc.perform(post("/api/ordenes/directa").header(HttpHeaders.AUTHORIZATION, bearer("COMPRADOR"))
+                        .contentType(MediaType.APPLICATION_JSON).content(valido))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.consecutivo").value("OC-000001"));
+        mvc.perform(post("/api/ordenes/directa").header(HttpHeaders.AUTHORIZATION, bearer("ADMIN_COMPRAS"))
+                        .contentType(MediaType.APPLICATION_JSON).content(valido))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/ordenes/directa").header(HttpHeaders.AUTHORIZATION, bearer("COMPRADOR"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"solicitudId\":0,\"bodegaDestinoId\":1,\"lugarEntrega\":\"\",\"fechaEntregaEsperada\":\"2000-01-01\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detalles", hasItem("contratoId: es obligatorio")))
+                .andExpect(jsonPath("$.detalles", hasItem("solicitudId: debe ser un id válido")));
     }
 
     @Test

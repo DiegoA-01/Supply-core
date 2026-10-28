@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.compra.rfq.dto.RfqPortalResponse;
 import com.proyecto.supply_core.compra.rfq.dto.RfqResumenResponse;
@@ -21,6 +23,7 @@ import jakarta.validation.constraints.Positive;
  * RFQ vistas por el proveedor (solo PROVEEDOR): únicamente aquellas a las que fue invitado
  * y que ya se abrieron. No ve a los demás invitados.
  */
+@RequiereModulo(Modulos.RFQ_COTIZACIONES)
 @RestController
 @RequestMapping("/api/portal/rfqs")
 @RequiereRol(Roles.PROVEEDOR)

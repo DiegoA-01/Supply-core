@@ -44,6 +44,7 @@ import com.proyecto.supply_core.compra.solicitud.entity.AprobacionSolicitud;
 import com.proyecto.supply_core.compra.solicitud.entity.SolicitudCompra;
 import com.proyecto.supply_core.compra.solicitud.enums.DecisionAprobacion;
 import com.proyecto.supply_core.compra.solicitud.repository.AprobacionSolicitudRepository;
+import com.proyecto.supply_core.compra.solicitud.repository.SolicitudCompraRepository;
 import com.proyecto.supply_core.documento.dto.DocumentoResponse;
 import com.proyecto.supply_core.documento.enums.EntidadDocumento;
 import com.proyecto.supply_core.documento.service.DocumentoService;
@@ -88,7 +89,7 @@ class PagoServiceTest {
     private final EmpresaRepository empresas = mock(EmpresaRepository.class);
     private final FacturaService facturas = mock(FacturaService.class);
     private final PagoService service = new PagoService(pagos, ordenes, adjudicaciones, aprobaciones, usuarios,
-            documentos, auditoria, notificaciones, empresas, facturas);
+            documentos, auditoria, notificaciones, empresas, facturas, mock(SolicitudCompraRepository.class));
 
     private MockHttpServletRequest request;
     private OrdenCompra orden;

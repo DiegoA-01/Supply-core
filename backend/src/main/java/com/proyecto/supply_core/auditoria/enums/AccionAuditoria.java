@@ -49,6 +49,30 @@ public enum AccionAuditoria {
     CENTRO_COSTO_EDITAR,
     /** Activación o desactivación de centro de costo. */
     CENTRO_COSTO_CAMBIAR_ESTADO,
+    /** Un aprobador delegó sus decisiones en otro usuario durante un rango de fechas. */
+    DELEGACION_CREAR,
+    /** Se revocó una delegación de aprobación antes de que terminara. */
+    DELEGACION_REVOCAR,
+    /** El SLA de una solicitud pendiente venció y pasó a la política de mayor tramo. */
+    SOLICITUD_ESCALAR,
+    /** Se generó una solicitud en BORRADOR con las cantidades de la reorden sugerida. */
+    REORDEN_GENERAR,
+    /** Carga o actualización masiva de productos desde Excel. */
+    PRODUCTO_CARGA_MASIVA,
+    /** Alta de un contrato con un proveedor. */
+    CONTRATO_CREAR,
+    /** Cambio de la fecha de fin de un contrato. */
+    CONTRATO_EDITAR,
+    /** Anulación de un contrato. */
+    CONTRATO_ANULAR,
+    /** Emisión de una orden directa al precio pactado de un contrato. */
+    ORDEN_EMITIR_DIRECTA,
+    /** Alta del presupuesto de un centro de costo en un mes. */
+    PRESUPUESTO_CREAR,
+    /** Corrección del monto de un presupuesto. */
+    PRESUPUESTO_EDITAR,
+    /** Se envió una solicitud con excepción: excede el presupuesto o repite un producto ya pedido. */
+    SOLICITUD_EXCEPCION,
     /** Alta de política de aprobación. */
     POLITICA_CREAR,
     /** Edición de política de aprobación. */

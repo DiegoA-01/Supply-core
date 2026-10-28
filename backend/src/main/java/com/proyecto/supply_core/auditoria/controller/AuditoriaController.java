@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.auditoria.dto.AuditoriaFiltro;
 import com.proyecto.supply_core.auditoria.dto.AuditoriaResponse;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
@@ -23,6 +25,7 @@ import jakarta.validation.constraints.Positive;
  * UC-16 Consultar auditoría. Solo lectura: no existen endpoints para crear, editar ni borrar
  * registros (los escribe cada Service al ejecutar una acción sensible).
  */
+@RequiereModulo(Modulos.AUDITORIA)
 @RestController
 @RequestMapping("/api/auditoria")
 @RequiereRol({ Roles.AUDITOR, Roles.ADMIN_SISTEMA })

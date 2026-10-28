@@ -44,6 +44,19 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     int revocarDeUsuario(@Param("usuarioId") Long usuarioId, @Param("ahora") LocalDateTime ahora);
 
     /**
+     * Revoca todas las sesiones de los usuarios de una empresa (se suspendió o canceló su suscripción). Va en SQL
+     * nativo porque la plataforma trabaja sin empresa en el contexto y {@code usuario} se filtra por empresa.
+     *
+     * @param empresaId empresa suspendida
+     * @param ahora     momento de la revocación
+     * @return filas modificadas
+     */
+    @Modifying
+    @Query(value = "UPDATE refresh_token SET revocado_en = :ahora WHERE revocado_en IS NULL "
+            + "AND usuario_id IN (SELECT id FROM usuario WHERE empresa_id = :empresaId)", nativeQuery = true)
+    int revocarDeEmpresa(@Param("empresaId") Long empresaId, @Param("ahora") LocalDateTime ahora);
+
+    /**
      * Borra los tokens ya vencidos (limpieza periódica).
      *
      * @param limite fecha anterior a la cual el token ya no sirve para nada

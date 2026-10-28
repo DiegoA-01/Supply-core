@@ -35,6 +35,7 @@ import com.proyecto.supply_core.compra.orden.repository.OrdenCompraRepository;
 import com.proyecto.supply_core.compra.solicitud.entity.AprobacionSolicitud;
 import com.proyecto.supply_core.compra.solicitud.entity.SolicitudCompra;
 import com.proyecto.supply_core.compra.solicitud.repository.AprobacionSolicitudRepository;
+import com.proyecto.supply_core.compra.solicitud.repository.SolicitudCompraRepository;
 import com.proyecto.supply_core.documento.dto.DocumentoResponse;
 import com.proyecto.supply_core.documento.enums.EntidadDocumento;
 import com.proyecto.supply_core.documento.service.DocumentoService;
@@ -95,6 +96,7 @@ public class PagoService {
     private final NotificacionService notificacionService;
     private final EmpresaRepository empresaRepository;
     private final FacturaService facturaService;
+    private final SolicitudCompraRepository solicitudRepository;
 
     /**
      * @param pagoRepository         pagos
@@ -107,12 +109,14 @@ public class PagoService {
      * @param notificacionService    avisos
      * @param empresaRepository      tope de anticipos de la empresa
      * @param facturaService         factura que respalda el pago final
+     * @param solicitudRepository    solicitud de una orden directa de contrato (segregación)
      */
     public PagoService(PagoRepository pagoRepository, OrdenCompraRepository ordenRepository,
             AdjudicacionRepository adjudicacionRepository, AprobacionSolicitudRepository aprobacionRepository,
             UsuarioRepository usuarioRepository, DocumentoService documentoService, AuditoriaService auditoriaService,
             NotificacionService notificacionService, EmpresaRepository empresaRepository,
-            FacturaService facturaService) {
+            FacturaService facturaService, SolicitudCompraRepository solicitudRepository) {
+        this.solicitudRepository = solicitudRepository;
         this.empresaRepository = empresaRepository;
         this.facturaService = facturaService;
         this.pagoRepository = pagoRepository;
@@ -357,16 +361,30 @@ public class PagoService {
         Set<Long> ids = new HashSet<>();
         ids.add(o.getUsuarioId());
         versiones.forEach(v -> ids.add(v.getUsuarioId()));
-        adjudicacionRepository.findDetalleById(o.getAdjudicacionId()).ifPresent((Adjudicacion adj) -> {
-            ids.add(adj.getUsuarioId());
-            ids.add(adj.getAprobadoPorUsuarioId());
-            SolicitudCompra s = adj.getRfq().getSolicitud();
-            ids.add(s.getUsuarioSolicitanteId());
-            aprobacionRepository.findBySolicitudCompraIdOrderByDecididoEnAscIdAsc(s.getId()).stream()
-                    .map(AprobacionSolicitud::getUsuarioAprobadorId).forEach(ids::add);
-        });
+        if (o.getAdjudicacionId() != null) {
+            adjudicacionRepository.findDetalleById(o.getAdjudicacionId()).ifPresent((Adjudicacion adj) -> {
+                ids.add(adj.getUsuarioId());
+                ids.add(adj.getAprobadoPorUsuarioId());
+                agregarDeSolicitud(adj.getRfq().getSolicitud(), ids);
+            });
+        } else if (o.getSolicitudId() != null) {
+            // orden directa de contrato: no hay adjudicación, el origen es la solicitud aprobada
+            solicitudRepository.findById(o.getSolicitudId()).ifPresent(s -> agregarDeSolicitud(s, ids));
+        }
         ids.removeIf(Objects::isNull);
         return ids;
+    }
+
+    /**
+     * Agrega al conjunto de involucrados al solicitante y a quienes decidieron la solicitud.
+     *
+     * @param s   solicitud de origen de la compra
+     * @param ids conjunto que se completa
+     */
+    private void agregarDeSolicitud(SolicitudCompra s, Set<Long> ids) {
+        ids.add(s.getUsuarioSolicitanteId());
+        aprobacionRepository.findBySolicitudCompraIdOrderByDecididoEnAscIdAsc(s.getId()).stream()
+                .map(AprobacionSolicitud::getUsuarioAprobadorId).forEach(ids::add);
     }
 
     /**

@@ -2,6 +2,7 @@ package com.proyecto.supply_core.catalogo.repository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -47,6 +48,14 @@ public interface CategoriaProductoRepository extends JpaRepository<CategoriaProd
      * @return {@code true} si existe
      */
     boolean existsByNombreIgnoreCase(String nombre);
+
+    /**
+     * Busca una categoría por nombre sin distinguir mayúsculas (carga masiva).
+     *
+     * @param nombre nombre de la categoría
+     * @return categoría, si existe
+     */
+    Optional<CategoriaProducto> findByNombreIgnoreCase(String nombre);
 
     /**
      * Igual que {@link #existsByNombreIgnoreCase} excluyendo una categoría (ediciones).

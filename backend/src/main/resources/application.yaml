@@ -63,6 +63,10 @@ app:
   admin:
     email: ${ADMIN_EMAIL:admin@supplycore.local}
     password: ${ADMIN_PASSWORD:}      # solo se usa si aún no existe un ADMIN_SISTEMA
+  plataforma:
+    admin-correo: ${PLATAFORMA_ADMIN_CORREO:dueno@supplycore.local}
+    admin-password: ${PLATAFORMA_ADMIN_PASSWORD:}   # 12 a 72 caracteres; solo se usa si aún no hay usuario de plataforma
+    cache-segundos: ${PLATAFORMA_CACHE_SEGUNDOS:30} # cuánto se recuerda la suscripción y los módulos de una empresa
 
 springdoc:
   swagger-ui:

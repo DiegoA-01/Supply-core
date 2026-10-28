@@ -54,6 +54,8 @@ import com.proyecto.supply_core.inventario.entity.Producto;
 import com.proyecto.supply_core.inventario.repository.ProductoRepository;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
+import com.proyecto.supply_core.presupuesto.dto.EvaluacionPresupuesto;
+import com.proyecto.supply_core.presupuesto.service.PresupuestoService;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.usuario.entity.Rol;
@@ -73,8 +75,9 @@ class SolicitudServiceTest {
     private final ConsecutivoGenerator consecutivos = mock(ConsecutivoGenerator.class);
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
     private final NotificacionService notificaciones = mock(NotificacionService.class);
+    private final PresupuestoService presupuestos = mock(PresupuestoService.class);
     private final SolicitudService service = new SolicitudService(solicitudes, aprobaciones, productos, unidades,
-            unidadService, usuarios, centros, politicas, consecutivos, auditoria, notificaciones);
+            unidadService, usuarios, centros, politicas, consecutivos, auditoria, notificaciones, presupuestos);
 
     private MockHttpServletRequest request;
     private UnidadMedida und;
@@ -107,6 +110,7 @@ class SolicitudServiceTest {
         when(usuarios.findById(10L)).thenReturn(Optional.of(yo));
         when(centros.existsByIdAndActivoTrue(5L)).thenReturn(true);
         when(consecutivos.siguiente(ConsecutivoGenerator.SOLICITUD)).thenReturn("SOL-000001");
+        when(presupuestos.evaluar(any(), any(), any(), any())).thenReturn(EvaluacionPresupuesto.SIN_PRESUPUESTO);
         when(solicitudes.save(any())).thenAnswer(i -> {
             SolicitudCompra s = i.getArgument(0);
             s.setId(1L);
@@ -198,6 +202,88 @@ class SolicitudServiceTest {
     }
 
     @Test
+    void excederElPresupuestoSinJustificacionSeRechazaYNoCambiaLaSolicitud() {
+        SolicitudCompra s = existente(EstadoSolicitud.BORRADOR, 10L, linea(100L, 1L, "10")); // 10 x 500 = 5.000
+        when(presupuestos.evaluar(5L, s.getFechaRequerida(), new BigDecimal("5000.00"), 1L))
+                .thenReturn(excedido());
+
+        var ex = assertThrows(NegocioException.class, () -> service.enviar(1L, "   "));
+
+        assertEquals("PRESUPUESTO_EXCEDIDO", ex.getCodigo());
+        assertTrue(ex.getMessage().contains("$ 8000.00"));
+        assertEquals(EstadoSolicitud.BORRADOR, s.getEstado());
+        assertFalse(s.isExcedePresupuesto());
+        verify(notificaciones, never()).notificarRol(anyString(), any(), anyString());
+    }
+
+    @Test
+    void excederConJustificacionPasaPorLaPoliticaDeMayorTramoYQuedaAuditado() {
+        SolicitudCompra s = existente(EstadoSolicitud.BORRADOR, 10L, linea(100L, 1L, "10"));
+        when(presupuestos.evaluar(any(), any(), any(), any())).thenReturn(excedido());
+        when(politicas.deMayorTramo(TipoPolitica.SOLICITUD)).thenReturn(Optional.of(politica(9L, "ADMIN_COMPRAS")));
+
+        var r = service.enviar(1L, "  Obra urgente del cliente  ");
+
+        assertEquals(EstadoSolicitud.PENDIENTE_APROBACION, r.estado());
+        assertEquals(9L, r.politicaAprobacionId());
+        assertTrue(r.excedePresupuesto());
+        assertEquals("Obra urgente del cliente", s.getJustificacionExcepcion());
+        verify(politicas, never()).aplicable(any(), any());
+        verify(auditoria).exito(eq(AccionAuditoria.SOLICITUD_EXCEPCION), eq(EntidadAuditada.SOLICITUD_COMPRA), eq(1L),
+                anyString());
+    }
+
+    @Test
+    void excederSinPoliticaQueLaAutoriceNoSePuedeEnviar() {
+        existente(EstadoSolicitud.BORRADOR, 10L, linea(100L, 1L, "10"));
+        when(presupuestos.evaluar(any(), any(), any(), any())).thenReturn(excedido());
+        when(politicas.deMayorTramo(TipoPolitica.SOLICITUD)).thenReturn(Optional.empty());
+
+        var ex = assertThrows(NegocioException.class, () -> service.enviar(1L, "Urgente"));
+
+        assertEquals("PRESUPUESTO_EXCEDIDO", ex.getCodigo());
+        assertTrue(ex.getMessage().contains("política de aprobación"));
+    }
+
+    @Test
+    void unaSolicitudDuplicadaSinJustificacionSeRechaza() {
+        SolicitudCompra s = existente(EstadoSolicitud.BORRADOR, 10L, linea(100L, 1L, "1"));
+        when(solicitudes.consecutivosConProductos(eq(5L), any(), any(), eq(1L))).thenReturn(List.of("SOL-000007"));
+
+        var ex = assertThrows(NegocioException.class, () -> service.enviar(1L));
+
+        assertEquals("SOLICITUD_DUPLICADA", ex.getCodigo());
+        assertTrue(ex.getMessage().contains("SOL-000007"));
+        assertEquals(EstadoSolicitud.BORRADOR, s.getEstado());
+    }
+
+    @Test
+    void unaDuplicadaConJustificacionSeEnviaPorLaPoliticaNormalYQuedaAuditada() {
+        SolicitudCompra s = existente(EstadoSolicitud.BORRADOR, 10L, linea(100L, 1L, "1"));
+        when(solicitudes.consecutivosConProductos(eq(5L), any(), any(), eq(1L))).thenReturn(List.of("SOL-000007"));
+        when(politicas.aplicable(any(), any())).thenReturn(Optional.empty());
+
+        var r = service.enviar(1L, "Es para otra sede");
+
+        assertEquals(EstadoSolicitud.APROBADA, r.estado());
+        assertFalse(r.excedePresupuesto());
+        assertEquals("Es para otra sede", s.getJustificacionExcepcion());
+        verify(auditoria).exito(eq(AccionAuditoria.SOLICITUD_EXCEPCION), eq(EntidadAuditada.SOLICITUD_COMPRA), eq(1L),
+                anyString());
+    }
+
+    @Test
+    void unaJustificacionQueNoHaceFaltaNoSeGuardaNiSeAudita() {
+        SolicitudCompra s = existente(EstadoSolicitud.BORRADOR, 10L, linea(100L, 1L, "1"));
+        when(politicas.aplicable(any(), any())).thenReturn(Optional.empty());
+
+        service.enviar(1L, "Por si acaso");
+
+        assertNull(s.getJustificacionExcepcion());
+        verify(auditoria, never()).exito(eq(AccionAuditoria.SOLICITUD_EXCEPCION), any(), any(), anyString());
+    }
+
+    @Test
     void soloElSolicitanteEditaYSoloEnBorradorODevuelta() {
         existente(EstadoSolicitud.BORRADOR, 99L, linea(100L, 1L, "1"));
         assertThrows(AccesoDenegadoException.class, () -> service.enviar(1L));
@@ -254,6 +340,12 @@ class SolicitudServiceTest {
         when(solicitudes.findWithLineasById(1L)).thenReturn(Optional.of(s));
         when(aprobaciones.findBySolicitudCompraIdOrderByDecididoEnAscIdAsc(1L)).thenReturn(List.of());
         return s;
+    }
+
+    /** Presupuesto de $ 10.000 con $ 8.000 comprometidos: una solicitud de $ 5.000 lo excede. */
+    private static EvaluacionPresupuesto excedido() {
+        return new EvaluacionPresupuesto(true, new BigDecimal("10000.00"), new BigDecimal("8000.00"),
+                new BigDecimal("2000.00"), true);
     }
 
     private UnidadMedida unidad(Long id, String codigo) {

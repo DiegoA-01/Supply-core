@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.despacho.dto.AnulacionRequest;
 import com.proyecto.supply_core.despacho.dto.DespachoRequest;
@@ -31,6 +33,7 @@ import jakarta.validation.constraints.Positive;
  * Despachos (remisiones de salida). Los arma y confirma el ALMACENISTA; anula el almacenista
  * o ADMIN_COMPRAS; consultan compras y auditoría.
  */
+@RequiereModulo(Modulos.DESPACHOS)
 @RestController
 @RequestMapping("/api/despachos")
 @RequiereRol({ Roles.ALMACENISTA, Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.AUDITOR })

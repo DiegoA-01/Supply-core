@@ -15,6 +15,12 @@ public enum EntidadAuditada {
     SEDE,
     /** Tabla {@code centro_costo}. */
     CENTRO_COSTO,
+    /** Tabla {@code delegacion_aprobacion}. */
+    DELEGACION,
+    /** Tabla {@code presupuesto}. */
+    PRESUPUESTO,
+    /** Tabla {@code contrato_proveedor}. */
+    CONTRATO,
     /** Tabla {@code politica_aprobacion}. */
     POLITICA_APROBACION,
     /** Tabla {@code categoria_producto}. */

@@ -14,8 +14,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.compra.solicitud.dto.DecisionRequest;
+import com.proyecto.supply_core.compra.solicitud.dto.EnviarSolicitudRequest;
 import com.proyecto.supply_core.compra.solicitud.dto.SolicitudRequest;
 import com.proyecto.supply_core.compra.solicitud.dto.SolicitudResponse;
 import com.proyecto.supply_core.compra.solicitud.dto.SolicitudResumenResponse;
@@ -34,6 +37,7 @@ import jakarta.validation.constraints.Positive;
  * <p>El solicitante crea, edita y envía; quien tenga el rol de la política decide
  * (la verificación del rol y la segregación de funciones las hace el Service).</p>
  */
+@RequiereModulo(Modulos.COMPRAS)
 @RestController
 @RequestMapping("/api/solicitudes")
 @UsuarioInterno
@@ -79,15 +83,18 @@ public class SolicitudController {
     }
 
     /**
-     * Envía la solicitud a aprobación (o queda APROBADA si ninguna política aplica).
+     * Envía la solicitud a aprobación (o queda APROBADA si ninguna política aplica). El cuerpo es opcional: con una
+     * justificación se puede enviar aunque exceda el presupuesto del centro de costo o repita un producto ya pedido.
      *
-     * @param id id positivo
+     * @param id      id positivo
+     * @param request justificación de la excepción (opcional)
      * @return solicitud enviada
      */
     @PostMapping("/{id}/enviar")
     @RequiereRol(Roles.SOLICITANTE)
-    public SolicitudResponse enviar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
-        return solicitudService.enviar(id);
+    public SolicitudResponse enviar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
+            @Valid @RequestBody(required = false) EnviarSolicitudRequest request) {
+        return solicitudService.enviar(id, request == null ? null : request.justificacionExcepcion());
     }
 
     /**

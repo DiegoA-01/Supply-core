@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.compra.analisis.dto.PesosRequest;
 import com.proyecto.supply_core.compra.analisis.dto.PesosResponse;
 import com.proyecto.supply_core.compra.analisis.service.PesosService;
@@ -18,6 +20,7 @@ import com.proyecto.supply_core.security.context.Roles;
 import jakarta.validation.Valid;
 
 /** Matriz de pesos de evaluación. La consultan los internos; la cambia ADMIN_COMPRAS (nueva versión). */
+@RequiereModulo(Modulos.RFQ_COTIZACIONES)
 @RestController
 @RequestMapping("/api/config-pesos")
 @UsuarioInterno

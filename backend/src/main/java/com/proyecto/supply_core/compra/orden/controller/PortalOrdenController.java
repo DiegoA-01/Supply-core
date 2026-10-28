@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.compra.orden.dto.MotivoOrdenRequest;
 import com.proyecto.supply_core.compra.orden.dto.OrdenResponse;
@@ -24,6 +26,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 
 /** Órdenes vistas y atendidas por el proveedor (UC-12). Solo PROVEEDOR y solo las suyas. */
+@RequiereModulo(Modulos.ORDENES_PAGOS)
 @RestController
 @RequestMapping("/api/portal/ordenes")
 @RequiereRol(Roles.PROVEEDOR)

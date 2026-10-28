@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -24,7 +26,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.proyecto.supply_core.auditoria.enums.AccionAuditoria;
 import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
+import com.proyecto.supply_core.common.exception.AccesoDenegadoException;
 import com.proyecto.supply_core.common.exception.NoAutenticadoException;
+import com.proyecto.supply_core.plataforma.service.AccesoEmpresaService;
 import com.proyecto.supply_core.proveedor.entity.Proveedor;
 import com.proyecto.supply_core.proveedor.enums.EstadoProveedor;
 import com.proyecto.supply_core.proveedor.repository.ProveedorRepository;
@@ -44,6 +48,7 @@ class AuthServiceTest {
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
     private final ProveedorRepository proveedores = mock(ProveedorRepository.class);
     private final RefreshTokenService refreshTokens = mock(RefreshTokenService.class);
+    private final AccesoEmpresaService accesoEmpresa = mock(AccesoEmpresaService.class);
     private AuthService service;
     private Usuario usuario;
 
@@ -52,7 +57,7 @@ class AuthServiceTest {
         JwtUtil jwt = new JwtUtil(new JwtProperties("clave-de-prueba-de-al-menos-32-caracteres!!", 60));
         when(refreshTokens.emitir(5L)).thenReturn("refresh-1");
         service = new AuthService(repo, encoder, jwt, auditoria, proveedores, refreshTokens,
-                new SesionProperties(7, 3, 15, 20));
+                new SesionProperties(7, 3, 15, 20), accesoEmpresa);
 
         Rol rol = new Rol();
         rol.setCodigo("COMPRADOR");
@@ -64,6 +69,27 @@ class AuthServiceTest {
         usuario.setHashPassword(encoder.encode("Secreta123"));
         usuario.getRoles().add(rol);
         when(repo.findByCorreoIgnoreCase("ana@demo.com")).thenReturn(Optional.of(usuario));
+    }
+
+    @Test
+    void unaEmpresaSuspendidaNoEntraAunqueLaClaveSeaCorrecta() {
+        doThrow(new AccesoDenegadoException("SUSCRIPCION_SUSPENDIDA", "suspendida"))
+                .when(accesoEmpresa).exigirPuedeEntrar(1L);
+
+        var ex = assertThrows(AccesoDenegadoException.class,
+                () -> service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123")));
+
+        assertEquals("SUSCRIPCION_SUSPENDIDA", ex.getCodigo());
+        verify(refreshTokens, never()).emitir(any());
+    }
+
+    @Test
+    void conUnaClaveMalaNoSeRevelaQueLaEmpresaEstaSuspendida() {
+        doThrow(new AccesoDenegadoException("SUSCRIPCION_SUSPENDIDA", "suspendida"))
+                .when(accesoEmpresa).exigirPuedeEntrar(1L);
+
+        assertThrows(NoAutenticadoException.class,
+                () -> service.login(new LoginRequest("demo", "ana@demo.com", "ClaveMala999")));
     }
 
     @Test

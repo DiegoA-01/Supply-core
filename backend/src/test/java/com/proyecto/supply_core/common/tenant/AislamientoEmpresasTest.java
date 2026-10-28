@@ -6,7 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -42,6 +45,7 @@ import com.proyecto.supply_core.catalogo.entity.CategoriaProducto;
 import com.proyecto.supply_core.catalogo.repository.CategoriaProductoRepository;
 import com.proyecto.supply_core.catalogo.repository.UnidadMedidaRepository;
 import com.proyecto.supply_core.common.util.ConsecutivoGenerator;
+import com.proyecto.supply_core.compra.solicitud.service.SlaAprobacionService;
 import com.proyecto.supply_core.empresa.entity.CentroCosto;
 import com.proyecto.supply_core.empresa.entity.Sede;
 import com.proyecto.supply_core.empresa.repository.CentroCostoRepository;
@@ -105,6 +109,9 @@ class AislamientoEmpresasTest {
     @Autowired private RolRepository roles;
     @Autowired private StockProductoBodegaRepository stock;
     @Autowired private PlatformTransactionManager transacciones;
+    @Autowired private SlaAprobacionService sla;
+    @Autowired private com.proyecto.supply_core.plataforma.service.TotpService totp;
+    @Autowired private com.proyecto.supply_core.plataforma.repository.UsuarioPlataformaRepository usuariosPlataforma;
 
     private Long empresaA;
     private Long empresaB;
@@ -136,6 +143,7 @@ class AislamientoEmpresasTest {
         jdbc.update("INSERT INTO empresa (razon_social, nit, moneda_base, codigo_publico) VALUES (?, ?, 'COP', ?)",
                 "Empresa B S.A.S.", "900000999-9", "empresa-b");
         empresaB = jdbc.queryForObject("SELECT id FROM empresa WHERE codigo_publico = 'empresa-b'", Long.class);
+        jdbc.update("INSERT INTO suscripcion (empresa_id, plan_id, estado) SELECT ?, id, 'ACTIVA' FROM plan WHERE codigo = 'EMPRESARIAL'", empresaB);
 
         Long[] a = sembrar(empresaA, "Cable de la empresa A", "a@x.com");
         Long[] b = sembrar(empresaB, "Cable de la empresa B", "b@x.com");
@@ -812,5 +820,923 @@ class AislamientoEmpresasTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ordenes.length()").value(2))
                 .andExpect(jsonPath("$.totalOrdenado").value(2000.0));
+    }
+
+    // ------------------------------------------------------------------ presupuesto (18-a)
+
+    private Long centroDe(Long empresa) {
+        return jdbc.queryForObject("SELECT id FROM centro_costo WHERE empresa_id = ? AND codigo = 'CC-1'", Long.class,
+                empresa);
+    }
+
+    private static String presupuestoJson(Long centro, int anio, int mes, int monto) {
+        return "{\"centroCostoId\":" + centro + ",\"anio\":" + anio + ",\"mes\":" + mes + ",\"monto\":" + monto + "}";
+    }
+
+    @Test
+    void cadaEmpresaDefineYVeSoloSusPresupuestos() throws Exception {
+        Long centroA = centroDe(empresaA);
+        Long centroB = centroDe(empresaB);
+        String adminA = token(empresaA, usuarioA, "ADMIN_COMPRAS");
+        String adminB = token(empresaB, usuarioB, "ADMIN_COMPRAS");
+
+        mvc.perform(post("/api/presupuestos").header(HttpHeaders.AUTHORIZATION, adminA)
+                        .contentType(MediaType.APPLICATION_JSON).content(presupuestoJson(centroA, 2026, 11, 10000)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.comprometido").value(0.0));
+        // A no puede ponerle presupuesto a un centro de costo de B
+        mvc.perform(post("/api/presupuestos").header(HttpHeaders.AUTHORIZATION, adminA)
+                        .contentType(MediaType.APPLICATION_JSON).content(presupuestoJson(centroB, 2026, 11, 10000)))
+                .andExpect(status().isNotFound());
+        // el mismo mes en B no choca con el de A, pero repetirlo dentro de A sí
+        mvc.perform(post("/api/presupuestos").header(HttpHeaders.AUTHORIZATION, adminB)
+                        .contentType(MediaType.APPLICATION_JSON).content(presupuestoJson(centroB, 2026, 11, 777)))
+                .andExpect(status().isCreated());
+        mvc.perform(post("/api/presupuestos").header(HttpHeaders.AUTHORIZATION, adminA)
+                        .contentType(MediaType.APPLICATION_JSON).content(presupuestoJson(centroA, 2026, 11, 5)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.codigo").value("PRESUPUESTO_DUPLICADO"));
+
+        mvc.perform(get("/api/presupuestos?anio=2026").header(HttpHeaders.AUTHORIZATION, adminA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].centroCostoId").value(centroA))
+                .andExpect(jsonPath("$[0].monto").value(10000.0));
+        mvc.perform(get("/api/presupuestos?anio=2026").header(HttpHeaders.AUTHORIZATION, adminB))
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].centroCostoId").value(centroB))
+                .andExpect(jsonPath("$[0].monto").value(777.0));
+
+        Long presupuestoB = jdbc.queryForObject("SELECT id FROM presupuesto WHERE empresa_id = ?", Long.class,
+                empresaB);
+        mvc.perform(get("/api/presupuestos/" + presupuestoB).header(HttpHeaders.AUTHORIZATION, adminA))
+                .andExpect(status().isNotFound());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/presupuestos/" + presupuestoB).header(HttpHeaders.AUTHORIZATION, adminA)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"monto\":1}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void elControlDePresupuestoYDeDuplicadasUsaLaBaseRealYSoloCuentaLaEmpresaDeLaSesion() throws Exception {
+        Long centroA = centroDe(empresaA);
+        Long unidad = jdbc.queryForObject("SELECT unidad_medida_id FROM producto WHERE id = ?", Long.class, productoA);
+        java.math.BigDecimal costoOriginal = jdbc.queryForObject("SELECT costo_referencia FROM producto WHERE id = ?",
+                java.math.BigDecimal.class, productoA);
+        Long centroOriginal = jdbc.queryForObject("SELECT centro_costo_id FROM usuario WHERE id = ?", Long.class,
+                usuarioA);
+        String adminA = token(empresaA, usuarioA, "ADMIN_COMPRAS");
+        String solicitanteA = token(empresaA, usuarioA, "SOLICITANTE");
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        try {
+            jdbc.update("UPDATE producto SET costo_referencia = 1000 WHERE id = ?", productoA);
+            jdbc.update("UPDATE usuario SET centro_costo_id = ? WHERE id = ?", centroA, usuarioA);
+            mvc.perform(post("/api/presupuestos").header(HttpHeaders.AUTHORIZATION, adminA).contentType(json)
+                            .content(presupuestoJson(centroA, 2099, 1, 5000)))
+                    .andExpect(status().isCreated());
+
+            // 1) 4 x $ 1.000 = $ 4.000 dentro de $ 5.000 y sin política: queda aprobada
+            Long s1 = crearSolicitud(solicitanteA, productoA, unidad, 4);
+            mvc.perform(post("/api/solicitudes/" + s1 + "/enviar").header(HttpHeaders.AUTHORIZATION, solicitanteA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("APROBADA"))
+                    .andExpect(jsonPath("$.montoEstimado").value(4000.0));
+
+            // 2) $ 1.000 más llega justo al tope, pero repite el producto de la solicitud aprobada
+            Long s2 = crearSolicitud(solicitanteA, productoA, unidad, 1);
+            mvc.perform(post("/api/solicitudes/" + s2 + "/enviar").header(HttpHeaders.AUTHORIZATION, solicitanteA))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("SOLICITUD_DUPLICADA"));
+            mvc.perform(post("/api/solicitudes/" + s2 + "/enviar").header(HttpHeaders.AUTHORIZATION, solicitanteA)
+                            .contentType(json).content("{\"justificacionExcepcion\":\"Es para otra obra\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("APROBADA"))
+                    .andExpect(jsonPath("$.excedePresupuesto").value(false))
+                    .andExpect(jsonPath("$.justificacionExcepcion").value("Es para otra obra"));
+
+            // 3) con $ 5.000 ya comprometidos, otra de $ 1.000 excede; sin política que la autorice no hay excepción
+            Long s3 = crearSolicitud(solicitanteA, productoA, unidad, 1);
+            mvc.perform(post("/api/solicitudes/" + s3 + "/enviar").header(HttpHeaders.AUTHORIZATION, solicitanteA))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("PRESUPUESTO_EXCEDIDO"));
+            mvc.perform(post("/api/solicitudes/" + s3 + "/enviar").header(HttpHeaders.AUTHORIZATION, solicitanteA)
+                            .contentType(json).content("{\"justificacionExcepcion\":\"Urgente\"}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("PRESUPUESTO_EXCEDIDO"));
+
+            // 4) la base suma lo comprometido; B no ve nada de esto
+            mvc.perform(get("/api/presupuestos?anio=2099").header(HttpHeaders.AUTHORIZATION, adminA))
+                    .andExpect(jsonPath("$.length()").value(1))
+                    .andExpect(jsonPath("$[0].comprometido").value(5000.0))
+                    .andExpect(jsonPath("$[0].disponible").value(0.0))
+                    .andExpect(jsonPath("$[0].usoPct").value(100.0));
+            mvc.perform(get("/api/presupuestos?anio=2099")
+                            .header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "ADMIN_COMPRAS")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(0));
+        } finally {
+            // las solicitudes de la prueba no deben dejar compras abiertas que choquen con otras pruebas
+            jdbc.update("UPDATE solicitud_compra SET estado = 'CANCELADA' WHERE centro_costo_id = ? "
+                    + "AND estado IN ('PENDIENTE_APROBACION', 'APROBADA', 'ADJUDICADA')", centroA);
+            jdbc.update("UPDATE producto SET costo_referencia = ? WHERE id = ?", costoOriginal, productoA);
+            jdbc.update("UPDATE usuario SET centro_costo_id = ? WHERE id = ?", centroOriginal, usuarioA);
+        }
+    }
+
+    /** Crea una solicitud en BORRADOR de una sola línea para el 15 de enero de 2099 y devuelve su id. */
+    private Long crearSolicitud(String bearer, Long producto, Long unidad, int cantidad) throws Exception {
+        return crearSolicitud(bearer, producto, unidad, cantidad, "2099-01-15");
+    }
+
+    /** Igual que {@link #crearSolicitud(String, Long, Long, int)} pero para la fecha requerida indicada. */
+    private Long crearSolicitud(String bearer, Long producto, Long unidad, int cantidad, String fecha) throws Exception {
+        String cuerpo = "{\"motivo\":\"Prueba de presupuesto\",\"fechaRequerida\":\"" + fecha + "\",\"lineas\":[{"
+                + "\"productoId\":" + producto + ",\"unidadMedidaId\":" + unidad + ",\"cantidad\":" + cantidad + "}]}";
+        String respuesta = mvc.perform(post("/api/solicitudes").header(HttpHeaders.AUTHORIZATION, bearer)
+                        .contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return new com.fasterxml.jackson.databind.ObjectMapper().readTree(respuesta).get("id").asLong();
+    }
+
+    // ------------------------------------------------------------------ contratos y orden directa (18-b)
+
+    private static String contratoJson(Long proveedor, String numero, Long producto, String precio, String tope,
+            java.time.LocalDate desde, java.time.LocalDate hasta) {
+        return "{\"proveedorId\":" + proveedor + ",\"numero\":\"" + numero + "\",\"vigenteDesde\":\"" + desde
+                + "\",\"vigenteHasta\":\"" + hasta + "\",\"precios\":[{\"productoId\":" + producto
+                + ",\"precioUnitario\":" + precio + ",\"impuestoPct\":19" + (tope == null ? "" : ",\"cantidadMaxima\":" + tope)
+                + "}]}";
+    }
+
+    @Test
+    void cadaEmpresaDefineYVeSoloSusContratosYElSolapeSeDetectaEnLaBase() throws Exception {
+        String estadoA = jdbc.queryForObject("SELECT estado FROM proveedor WHERE id = ?", String.class, proveedorA);
+        String estadoB = jdbc.queryForObject("SELECT estado FROM proveedor WHERE id = ?", String.class, proveedorB);
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        String adminA = token(empresaA, usuarioA, "ADMIN_COMPRAS");
+        String adminB = token(empresaB, usuarioB, "ADMIN_COMPRAS");
+        java.time.LocalDate hoy = java.time.LocalDate.now();
+        try {
+            jdbc.update("UPDATE proveedor SET estado = 'HABILITADO' WHERE id IN (?, ?)", proveedorA, proveedorB);
+
+            mvc.perform(post("/api/contratos").header(HttpHeaders.AUTHORIZATION, adminA).contentType(json)
+                            .content(contratoJson(proveedorA, "ct-fuga", productoA, "900", "10", hoy, hoy.plusDays(30))))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.numero").value("CT-FUGA"))
+                    .andExpect(jsonPath("$.vigente").value(true));
+            // A no puede firmar con un proveedor de B ni poner un producto de B
+            mvc.perform(post("/api/contratos").header(HttpHeaders.AUTHORIZATION, adminA).contentType(json)
+                            .content(contratoJson(proveedorB, "CT-X", productoA, "900", null, hoy, hoy.plusDays(30))))
+                    .andExpect(status().isNotFound());
+            mvc.perform(post("/api/contratos").header(HttpHeaders.AUTHORIZATION, adminA).contentType(json)
+                            .content(contratoJson(proveedorA, "CT-Y", productoB, "900", null, hoy, hoy.plusDays(30))))
+                    .andExpect(status().isBadRequest());
+            // el mismo número en B no choca con el de A, pero repetirlo dentro de A sí
+            mvc.perform(post("/api/contratos").header(HttpHeaders.AUTHORIZATION, adminB).contentType(json)
+                            .content(contratoJson(proveedorB, "CT-FUGA", productoB, "800", null, hoy, hoy.plusDays(30))))
+                    .andExpect(status().isCreated());
+            mvc.perform(post("/api/contratos").header(HttpHeaders.AUTHORIZATION, adminA).contentType(json)
+                            .content(contratoJson(proveedorA, "ct-fuga", productoA, "900", null, hoy.plusDays(60), hoy.plusDays(90))))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("NUMERO_DUPLICADO"));
+            // otro contrato activo del mismo proveedor y producto con fechas que se cruzan
+            mvc.perform(post("/api/contratos").header(HttpHeaders.AUTHORIZATION, adminA).contentType(json)
+                            .content(contratoJson(proveedorA, "CT-SOLAPE", productoA, "850", null, hoy.plusDays(10), hoy.plusDays(40))))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("CONTRATO_SOLAPADO"));
+            // en fechas que no se cruzan sí se puede
+            mvc.perform(post("/api/contratos").header(HttpHeaders.AUTHORIZATION, adminA).contentType(json)
+                            .content(contratoJson(proveedorA, "CT-SIGUIENTE", productoA, "850", null, hoy.plusDays(31), hoy.plusDays(90))))
+                    .andExpect(status().isCreated());
+
+            mvc.perform(get("/api/contratos").header(HttpHeaders.AUTHORIZATION, adminA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contenido[?(@.numero=='CT-FUGA')]").isNotEmpty())
+                    .andExpect(jsonPath("$.contenido[?(@.numero=='CT-SIGUIENTE')]").isNotEmpty())
+                    .andExpect(jsonPath("$.contenido[?(@.proveedorId != " + proveedorA + ")]").isEmpty());
+            mvc.perform(get("/api/contratos").header(HttpHeaders.AUTHORIZATION, adminB))
+                    .andExpect(jsonPath("$.contenido.length()").value(1))
+                    .andExpect(jsonPath("$.contenido[0].proveedorId").value(proveedorB));
+            Long contratoB = jdbc.queryForObject("SELECT id FROM contrato_proveedor WHERE empresa_id = ?", Long.class,
+                    empresaB);
+            mvc.perform(get("/api/contratos/" + contratoB).header(HttpHeaders.AUTHORIZATION, adminA))
+                    .andExpect(status().isNotFound());
+            mvc.perform(patch("/api/contratos/" + contratoB + "/anular").header(HttpHeaders.AUTHORIZATION, adminA)
+                            .contentType(json).content("{\"motivo\":\"Intento desde otra empresa\"}"))
+                    .andExpect(status().isNotFound());
+        } finally {
+            // se borran solo los contratos de esta prueba: así no se cruzan en fechas con los de otras
+            jdbc.update("DELETE FROM contrato_precio WHERE contrato_id IN (SELECT id FROM contrato_proveedor "
+                    + "WHERE numero IN ('CT-FUGA', 'CT-SIGUIENTE'))");
+            jdbc.update("DELETE FROM contrato_proveedor WHERE numero IN ('CT-FUGA', 'CT-SIGUIENTE')");
+            jdbc.update("UPDATE proveedor SET estado = ? WHERE id = ?", estadoA, proveedorA);
+            jdbc.update("UPDATE proveedor SET estado = ? WHERE id = ?", estadoB, proveedorB);
+        }
+    }
+
+    @Test
+    void laOrdenDirectaDeContratoUsaLaBaseRealRespetaElTopeYNoCruzaEmpresas() throws Exception {
+        Long centroA = centroDe(empresaA);
+        Long unidad = jdbc.queryForObject("SELECT unidad_medida_id FROM producto WHERE id = ?", Long.class, productoA);
+        java.math.BigDecimal costoOriginal = jdbc.queryForObject("SELECT costo_referencia FROM producto WHERE id = ?",
+                java.math.BigDecimal.class, productoA);
+        Long centroOriginal = jdbc.queryForObject("SELECT centro_costo_id FROM usuario WHERE id = ?", Long.class,
+                usuarioA);
+        String estadoA = jdbc.queryForObject("SELECT estado FROM proveedor WHERE id = ?", String.class, proveedorA);
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        String adminA = token(empresaA, usuarioA, "ADMIN_COMPRAS");
+        String solicitanteA = token(empresaA, usuarioA, "SOLICITANTE");
+        String compradorA = token(empresaA, usuarioA2, "COMPRADOR");
+        String compradorB = token(empresaB, usuarioB, "COMPRADOR");
+        java.time.LocalDate hoy = java.time.LocalDate.now();
+        try {
+            jdbc.update("UPDATE producto SET costo_referencia = 1000 WHERE id = ?", productoA);
+            jdbc.update("UPDATE usuario SET centro_costo_id = ? WHERE id = ?", centroA, usuarioA);
+            jdbc.update("UPDATE proveedor SET estado = 'HABILITADO' WHERE id = ?", proveedorA);
+            // precio pactado $ 900 (el de referencia es $ 1.000), con tope de 10 unidades
+            String respuestaContrato = mvc.perform(post("/api/contratos").header(HttpHeaders.AUTHORIZATION, adminA)
+                            .contentType(json).content(contratoJson(proveedorA, "CT-DIRECTA", productoA, "900", "10",
+                                    hoy.minusDays(1), hoy.plusDays(30))))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+            Long contrato = new com.fasterxml.jackson.databind.ObjectMapper().readTree(respuestaContrato).get("id").asLong();
+
+            // 4 unidades: se aprueban por $ 4.000 (sin política) y al precio pactado cuestan $ 3.600 + 19 %
+            Long s1 = crearSolicitud(solicitanteA, productoA, unidad, 4, "2098-03-10");
+            mvc.perform(post("/api/solicitudes/" + s1 + "/enviar").header(HttpHeaders.AUTHORIZATION, solicitanteA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("APROBADA"));
+            mvc.perform(get("/api/contratos/ofertas?solicitudId=" + s1).header(HttpHeaders.AUTHORIZATION, compradorA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(1))
+                    .andExpect(jsonPath("$[0].contratoId").value(contrato))
+                    .andExpect(jsonPath("$[0].puedeEmitirse").value(true))
+                    .andExpect(jsonPath("$[0].subtotal").value(3600.0));
+
+            String directa = "{\"solicitudId\":" + s1 + ",\"contratoId\":" + contrato + ",\"bodegaDestinoId\":" + bodegaA
+                    + ",\"lugarEntrega\":\"Bodega 1\",\"fechaEntregaEsperada\":\"" + hoy.plusDays(7) + "\"}";
+            // el solicitante no puede emitir la orden de su propia solicitud
+            mvc.perform(post("/api/ordenes/directa").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "COMPRADOR"))
+                            .contentType(json).content(directa))
+                    .andExpect(status().isForbidden());
+            // otra empresa no ve ni la solicitud ni el contrato
+            mvc.perform(post("/api/ordenes/directa").header(HttpHeaders.AUTHORIZATION, compradorB).contentType(json)
+                            .content(directa))
+                    .andExpect(status().isNotFound());
+            mvc.perform(get("/api/contratos/ofertas?solicitudId=" + s1).header(HttpHeaders.AUTHORIZATION, compradorB))
+                    .andExpect(status().isNotFound());
+
+            String orden = mvc.perform(post("/api/ordenes/directa").header(HttpHeaders.AUTHORIZATION, compradorA)
+                            .contentType(json).content(directa))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.adjudicacionId").doesNotExist())
+                    .andExpect(jsonPath("$.contratoId").value(contrato))
+                    .andExpect(jsonPath("$.solicitudId").value(s1))
+                    .andExpect(jsonPath("$.subtotal").value(3600.0))
+                    .andExpect(jsonPath("$.total").value(4284.0))
+                    .andReturn().getResponse().getContentAsString();
+            Long ordenId = new com.fasterxml.jackson.databind.ObjectMapper().readTree(orden).get("id").asLong();
+            assertEquals(empresaA, jdbc.queryForObject("SELECT empresa_id FROM orden_compra WHERE id = ?", Long.class, ordenId));
+            assertEquals("ADJUDICADA", jdbc.queryForObject("SELECT estado FROM solicitud_compra WHERE id = ?", String.class, s1));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM orden_compra_linea WHERE orden_compra_id = ? "
+                    + "AND contrato_precio_id IS NOT NULL", Integer.class, ordenId));
+            // la solicitud ya no se puede comprar otra vez y el tope descontó lo pedido
+            mvc.perform(post("/api/ordenes/directa").header(HttpHeaders.AUTHORIZATION, compradorA).contentType(json)
+                            .content(directa))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("SOLICITUD_NO_APROBADA"));
+            mvc.perform(get("/api/contratos/" + contrato).header(HttpHeaders.AUTHORIZATION, adminA))
+                    .andExpect(jsonPath("$.precios[0].consumido").value(4.0))
+                    .andExpect(jsonPath("$.precios[0].disponible").value(6.0));
+
+            // 7 unidades pasan del tope (quedan 6)
+            Long s2 = crearSolicitud(solicitanteA, productoA, unidad, 7, "2098-03-10");
+            mvc.perform(post("/api/solicitudes/" + s2 + "/enviar").header(HttpHeaders.AUTHORIZATION, solicitanteA))
+                    .andExpect(status().isOk());
+            mvc.perform(post("/api/ordenes/directa").header(HttpHeaders.AUTHORIZATION, compradorA).contentType(json)
+                            .content(directa.replace("\"solicitudId\":" + s1, "\"solicitudId\":" + s2)))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("CONTRATO_TOPE_EXCEDIDO"));
+
+            // cancelar la orden libera el tope y devuelve la solicitud a APROBADA
+            mvc.perform(post("/api/ordenes/" + ordenId + "/cancelar").header(HttpHeaders.AUTHORIZATION, compradorA)
+                            .contentType(json).content("{\"observacion\":\"El proveedor no entrega\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("CANCELADA"));
+            assertEquals("APROBADA", jdbc.queryForObject("SELECT estado FROM solicitud_compra WHERE id = ?", String.class, s1));
+            mvc.perform(get("/api/contratos/" + contrato).header(HttpHeaders.AUTHORIZATION, adminA))
+                    .andExpect(jsonPath("$.precios[0].consumido").value(0.0))
+                    .andExpect(jsonPath("$.precios[0].disponible").value(10.0));
+
+            // un contrato anulado ya no se aplica
+            mvc.perform(patch("/api/contratos/" + contrato + "/anular").header(HttpHeaders.AUTHORIZATION, adminA)
+                            .contentType(json).content("{\"motivo\":\"Termina la relación\"}"))
+                    .andExpect(status().isOk());
+            mvc.perform(post("/api/ordenes/directa").header(HttpHeaders.AUTHORIZATION, compradorA).contentType(json)
+                            .content(directa))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("CONTRATO_NO_VIGENTE"));
+        } finally {
+            // las solicitudes de la prueba no deben dejar compras abiertas que choquen con otras pruebas
+            jdbc.update("UPDATE solicitud_compra SET estado = 'CANCELADA' WHERE centro_costo_id = ? "
+                    + "AND estado IN ('PENDIENTE_APROBACION', 'APROBADA', 'ADJUDICADA')", centroA);
+            jdbc.update("UPDATE producto SET costo_referencia = ? WHERE id = ?", costoOriginal, productoA);
+            jdbc.update("UPDATE usuario SET centro_costo_id = ? WHERE id = ?", centroOriginal, usuarioA);
+            jdbc.update("UPDATE proveedor SET estado = ? WHERE id = ?", estadoA, proveedorA);
+        }
+    }
+
+    // ------------------------------------------------------------------ delegación y SLA (18-c)
+
+    private Long rolId(String codigo) {
+        return jdbc.queryForObject("SELECT id FROM rol WHERE codigo = ?", Long.class, codigo);
+    }
+
+    private Long crearPoliticaSolicitud(Long empresa, String rol, String desde, String hasta) {
+        jdbc.update("INSERT INTO politica_aprobacion (empresa_id, tipo, rol_aprobador_id, monto_desde, monto_hasta, "
+                + "activo) VALUES (?, 'SOLICITUD', ?, ?, ?, 1)", empresa, rolId(rol), desde, hasta);
+        return jdbc.queryForObject("SELECT MAX(id) FROM politica_aprobacion WHERE empresa_id = ?", Long.class, empresa);
+    }
+
+    private Long usuarioInternoDeA(String correo, String rol) {
+        return EmpresaContexto.como(empresaA, () -> {
+            Usuario u = new Usuario();
+            u.setNombreCompleto("Usuario " + correo);
+            u.setCorreo(correo);
+            u.setHashPassword(passwordEncoder.encode(CLAVE));
+            u.getRoles().add(roles.findByCodigo(rol).orElseThrow());
+            return usuarios.save(u).getId();
+        });
+    }
+
+    private static String decision(String valor) {
+        return "{\"decision\":\"" + valor + "\",\"observaciones\":\"ok\"}";
+    }
+
+    @Test
+    void laDelegacionPermiteDecidirSoloMientrasValeYNoSaltaLaSegregacionNiCruzaEmpresas() throws Exception {
+        Long centroA = centroDe(empresaA);
+        Long unidad = jdbc.queryForObject("SELECT unidad_medida_id FROM producto WHERE id = ?", Long.class, productoA);
+        java.math.BigDecimal costoOriginal = jdbc.queryForObject("SELECT costo_referencia FROM producto WHERE id = ?",
+                java.math.BigDecimal.class, productoA);
+        Long centroUsuarioA = jdbc.queryForObject("SELECT centro_costo_id FROM usuario WHERE id = ?", Long.class, usuarioA);
+        Long centroUsuarioA2 = jdbc.queryForObject("SELECT centro_costo_id FROM usuario WHERE id = ?", Long.class, usuarioA2);
+        Long delegadoA = usuarioInternoDeA("delegado@a.com", "ALMACENISTA");
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        String solicitanteA = token(empresaA, usuarioA, "SOLICITANTE");
+        String solicitanteA2 = token(empresaA, usuarioA2, "SOLICITANTE");
+        String deleganteA = token(empresaA, usuarioA2, "ADMIN_COMPRAS");
+        String delegado = token(empresaA, delegadoA, "ALMACENISTA");
+        String justificacion = "{\"justificacionExcepcion\":\"Prueba de delegación\"}";
+        java.time.LocalDate hoy = java.time.LocalDate.now();
+        Long politica = null;
+        try {
+            jdbc.update("UPDATE producto SET costo_referencia = 1000 WHERE id = ?", productoA);
+            jdbc.update("UPDATE usuario SET centro_costo_id = ? WHERE id IN (?, ?)", centroA, usuarioA, usuarioA2);
+            politica = crearPoliticaSolicitud(empresaA, "ADMIN_COMPRAS", "0", null);
+
+            Long s1 = crearSolicitud(solicitanteA, productoA, unidad, 4, "2097-05-05");
+            mvc.perform(post("/api/solicitudes/" + s1 + "/enviar").header(HttpHeaders.AUTHORIZATION, solicitanteA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("PENDIENTE_APROBACION"));
+
+            // sin delegación, un almacenista no decide
+            mvc.perform(post("/api/solicitudes/" + s1 + "/decision").header(HttpHeaders.AUTHORIZATION, delegado)
+                            .contentType(json).content(decision("APROBADA")))
+                    .andExpect(status().isForbidden());
+            // la delegación la crea quien tiene un rol que aprueba; otra empresa no la ve ni la revoca
+            String creada = mvc.perform(post("/api/delegaciones").header(HttpHeaders.AUTHORIZATION, deleganteA)
+                            .contentType(json).content("{\"delegadoId\":" + delegadoA + ",\"vigenteDesde\":\"" + hoy
+                                    + "\",\"vigenteHasta\":\"" + hoy.plusDays(1) + "\",\"motivo\":\"Vacaciones\"}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.vigente").value(true))
+                    .andReturn().getResponse().getContentAsString();
+            Long delegacion = new com.fasterxml.jackson.databind.ObjectMapper().readTree(creada).get("id").asLong();
+            mvc.perform(patch("/api/delegaciones/" + delegacion + "/revocar")
+                            .header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "ADMIN_COMPRAS")))
+                    .andExpect(status().isNotFound());
+            mvc.perform(get("/api/delegaciones/otorgadas")
+                            .header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "ADMIN_COMPRAS")))
+                    .andExpect(jsonPath("$").isEmpty());
+            mvc.perform(post("/api/delegaciones").header(HttpHeaders.AUTHORIZATION, solicitanteA).contentType(json)
+                            .content("{\"delegadoId\":" + delegadoA + ",\"vigenteDesde\":\"" + hoy + "\",\"vigenteHasta\":\""
+                                    + hoy + "\"}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("SIN_ROL_APROBADOR"));
+
+            // con la delegación vigente la ve en su bandeja y decide
+            mvc.perform(get("/api/delegaciones/recibidas").header(HttpHeaders.AUTHORIZATION, delegado))
+                    .andExpect(jsonPath("$[0].deleganteId").value(usuarioA2));
+            mvc.perform(get("/api/solicitudes/pendientes-aprobacion").header(HttpHeaders.AUTHORIZATION, delegado))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contenido[?(@.id==" + s1 + ")]").isNotEmpty());
+            mvc.perform(post("/api/solicitudes/" + s1 + "/decision").header(HttpHeaders.AUTHORIZATION, delegado)
+                            .contentType(json).content(decision("APROBADA")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("APROBADA"));
+            assertEquals(delegacion, jdbc.queryForObject(
+                    "SELECT delegacion_id FROM aprobacion_solicitud WHERE solicitud_compra_id = ?", Long.class, s1));
+            assertEquals(delegadoA, jdbc.queryForObject(
+                    "SELECT usuario_aprobador_id FROM aprobacion_solicitud WHERE solicitud_compra_id = ?", Long.class, s1));
+
+            // segregación: no decide lo que pidió quien le delegó
+            Long s2 = crearSolicitud(solicitanteA2, productoA, unidad, 4, "2097-05-05");
+            mvc.perform(post("/api/solicitudes/" + s2 + "/enviar").header(HttpHeaders.AUTHORIZATION, solicitanteA2)
+                            .contentType(json).content(justificacion))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("PENDIENTE_APROBACION"));
+            mvc.perform(post("/api/solicitudes/" + s2 + "/decision").header(HttpHeaders.AUTHORIZATION, delegado)
+                            .contentType(json).content(decision("APROBADA")))
+                    .andExpect(status().isForbidden());
+
+            // revocada la delegación, deja de poder decidir
+            Long s3 = crearSolicitud(solicitanteA, productoA, unidad, 4, "2097-05-05");
+            mvc.perform(post("/api/solicitudes/" + s3 + "/enviar").header(HttpHeaders.AUTHORIZATION, solicitanteA)
+                            .contentType(json).content(justificacion))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("PENDIENTE_APROBACION"));
+            mvc.perform(patch("/api/delegaciones/" + delegacion + "/revocar").header(HttpHeaders.AUTHORIZATION, deleganteA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("REVOCADA"));
+            mvc.perform(post("/api/solicitudes/" + s3 + "/decision").header(HttpHeaders.AUTHORIZATION, delegado)
+                            .contentType(json).content(decision("APROBADA")))
+                    .andExpect(status().isForbidden());
+            mvc.perform(patch("/api/delegaciones/" + delegacion + "/revocar").header(HttpHeaders.AUTHORIZATION, deleganteA))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("DELEGACION_REVOCADA"));
+        } finally {
+            jdbc.update("UPDATE politica_aprobacion SET activo = 0 WHERE empresa_id = ?", empresaA);
+            jdbc.update("UPDATE solicitud_compra SET estado = 'CANCELADA' WHERE centro_costo_id = ? "
+                    + "AND estado IN ('PENDIENTE_APROBACION', 'APROBADA', 'ADJUDICADA')", centroA);
+            // el usuario delegado de la prueba se borra con lo suyo, para no alterar los conteos de otras pruebas
+            jdbc.update("DELETE FROM aprobacion_solicitud WHERE usuario_aprobador_id = ?", delegadoA);
+            jdbc.update("DELETE FROM delegacion_aprobacion WHERE empresa_id = ?", empresaA);
+            jdbc.update("DELETE FROM notificacion WHERE usuario_id = ?", delegadoA);
+            jdbc.update("DELETE FROM auditoria WHERE usuario_id = ?", delegadoA);
+            jdbc.update("DELETE FROM usuario_rol WHERE usuario_id = ?", delegadoA);
+            jdbc.update("DELETE FROM usuario WHERE id = ?", delegadoA);
+            jdbc.update("UPDATE producto SET costo_referencia = ? WHERE id = ?", costoOriginal, productoA);
+            jdbc.update("UPDATE usuario SET centro_costo_id = ? WHERE id = ?", centroUsuarioA, usuarioA);
+            jdbc.update("UPDATE usuario SET centro_costo_id = ? WHERE id = ?", centroUsuarioA2, usuarioA2);
+        }
+    }
+
+    @Test
+    void elSlaAvisaYEscalaSoloLaEmpresaQueCorresponde() throws Exception {
+        Long centroA = centroDe(empresaA);
+        Long unidad = jdbc.queryForObject("SELECT unidad_medida_id FROM producto WHERE id = ?", Long.class, productoA);
+        java.math.BigDecimal costoOriginal = jdbc.queryForObject("SELECT costo_referencia FROM producto WHERE id = ?",
+                java.math.BigDecimal.class, productoA);
+        Long centroUsuarioA = jdbc.queryForObject("SELECT centro_costo_id FROM usuario WHERE id = ?", Long.class, usuarioA);
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        String solicitanteA = token(empresaA, usuarioA, "SOLICITANTE");
+        try {
+            jdbc.update("UPDATE producto SET costo_referencia = 1000 WHERE id = ?", productoA);
+            jdbc.update("UPDATE usuario SET centro_costo_id = ? WHERE id = ?", centroA, usuarioA);
+            Long bajo = crearPoliticaSolicitud(empresaA, "ADMIN_COMPRAS", "0", "1000000");
+            Long alto = crearPoliticaSolicitud(empresaA, "ADMIN_SISTEMA", "1000000", null);
+            assertEquals(24, jdbc.queryForObject("SELECT sla_aprobacion_horas FROM empresa WHERE id = ?", Integer.class,
+                    empresaA));
+
+            Long s1 = crearSolicitud(solicitanteA, productoA, unidad, 4, "2097-06-06");
+            mvc.perform(post("/api/solicitudes/" + s1 + "/enviar").header(HttpHeaders.AUTHORIZATION, solicitanteA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("PENDIENTE_APROBACION"));
+            assertEquals(bajo, jdbc.queryForObject("SELECT politica_aprobacion_id FROM solicitud_compra WHERE id = ?",
+                    Long.class, s1));
+
+            // 20 h de 24 (más del 80 %): avisa una sola vez
+            ponerEnviadoHace(s1, 20);
+            assertEquals(0, EmpresaContexto.como(empresaB, () -> sla.procesar(java.time.LocalDateTime.now())).avisadas());
+            assertEquals(1, EmpresaContexto.como(empresaA, () -> sla.procesar(java.time.LocalDateTime.now())).avisadas());
+            assertEquals(0, EmpresaContexto.como(empresaA, () -> sla.procesar(java.time.LocalDateTime.now())).avisadas());
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM solicitud_compra WHERE id = ? "
+                    + "AND sla_aviso_en IS NOT NULL AND escalada_en IS NULL", Integer.class, s1));
+            assertEquals(bajo, jdbc.queryForObject("SELECT politica_aprobacion_id FROM solicitud_compra WHERE id = ?",
+                    Long.class, s1));
+
+            // 25 h: la empresa B no la toca; la A la escala a la política de mayor tramo
+            ponerEnviadoHace(s1, 25);
+            assertEquals(0, EmpresaContexto.como(empresaB, () -> sla.procesar(java.time.LocalDateTime.now())).escaladas());
+            assertEquals(bajo, jdbc.queryForObject("SELECT politica_aprobacion_id FROM solicitud_compra WHERE id = ?",
+                    Long.class, s1));
+            assertEquals(1, EmpresaContexto.como(empresaA, () -> sla.procesar(java.time.LocalDateTime.now())).escaladas());
+            assertEquals(0, EmpresaContexto.como(empresaA, () -> sla.procesar(java.time.LocalDateTime.now())).escaladas());
+            assertEquals(alto, jdbc.queryForObject("SELECT politica_aprobacion_id FROM solicitud_compra WHERE id = ?",
+                    Long.class, s1));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM solicitud_compra WHERE id = ? "
+                    + "AND escalada_en IS NOT NULL", Integer.class, s1));
+            // usuarioA recibe el aviso como solicitante y, por ser ADMIN_SISTEMA, el del rol al que se escaló
+            assertTrue(jdbc.queryForObject("SELECT COUNT(*) FROM notificacion WHERE usuario_id = ? "
+                    + "AND evento = 'SOLICITUD_ESCALADA'", Integer.class, usuarioA) >= 1);
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM auditoria WHERE entidad = 'SOLICITUD_COMPRA' "
+                    + "AND entidad_id = ? AND accion = 'SOLICITUD_ESCALAR'", Integer.class, s1));
+
+            // tras escalar, el rol de abajo ya no decide y el de arriba sí
+            mvc.perform(post("/api/solicitudes/" + s1 + "/decision")
+                            .header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA2, "ADMIN_COMPRAS"))
+                            .contentType(json).content(decision("APROBADA")))
+                    .andExpect(status().isForbidden());
+            mvc.perform(post("/api/solicitudes/" + s1 + "/decision")
+                            .header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA2, "ADMIN_SISTEMA"))
+                            .contentType(json).content(decision("APROBADA")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("APROBADA"));
+        } finally {
+            jdbc.update("UPDATE politica_aprobacion SET activo = 0 WHERE empresa_id = ?", empresaA);
+            jdbc.update("UPDATE solicitud_compra SET estado = 'CANCELADA' WHERE centro_costo_id = ? "
+                    + "AND estado IN ('PENDIENTE_APROBACION', 'APROBADA', 'ADJUDICADA')", centroA);
+            jdbc.update("UPDATE producto SET costo_referencia = ? WHERE id = ?", costoOriginal, productoA);
+            jdbc.update("UPDATE usuario SET centro_costo_id = ? WHERE id = ?", centroUsuarioA, usuarioA);
+        }
+    }
+
+    /** Hace que la solicitud parezca enviada hace las horas indicadas. */
+    private void ponerEnviadoHace(Long solicitud, int horas) {
+        jdbc.update("UPDATE solicitud_compra SET enviado_en = ? WHERE id = ?",
+                java.sql.Timestamp.valueOf(java.time.LocalDateTime.now().minusHours(horas)), solicitud);
+    }
+
+    // ------------------------------------------------------------------ reorden y carga masiva (18-d)
+
+    private static final String XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+    /** Arma un .xlsx en memoria: la primera fila es el encabezado y las demás son datos. */
+    private static org.springframework.mock.web.MockMultipartFile excel(String[] encabezado, Object[]... filas)
+            throws java.io.IOException {
+        try (org.apache.poi.xssf.usermodel.XSSFWorkbook libro = new org.apache.poi.xssf.usermodel.XSSFWorkbook();
+                java.io.ByteArrayOutputStream salida = new java.io.ByteArrayOutputStream()) {
+            org.apache.poi.ss.usermodel.Sheet hoja = libro.createSheet("datos");
+            org.apache.poi.ss.usermodel.Row cabecera = hoja.createRow(0);
+            for (int j = 0; j < encabezado.length; j++) {
+                cabecera.createCell(j).setCellValue(encabezado[j]);
+            }
+            for (int i = 0; i < filas.length; i++) {
+                org.apache.poi.ss.usermodel.Row fila = hoja.createRow(i + 1);
+                for (int j = 0; j < filas[i].length; j++) {
+                    if (filas[i][j] instanceof Number n) {
+                        fila.createCell(j).setCellValue(n.doubleValue());
+                    } else if (filas[i][j] != null) {
+                        fila.createCell(j).setCellValue(filas[i][j].toString());
+                    }
+                }
+            }
+            libro.write(salida);
+            return new org.springframework.mock.web.MockMultipartFile("archivo", "productos.xlsx", XLSX,
+                    salida.toByteArray());
+        }
+    }
+
+    @Test
+    void laCargaMasivaCreaYActualizaSoloEnLaEmpresaDelTokenYEsDeTodoONada() throws Exception {
+        String unidad = jdbc.queryForObject("SELECT codigo FROM unidad_medida WHERE id = (SELECT unidad_medida_id "
+                + "FROM producto WHERE id = ?)", String.class, productoA);
+        String[] cabecera = { "codigo", "nombre", "categoria", "unidad", "stock_minimo", "stock_maximo",
+                "costo_referencia" };
+        String adminA = token(empresaA, usuarioA, "ADMIN_COMPRAS");
+        String adminB = token(empresaB, usuarioB, "ADMIN_COMPRAS");
+        try {
+            var deA = excel(cabecera, new Object[] { "cm-1", "Cable de carga", "Carga masiva", unidad, 5, 20, 1500 },
+                    new Object[] { "CM-2", "Tubo de carga", "carga masiva", unidad, null, null, 320 });
+
+            // revisar no guarda nada
+            mvc.perform(multipart("/api/productos/carga-masiva").file(deA).param("soloValidar", "true")
+                            .header(HttpHeaders.AUTHORIZATION, adminA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.aplicado").value(false))
+                    .andExpect(jsonPath("$.creados").value(2))
+                    .andExpect(jsonPath("$.categoriasCreadas").value(1));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM producto WHERE codigo LIKE 'CM-%'", Integer.class));
+
+            // carga real en A: se crean los productos y la categoría, solo en A
+            mvc.perform(multipart("/api/productos/carga-masiva").file(deA).header(HttpHeaders.AUTHORIZATION, adminA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.aplicado").value(true))
+                    .andExpect(jsonPath("$.creados").value(2))
+                    .andExpect(jsonPath("$.errores").isEmpty());
+            assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM producto WHERE codigo LIKE 'CM-%' AND empresa_id = ?",
+                    Integer.class, empresaA));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM categoria_producto WHERE nombre = 'Carga masiva' "
+                    + "AND empresa_id = ?", Integer.class, empresaA));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM producto WHERE codigo LIKE 'CM-%' AND empresa_id = ?",
+                    Integer.class, empresaB));
+
+            // B sube los mismos códigos con otro precio: no choca con A ni le cambia nada
+            var deB = excel(cabecera, new Object[] { "CM-1", "Cable de B", "Carga masiva", unidad, 1, 2, 999 });
+            mvc.perform(multipart("/api/productos/carga-masiva").file(deB).header(HttpHeaders.AUTHORIZATION, adminB))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.creados").value(1))
+                    .andExpect(jsonPath("$.actualizados").value(0));
+            assertEquals(0, new java.math.BigDecimal("1500").compareTo(jdbc.queryForObject(
+                    "SELECT costo_referencia FROM producto WHERE codigo = 'CM-1' AND empresa_id = ?",
+                    java.math.BigDecimal.class, empresaA)));
+            assertEquals(0, new java.math.BigDecimal("999").compareTo(jdbc.queryForObject(
+                    "SELECT costo_referencia FROM producto WHERE codigo = 'CM-1' AND empresa_id = ?",
+                    java.math.BigDecimal.class, empresaB)));
+
+            // un archivo de solo precios actualiza el costo y deja lo demás como estaba
+            var precios = excel(new String[] { "codigo", "costo_referencia" }, new Object[] { "CM-1", 1750 });
+            mvc.perform(multipart("/api/productos/carga-masiva").file(precios).header(HttpHeaders.AUTHORIZATION, adminA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.actualizados").value(1))
+                    .andExpect(jsonPath("$.creados").value(0));
+            assertEquals(0, new java.math.BigDecimal("1750").compareTo(jdbc.queryForObject(
+                    "SELECT costo_referencia FROM producto WHERE codigo = 'CM-1' AND empresa_id = ?",
+                    java.math.BigDecimal.class, empresaA)));
+            assertEquals("Cable de carga", jdbc.queryForObject(
+                    "SELECT nombre FROM producto WHERE codigo = 'CM-1' AND empresa_id = ?", String.class, empresaA));
+
+            // todo o nada: con una fila mala no se guarda ni la buena
+            var conError = excel(cabecera, new Object[] { "CM-3", "Bueno", "Carga masiva", unidad, 1, 2, 10 },
+                    new Object[] { "CM-4", "Malo", "Carga masiva", "NOEXISTE", 1, 2, 10 });
+            mvc.perform(multipart("/api/productos/carga-masiva").file(conError).header(HttpHeaders.AUTHORIZATION, adminA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.aplicado").value(false))
+                    .andExpect(jsonPath("$.errores[0].fila").value(3));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM producto WHERE codigo IN ('CM-3', 'CM-4')",
+                    Integer.class));
+
+            mvc.perform(multipart("/api/productos/carga-masiva").file(deA)
+                            .header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "COMPRADOR")))
+                    .andExpect(status().isForbidden());
+        } finally {
+            jdbc.update("DELETE FROM producto WHERE codigo LIKE 'CM-%'");
+            jdbc.update("DELETE FROM categoria_producto WHERE nombre = 'Carga masiva'");
+        }
+    }
+
+    @Test
+    void laReordenSugiereSoloLoDeLaEmpresaYElBorradorNoCompraNada() throws Exception {
+        Long centroA = centroDe(empresaA);
+        Long centroUsuarioA = jdbc.queryForObject("SELECT centro_costo_id FROM usuario WHERE id = ?", Long.class, usuarioA);
+        String solicitanteA = token(empresaA, usuarioA, "SOLICITANTE");
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        try {
+            // el stock mínimo enorme deja a los dos productos bajo el mínimo
+            jdbc.update("UPDATE producto SET stock_minimo = 1000000, stock_maximo = 2000000 WHERE id IN (?, ?)",
+                    productoA, productoB);
+            jdbc.update("UPDATE usuario SET centro_costo_id = ? WHERE id = ?", centroA, usuarioA);
+
+            String respuesta = mvc.perform(get("/api/reorden/sugerencias").header(HttpHeaders.AUTHORIZATION, solicitanteA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.productoId==" + productoB + ")]").isEmpty())
+                    .andExpect(jsonPath("$[?(@.productoId==" + productoA + ")]").isNotEmpty())
+                    .andReturn().getResponse().getContentAsString();
+            var nodo = new com.fasterxml.jackson.databind.ObjectMapper().readTree(respuesta).get(0);
+            java.math.BigDecimal maximo = new java.math.BigDecimal(nodo.get("stockMaximo").asText());
+            java.math.BigDecimal esperado = maximo.subtract(new java.math.BigDecimal(nodo.get("stockActual").asText()))
+                    .subtract(new java.math.BigDecimal(nodo.get("enOrdenes").asText()))
+                    .subtract(new java.math.BigDecimal(nodo.get("enSolicitudes").asText()));
+            assertEquals(0, esperado.compareTo(new java.math.BigDecimal(nodo.get("cantidadSugerida").asText())));
+            assertTrue(esperado.signum() > 0);
+
+            mvc.perform(get("/api/reorden/sugerencias").header(HttpHeaders.AUTHORIZATION,
+                            token(empresaB, usuarioB, "COMPRADOR")))
+                    .andExpect(jsonPath("$[?(@.productoId==" + productoA + ")]").isEmpty())
+                    .andExpect(jsonPath("$[?(@.productoId==" + productoB + ")]").isNotEmpty());
+
+            // el borrador queda en BORRADOR, del solicitante, con la cantidad sugerida
+            String borrador = mvc.perform(post("/api/reorden/borrador").header(HttpHeaders.AUTHORIZATION, solicitanteA)
+                            .contentType(json).content("{\"fechaRequerida\":\"2096-02-02\"}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.estado").value("BORRADOR"))
+                    .andExpect(jsonPath("$.lineas[0].productoId").value(productoA))
+                    .andReturn().getResponse().getContentAsString();
+            var lineas = new com.fasterxml.jackson.databind.ObjectMapper().readTree(borrador).get("lineas");
+            assertEquals(1, lineas.size());
+            assertEquals(0, esperado.compareTo(new java.math.BigDecimal(lineas.get(0).get("cantidad").asText())));
+            // un producto de otra empresa no se puede pedir
+            mvc.perform(post("/api/reorden/borrador").header(HttpHeaders.AUTHORIZATION, solicitanteA).contentType(json)
+                            .content("{\"fechaRequerida\":\"2096-02-02\",\"productoIds\":[" + productoB + "]}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("PRODUCTO_SIN_SUGERENCIA"));
+        } finally {
+            jdbc.update("UPDATE producto SET stock_minimo = 0, stock_maximo = NULL WHERE id IN (?, ?)", productoA, productoB);
+            jdbc.update("UPDATE solicitud_compra SET estado = 'CANCELADA' WHERE centro_costo_id = ? "
+                    + "AND estado IN ('BORRADOR', 'PENDIENTE_APROBACION', 'APROBADA', 'ADJUDICADA')", centroA);
+            jdbc.update("UPDATE usuario SET centro_costo_id = ? WHERE id = ?", centroUsuarioA, usuarioA);
+        }
+    }
+
+    // ------------------------------------------------------------------ consola de plataforma, planes y módulos (SaaS 2)
+
+    private static final String CLAVE_PLATAFORMA = "ClavePlataforma2026";
+
+    /** Crea un dueño de plataforma y entra con su contraseña y un código de MFA real; devuelve el header Authorization. */
+    private String entrarALaPlataforma(String correo) throws Exception {
+        EmpresaContexto.sinEmpresa(() -> {
+            com.proyecto.supply_core.plataforma.entity.UsuarioPlataforma u =
+                    new com.proyecto.supply_core.plataforma.entity.UsuarioPlataforma();
+            u.setCorreo(correo);
+            u.setNombre("Dueño de prueba");
+            u.setHashPassword(passwordEncoder.encode(CLAVE_PLATAFORMA));
+            return usuariosPlataforma.save(u);
+        });
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        String paso1 = mvc.perform(post("/api/plataforma/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"correo\":\"" + correo + "\",\"password\":\"" + CLAVE_PLATAFORMA + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mfaConfigurado").value(false))
+                .andReturn().getResponse().getContentAsString();
+        String secreto = json.readTree(paso1).get("secretoMfa").asText();
+        String desafio = json.readTree(paso1).get("desafio").asText();
+        String codigo = totp.codigo(secreto, totp.paso(java.time.Instant.now()));
+        String sesion = mvc.perform(post("/api/plataforma/auth/mfa").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"desafio\":\"" + desafio + "\",\"codigo\":\"" + codigo + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        // el mismo código no se acepta dos veces
+        mvc.perform(post("/api/plataforma/auth/mfa").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"desafio\":\"" + desafio + "\",\"codigo\":\"" + codigo + "\"}"))
+                .andExpect(status().isUnauthorized());
+        return "Bearer " + json.readTree(sesion).get("token").asText();
+    }
+
+    private void borrarDuenoDePrueba(String correo) {
+        jdbc.update("DELETE FROM auditoria_plataforma WHERE usuario_plataforma_id IN "
+                + "(SELECT id FROM usuario_plataforma WHERE correo = ?)", correo);
+        jdbc.update("DELETE FROM usuario_plataforma WHERE correo = ?", correo);
+    }
+
+    private void borrarEmpresaDePrueba(Long id) {
+        String deLaEmpresa = "(SELECT id FROM usuario WHERE empresa_id = ?)";
+        jdbc.update("DELETE FROM refresh_token WHERE usuario_id IN " + deLaEmpresa, id);
+        jdbc.update("DELETE FROM notificacion WHERE usuario_id IN " + deLaEmpresa, id);
+        jdbc.update("DELETE FROM auditoria WHERE empresa_id = ? OR usuario_id IN " + deLaEmpresa, id, id);
+        jdbc.update("DELETE FROM usuario_rol WHERE usuario_id IN " + deLaEmpresa, id);
+        jdbc.update("DELETE FROM usuario WHERE empresa_id = ?", id);
+        jdbc.update("DELETE FROM config_pesos_evaluacion_detalle WHERE config_pesos_evaluacion_id IN "
+                + "(SELECT id FROM config_pesos_evaluacion WHERE empresa_id = ?)", id);
+        jdbc.update("DELETE FROM config_pesos_evaluacion WHERE empresa_id = ?", id);
+        jdbc.update("DELETE FROM empresa_modulo WHERE empresa_id = ?", id);
+        jdbc.update("DELETE FROM suscripcion WHERE empresa_id = ?", id);
+        jdbc.update("DELETE FROM empresa WHERE id = ?", id);
+    }
+
+    @Test
+    void laPlataformaYLasEmpresasNoMezclanSusTokensNiLaPlataformaLeeDatosDeNegocio() throws Exception {
+        String correo = "dueno-aislamiento@plataforma.test";
+        try {
+            String plataforma = entrarALaPlataforma(correo);
+
+            mvc.perform(get("/api/plataforma/empresas").header(HttpHeaders.AUTHORIZATION, plataforma))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.codigoPublico=='demo')]").isNotEmpty())
+                    .andExpect(jsonPath("$[?(@.codigoPublico=='empresa-b')]").isNotEmpty());
+            // su token no entra a ninguna API de empresa: ni usuarios, ni productos, ni solicitudes
+            for (String ruta : new String[] { "/api/usuarios", "/api/productos", "/api/solicitudes", "/api/empresa" }) {
+                mvc.perform(get(ruta).header(HttpHeaders.AUTHORIZATION, plataforma)).andExpect(status().isUnauthorized());
+            }
+            // y el token de un administrador de empresa no abre la consola
+            for (String ruta : new String[] { "/api/plataforma/empresas", "/api/plataforma/planes",
+                    "/api/plataforma/auditoria" }) {
+                mvc.perform(get(ruta).header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "ADMIN_SISTEMA")))
+                        .andExpect(status().isUnauthorized());
+            }
+            mvc.perform(get("/api/plataforma/empresas")).andExpect(status().isUnauthorized());
+        } finally {
+            borrarDuenoDePrueba(correo);
+        }
+    }
+
+    @Test
+    void elAltaDeUnaEmpresaCreaSuAdministradorYElPlanYElEstadoGobiernanLoQuePuedeHacer() throws Exception {
+        String correo = "dueno-alta@plataforma.test";
+        Long empresaC = null;
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        String contentType = MediaType.APPLICATION_JSON_VALUE;
+        try {
+            String plataforma = entrarALaPlataforma(correo);
+
+            // alta: plan Básico, activa, con su administrador
+            String alta = mvc.perform(post("/api/plataforma/empresas").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(contentType).content("{\"razonSocial\":\"Empresa C S.A.S.\",\"nit\":\"901777888-1\","
+                                    + "\"codigoPublico\":\"empresa-c-fuga\",\"planCodigo\":\"BASICO\",\"estadoInicial\":\"ACTIVA\","
+                                    + "\"adminNombre\":\"Admin de C\",\"adminCorreo\":\"Admin@C.com\",\"adminPassword\":\"ClaveDeC2026\"}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.empresa.plan").value("BASICO"))
+                    .andExpect(jsonPath("$.empresa.estado").value("ACTIVA"))
+                    .andExpect(jsonPath("$.modulos[?(@.codigo=='COMPRAS')].activo").value(true))
+                    .andExpect(jsonPath("$.modulos[?(@.codigo=='REPORTES')].activo").value(false))
+                    .andReturn().getResponse().getContentAsString();
+            empresaC = json.readTree(alta).get("empresa").get("id").asLong();
+            String base = "/api/plataforma/empresas/" + empresaC;
+            // NIT y código no se pueden repetir
+            mvc.perform(post("/api/plataforma/empresas").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(contentType).content("{\"razonSocial\":\"Otra\",\"nit\":\"901777888-1\","
+                                    + "\"codigoPublico\":\"otra-c\",\"planCodigo\":\"BASICO\",\"adminNombre\":\"X\","
+                                    + "\"adminCorreo\":\"x@x.com\",\"adminPassword\":\"ClaveDeC2026\"}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("NIT_DUPLICADO"));
+
+            // el administrador entra con el código de su empresa y solo ve lo suyo
+            String login = mvc.perform(post("/api/auth/login").contentType(contentType)
+                            .content("{\"empresa\":\"empresa-c-fuga\",\"correo\":\"admin@c.com\",\"password\":\"ClaveDeC2026\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.usuario.roles[0]").value("ADMIN_SISTEMA"))
+                    .andReturn().getResponse().getContentAsString();
+            Long adminC = json.readTree(login).get("usuario").get("id").asLong();
+            String refreshC = json.readTree(login).get("refreshToken").asText();
+            String adminToken = "Bearer " + json.readTree(login).get("token").asText();
+            mvc.perform(get("/api/usuarios").header(HttpHeaders.AUTHORIZATION, adminToken))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.contenido.length()").value(1));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM config_pesos_evaluacion WHERE empresa_id = ?",
+                    Integer.class, empresaC));
+            mvc.perform(get("/api/empresa/modulos").header(HttpHeaders.AUTHORIZATION, adminToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.plan").value("BASICO"))
+                    .andExpect(jsonPath("$.modulos[?(@=='COMPRAS')]").isNotEmpty())
+                    .andExpect(jsonPath("$.modulos[?(@=='REPORTES')]").isEmpty());
+
+            // doble permiso: el módulo lo decide el dueño, el rol lo decide la empresa
+            String auditorC = token(empresaC, adminC, "AUDITOR");
+            String comprasC = token(empresaC, adminC, "ADMIN_COMPRAS");
+            mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, auditorC))
+                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.codigo").value("MODULO_NO_CONTRATADO"));
+            mvc.perform(get("/api/solicitudes").header(HttpHeaders.AUTHORIZATION, comprasC)).andExpect(status().isOk());
+            // con el módulo pero sin el rol, tampoco
+            mvc.perform(put(base + "/modulos/REPORTES").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(contentType).content("{\"habilitado\":true}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.modulos[?(@.codigo=='REPORTES')].excepcion").value(true));
+            mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, auditorC)).andExpect(status().isOk());
+            mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, token(empresaC, adminC, "SOLICITANTE")))
+                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.codigo").value("ACCESO_DENEGADO"));
+            // quitar la excepción vuelve a mandar el plan; cambiar de plan da el módulo
+            mvc.perform(put(base + "/modulos/REPORTES").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(contentType).content("{}"))
+                    .andExpect(status().isOk());
+            mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, auditorC)).andExpect(status().isForbidden());
+            mvc.perform(put(base + "/plan").header(HttpHeaders.AUTHORIZATION, plataforma).contentType(contentType)
+                            .content("{\"planCodigo\":\"PROFESIONAL\"}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.empresa.plan").value("PROFESIONAL"));
+            mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, auditorC)).andExpect(status().isOk());
+            // quitarle a la empresa un módulo que su plan sí trae
+            mvc.perform(put(base + "/modulos/COMPRAS").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(contentType).content("{\"habilitado\":false}"))
+                    .andExpect(status().isOk());
+            mvc.perform(get("/api/solicitudes").header(HttpHeaders.AUTHORIZATION, comprasC)).andExpect(status().isForbidden());
+            mvc.perform(put(base + "/modulos/COMPRAS").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(contentType).content("{}"))
+                    .andExpect(status().isOk());
+
+            // morosa: solo consulta
+            mvc.perform(patch(base + "/estado").header(HttpHeaders.AUTHORIZATION, plataforma).contentType(contentType)
+                            .content("{\"estado\":\"MOROSA\"}"))
+                    .andExpect(status().isBadRequest());
+            mvc.perform(patch(base + "/estado").header(HttpHeaders.AUTHORIZATION, plataforma).contentType(contentType)
+                            .content("{\"estado\":\"MOROSA\",\"motivo\":\"Debe dos meses\"}"))
+                    .andExpect(status().isOk());
+            mvc.perform(get("/api/solicitudes").header(HttpHeaders.AUTHORIZATION, comprasC)).andExpect(status().isOk());
+            mvc.perform(post("/api/solicitudes").header(HttpHeaders.AUTHORIZATION, token(empresaC, adminC, "SOLICITANTE"))
+                            .contentType(contentType).content("{}"))
+                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.codigo").value("SUSCRIPCION_MOROSA"));
+
+            // suspendida: sin acceso, sin login y sin renovar la sesión; las demás empresas siguen igual
+            mvc.perform(patch(base + "/estado").header(HttpHeaders.AUTHORIZATION, plataforma).contentType(contentType)
+                            .content("{\"estado\":\"SUSPENDIDA\",\"motivo\":\"Sin pago\"}"))
+                    .andExpect(status().isOk());
+            mvc.perform(get("/api/solicitudes").header(HttpHeaders.AUTHORIZATION, comprasC))
+                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.codigo").value("SUSCRIPCION_SUSPENDIDA"));
+            mvc.perform(post("/api/auth/login").contentType(contentType)
+                            .content("{\"empresa\":\"empresa-c-fuga\",\"correo\":\"admin@c.com\",\"password\":\"ClaveDeC2026\"}"))
+                    .andExpect(status().isForbidden()).andExpect(jsonPath("$.codigo").value("SUSCRIPCION_SUSPENDIDA"));
+            mvc.perform(post("/api/auth/refresh").contentType(contentType).content("{\"refreshToken\":\"" + refreshC + "\"}"))
+                    .andExpect(status().is4xxClientError());
+            mvc.perform(get("/api/solicitudes").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "ADMIN_COMPRAS")))
+                    .andExpect(status().isOk());
+            // la clave mala no revela que está suspendida
+            mvc.perform(post("/api/auth/login").contentType(contentType)
+                            .content("{\"empresa\":\"empresa-c-fuga\",\"correo\":\"admin@c.com\",\"password\":\"Mala123456\"}"))
+                    .andExpect(status().isUnauthorized());
+
+            // reactivar la devuelve a la normalidad
+            mvc.perform(patch(base + "/estado").header(HttpHeaders.AUTHORIZATION, plataforma).contentType(contentType)
+                            .content("{\"estado\":\"ACTIVA\"}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.empresa.motivoEstado").doesNotExist());
+            mvc.perform(get("/api/solicitudes").header(HttpHeaders.AUTHORIZATION, comprasC)).andExpect(status().isOk());
+            mvc.perform(post("/api/auth/login").contentType(contentType)
+                            .content("{\"empresa\":\"empresa-c-fuga\",\"correo\":\"admin@c.com\",\"password\":\"ClaveDeC2026\"}"))
+                    .andExpect(status().isOk());
+
+            // cancelar es final
+            mvc.perform(patch(base + "/estado").header(HttpHeaders.AUTHORIZATION, plataforma).contentType(contentType)
+                            .content("{\"estado\":\"CANCELADA\",\"motivo\":\"Cerró el negocio\"}"))
+                    .andExpect(status().isOk());
+            mvc.perform(patch(base + "/estado").header(HttpHeaders.AUTHORIZATION, plataforma).contentType(contentType)
+                            .content("{\"estado\":\"ACTIVA\"}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("TRANSICION_INVALIDA"));
+
+            // todo quedó en la auditoría global, con la empresa afectada
+            mvc.perform(get("/api/plataforma/auditoria?empresaId=" + empresaC).header(HttpHeaders.AUTHORIZATION, plataforma))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contenido[?(@.accion=='EMPRESA_CREAR')]").isNotEmpty())
+                    .andExpect(jsonPath("$.contenido[?(@.accion=='EMPRESA_MODULO')]").isNotEmpty())
+                    .andExpect(jsonPath("$.contenido[?(@.accion=='EMPRESA_CAMBIAR_PLAN')]").isNotEmpty())
+                    .andExpect(jsonPath("$.contenido[?(@.accion=='EMPRESA_ESTADO')]").isNotEmpty());
+        } finally {
+            if (empresaC != null) {
+                borrarEmpresaDePrueba(empresaC);
+            }
+            borrarDuenoDePrueba(correo);
+        }
     }
 }

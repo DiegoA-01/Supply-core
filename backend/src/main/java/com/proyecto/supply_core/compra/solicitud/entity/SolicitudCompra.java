@@ -75,12 +75,28 @@ public class SolicitudCompra {
     @Column(name = "politica_aprobacion_id")
     private Long politicaAprobacionId;
 
+    /** {@code true} si al enviarla excedía el presupuesto del centro de costo (pasó por excepción, paso 18-a). */
+    @Column(name = "excede_presupuesto", nullable = false)
+    private boolean excedePresupuesto;
+
+    /** Justificación del solicitante cuando se envió con excepción (presupuesto excedido o producto repetido). */
+    @Column(name = "justificacion_excepcion", length = 500)
+    private String justificacionExcepcion;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EstadoSolicitud estado = EstadoSolicitud.BORRADOR;
 
     @Column(name = "enviado_en")
     private LocalDateTime enviadoEn;
+
+    /** Cuándo se avisó a los aprobadores que el SLA iba por el 80 % ({@code null} = no se ha avisado en este envío). */
+    @Column(name = "sla_aviso_en")
+    private LocalDateTime slaAvisoEn;
+
+    /** Cuándo venció el SLA y se escaló a la política de mayor tramo ({@code null} = no se ha escalado en este envío). */
+    @Column(name = "escalada_en")
+    private LocalDateTime escaladaEn;
 
     @Column(name = "creado_en", nullable = false, updatable = false)
     private LocalDateTime creadoEn;

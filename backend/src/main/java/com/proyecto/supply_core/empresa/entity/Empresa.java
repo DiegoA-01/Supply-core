@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -23,6 +25,7 @@ import lombok.Setter;
 public class Empresa {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "razon_social", nullable = false, length = 200)
@@ -53,6 +56,10 @@ public class Empresa {
     /** Diferencia aceptada entre la factura y lo recibido, en monto fijo (se acepta si cumple cualquiera de las dos). */
     @Column(name = "tolerancia_factura_monto", nullable = false, precision = 18, scale = 2)
     private BigDecimal toleranciaFacturaMonto = new BigDecimal("0.00");
+
+    /** Horas que tiene una solicitud pendiente para decidirse antes de escalar (0 = sin SLA). */
+    @Column(name = "sla_aprobacion_horas", nullable = false)
+    private int slaAprobacionHoras = 24;
 
     @Column(name = "creado_en", nullable = false, updatable = false, insertable = false)
     private LocalDateTime creadoEn;

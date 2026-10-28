@@ -12,3 +12,7 @@ app:
     password: ""                 # no se crea el administrador inicial
   rfq:
     cierre-automatico: false     # sin jobs en segundo plano durante las pruebas
+  aprobacion:
+    sla-automatico: false
+  plataforma:
+    cache-segundos: 0           # cada petición lee la suscripción de la base, sin memoria

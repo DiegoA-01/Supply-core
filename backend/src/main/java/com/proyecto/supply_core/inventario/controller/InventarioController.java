@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.inventario.dto.MovimientoFiltro;
 import com.proyecto.supply_core.inventario.dto.MovimientoRequest;
@@ -33,6 +35,7 @@ import jakarta.validation.constraints.Positive;
  * UC-03 Inventario: consulta de existencias y kardex (cualquier interno) y registro de movimientos
  * (ALMACENISTA). A propósito NO existe ningún endpoint para editar el stock directamente.
  */
+@RequiereModulo(Modulos.INVENTARIO)
 @RestController
 @RequestMapping("/api/inventario")
 @UsuarioInterno

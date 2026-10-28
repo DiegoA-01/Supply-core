@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.recepcion.dto.CerrarRecepcionRequest;
 import com.proyecto.supply_core.recepcion.dto.LineaRecepcionResponse;
 import com.proyecto.supply_core.recepcion.dto.RecepcionResponse;
@@ -26,6 +28,7 @@ import jakarta.validation.constraints.Positive;
  * Recepción de mercancía (UC-13). Registra y cierra el ALMACENISTA; el excedente lo resuelve compras;
  * consultan compras, administrativo, aprobadores y auditoría.
  */
+@RequiereModulo(Modulos.RECEPCION)
 @RestController
 @RequestMapping("/api")
 @RequiereRol({ Roles.ALMACENISTA, Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.ADMINISTRATIVO, Roles.APROBADOR,

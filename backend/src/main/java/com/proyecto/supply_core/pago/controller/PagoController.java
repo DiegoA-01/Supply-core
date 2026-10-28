@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.pago.dto.AnularPagoRequest;
 import com.proyecto.supply_core.pago.dto.PagoResponse;
@@ -36,6 +38,7 @@ import jakarta.validation.constraints.Positive;
  * Pagos de órdenes de compra (UC-11). Registra, adjunta comprobante y anula el ADMINISTRATIVO; consultan
  * compras, aprobadores y auditoría.
  */
+@RequiereModulo(Modulos.ORDENES_PAGOS)
 @RestController
 @RequestMapping("/api")
 @RequiereRol({ Roles.ADMINISTRATIVO, Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.APROBADOR, Roles.AUDITOR })

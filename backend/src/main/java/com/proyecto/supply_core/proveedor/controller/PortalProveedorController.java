@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.proveedor.dto.ActualizarProveedorRequest;
 import com.proyecto.supply_core.proveedor.dto.EvaluacionResponse;
@@ -24,6 +26,7 @@ import jakarta.validation.Valid;
  * Portal del proveedor (solo rol PROVEEDOR). Todo se filtra por el {@code proveedorId} del token:
  * un proveedor nunca ve datos de otro. Incluye su perfil y sus evaluaciones; aquí se sumarán sus RFQ y cotizaciones (pasos 11–12).
  */
+@RequiereModulo(Modulos.PROVEEDORES)
 @RestController
 @RequestMapping("/api/portal")
 @RequiereRol(Roles.PROVEEDOR)

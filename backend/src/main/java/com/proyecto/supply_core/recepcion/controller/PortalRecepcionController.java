@@ -5,6 +5,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.recepcion.dto.ResumenRecepcionResponse;
 import com.proyecto.supply_core.recepcion.service.RecepcionService;
 import com.proyecto.supply_core.security.annotation.RequiereRol;
@@ -13,6 +15,7 @@ import com.proyecto.supply_core.security.context.Roles;
 import jakarta.validation.constraints.Positive;
 
 /** Recepciones que el proveedor ve de sus órdenes (con los motivos de rechazo). Solo PROVEEDOR y solo las suyas. */
+@RequiereModulo(Modulos.RECEPCION)
 @RestController
 @RequestMapping("/api/portal/ordenes")
 @RequiereRol(Roles.PROVEEDOR)

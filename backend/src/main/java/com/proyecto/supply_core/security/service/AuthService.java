@@ -15,6 +15,7 @@ import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.common.exception.NoAutenticadoException;
 import com.proyecto.supply_core.proveedor.entity.Proveedor;
 import com.proyecto.supply_core.proveedor.enums.EstadoProveedor;
+import com.proyecto.supply_core.plataforma.service.AccesoEmpresaService;
 import com.proyecto.supply_core.proveedor.repository.ProveedorRepository;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.security.dto.LoginRequest;
@@ -43,6 +44,7 @@ public class AuthService {
     private final ProveedorRepository proveedorRepository;
     private final RefreshTokenService refreshTokenService;
     private final SesionProperties sesionProperties;
+    private final AccesoEmpresaService accesoEmpresa;
     /** Hash de relleno: se compara aunque el correo no exista para que ambos casos tarden igual. */
     private final String hashFicticio;
 
@@ -54,10 +56,13 @@ public class AuthService {
      * @param proveedorRepository estado del proveedor de los usuarios del portal
      * @param refreshTokenService sesiones renovables
      * @param sesionProperties    intentos máximos y duración del bloqueo
+     * @param accesoEmpresa       suscripción de la empresa (suspendida o cancelada no entra)
      */
     public AuthService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
             AuditoriaService auditoriaService, ProveedorRepository proveedorRepository,
-            RefreshTokenService refreshTokenService, SesionProperties sesionProperties) {
+            RefreshTokenService refreshTokenService, SesionProperties sesionProperties,
+            AccesoEmpresaService accesoEmpresa) {
+        this.accesoEmpresa = accesoEmpresa;
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
@@ -207,6 +212,8 @@ public class AuthService {
      * @throws NoAutenticadoException si el proveedor no está habilitado o la cuenta está inactiva
      */
     private void exigirPuedeEntrar(Usuario usuario, String correo) {
+        // Empresa suspendida o cancelada: solo se le dice a quien ya demostró ser un usuario de esa empresa
+        accesoEmpresa.exigirPuedeEntrar(usuario.getEmpresaId());
         // Usuario de proveedor: manda el estado del proveedor (aunque alguien reactive el usuario a mano)
         if (usuario.getProveedorId() != null) {
             EstadoProveedor estado = proveedorRepository.findById(usuario.getProveedorId())

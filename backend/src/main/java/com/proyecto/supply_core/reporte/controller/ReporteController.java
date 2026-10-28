@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.reporte.dto.EstadoCuentaResponse;
 import com.proyecto.supply_core.reporte.dto.GastoResponse;
 import com.proyecto.supply_core.reporte.dto.InventarioResumen;
@@ -24,6 +26,7 @@ import jakarta.validation.constraints.Positive;
  * Reportes de gestión (UC-15), solo lectura. Los ven compras, aprobadores, administrativo y auditoría; el inventario
  * lo ve además el almacenista.
  */
+@RequiereModulo(Modulos.REPORTES)
 @RestController
 @RequestMapping("/api/reportes")
 @RequiereRol({ Roles.AUDITOR, Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.APROBADOR, Roles.ADMINISTRATIVO })

@@ -14,6 +14,7 @@ import com.proyecto.supply_core.common.exception.NoAutenticadoException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.empresa.repository.EmpresaRepository;
+import com.proyecto.supply_core.security.context.PlataformaActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.jwt.JwtUtil;
@@ -33,7 +34,10 @@ public class AuthFilter extends OncePerRequestFilter {
     private static final String PREFIJO = "Bearer ";
     /** Rutas sin token: login y autorregistro de proveedores (que no otorga acceso hasta ser aprobado). */
     private static final List<String> RUTAS_PUBLICAS = List.of("/api/auth/login", "/api/auth/refresh",
-            "/api/portal/registro/**");
+            "/api/portal/registro/**", "/api/plataforma/auth/**");
+
+    /** La consola de la plataforma exige su propio token (sin empresa) y nunca el de una empresa. */
+    private static final String PREFIJO_PLATAFORMA = "/api/plataforma/";
 
     /** El autorregistro lleva el código público de la empresa en la ruta: {@code /api/portal/registro/{codigo}/...}. */
     private static final String PREFIJO_REGISTRO = "/api/portal/registro/";
@@ -96,6 +100,15 @@ public class AuthFilter extends OncePerRequestFilter {
             if (ruta.startsWith(PREFIJO_REGISTRO)) {
                 EmpresaContexto.fijar(empresaDelRegistro(ruta));
             } else if (esPublica(ruta)) {
+                EmpresaContexto.fijarSinEmpresa();
+            } else if (ruta.startsWith(PREFIJO_PLATAFORMA)) {
+                // la plataforma trabaja sin empresa: no lee datos de negocio y su token no sirve en la API de una empresa
+                String header = request.getHeader(HttpHeaders.AUTHORIZATION);
+                if (header == null || !header.startsWith(PREFIJO)) {
+                    throw new NoAutenticadoException("Debe iniciar sesión");
+                }
+                request.setAttribute(PlataformaActual.ATRIBUTO,
+                        jwtUtil.validarPlataforma(header.substring(PREFIJO.length()).trim()));
                 EmpresaContexto.fijarSinEmpresa();
             } else {
                 String header = request.getHeader(HttpHeaders.AUTHORIZATION);

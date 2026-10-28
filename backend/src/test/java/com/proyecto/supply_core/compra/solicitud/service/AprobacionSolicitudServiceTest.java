@@ -36,12 +36,15 @@ import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
 import com.proyecto.supply_core.compra.solicitud.repository.AprobacionSolicitudRepository;
 import com.proyecto.supply_core.compra.solicitud.repository.SolicitudCompraRepository;
 import com.proyecto.supply_core.empresa.entity.PoliticaAprobacion;
+import com.proyecto.supply_core.delegacion.repository.DelegacionRepository;
+import com.proyecto.supply_core.delegacion.service.DelegacionService;
 import com.proyecto.supply_core.empresa.repository.PoliticaAprobacionRepository;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.usuario.entity.Rol;
+import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
 
 class AprobacionSolicitudServiceTest {
 
@@ -51,8 +54,11 @@ class AprobacionSolicitudServiceTest {
     private final PoliticaAprobacionRepository politicas = mock(PoliticaAprobacionRepository.class);
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
     private final NotificacionService notificaciones = mock(NotificacionService.class);
+    private final DelegacionRepository delegacionRepo = mock(DelegacionRepository.class);
+    private final DelegacionService delegaciones = new DelegacionService(delegacionRepo, mock(UsuarioRepository.class),
+            mock(PoliticaAprobacionRepository.class), auditoria, notificaciones);
     private final AprobacionSolicitudService service = new AprobacionSolicitudService(solicitudService, solicitudes,
-            aprobaciones, politicas, auditoria, notificaciones);
+            aprobaciones, politicas, auditoria, notificaciones, delegaciones);
 
     private MockHttpServletRequest request;
     private SolicitudCompra s;
@@ -120,6 +126,58 @@ class AprobacionSolicitudServiceTest {
         sesion(20L, "COMPRADOR");
         assertThrows(AccesoDenegadoException.class,
                 () -> service.decidir(1L, new DecisionRequest(DecisionAprobacion.APROBADA, null)));
+    }
+
+    @Test
+    void sinElRolPeroConUnaDelegacionVigenteDecideYQuedaGuardadaLaDelegacion() {
+        sesion(20L, "COMPRADOR");
+        when(delegacionRepo.vigentesQueDanElRol(eq(20L), eq("APROBADOR"), any(), eq(10L))).thenReturn(List.of(5L));
+
+        var r = service.decidir(1L, new DecisionRequest(DecisionAprobacion.APROBADA, null));
+
+        assertEquals(EstadoSolicitud.APROBADA, r.estado());
+        ArgumentCaptor<AprobacionSolicitud> captor = ArgumentCaptor.forClass(AprobacionSolicitud.class);
+        verify(aprobaciones).save(captor.capture());
+        assertEquals(20L, captor.getValue().getUsuarioAprobadorId());
+        assertEquals(5L, captor.getValue().getDelegacionId());
+    }
+
+    @Test
+    void conSuPropioRolLaDecisionNoLlevaDelegacion() {
+        service.decidir(1L, new DecisionRequest(DecisionAprobacion.APROBADA, null));
+
+        ArgumentCaptor<AprobacionSolicitud> captor = ArgumentCaptor.forClass(AprobacionSolicitud.class);
+        verify(aprobaciones).save(captor.capture());
+        assertEquals(null, captor.getValue().getDelegacionId());
+    }
+
+    @Test
+    void laDelegacionDeQuienPidioLaSolicitudNoValeYElDelegadoSolicitanteTampoco() {
+        sesion(20L, "COMPRADOR");
+        // la consulta excluye al delegante que es el solicitante, así que no devuelve nada
+        when(delegacionRepo.vigentesQueDanElRol(eq(20L), eq("APROBADOR"), any(), eq(10L))).thenReturn(List.of());
+        assertThrows(AccesoDenegadoException.class,
+                () -> service.decidir(1L, new DecisionRequest(DecisionAprobacion.APROBADA, null)));
+
+        // el delegado no puede ser el propio solicitante aunque tenga una delegación
+        sesion(10L, "COMPRADOR");
+        when(delegacionRepo.vigentesQueDanElRol(eq(10L), eq("APROBADOR"), any(), any())).thenReturn(List.of(5L));
+        assertThrows(AccesoDenegadoException.class,
+                () -> service.decidir(1L, new DecisionRequest(DecisionAprobacion.APROBADA, null)));
+        verify(aprobaciones, never()).save(any());
+    }
+
+    @Test
+    void laBandejaIncluyeLoQueSeRecibePorDelegacion() {
+        sesion(20L, "COMPRADOR");
+        when(delegacionRepo.rolesDelegados(eq(20L), any())).thenReturn(Set.of("APROBADOR"));
+        when(solicitudes.pendientesPara(any(), eq(20L), any())).thenReturn(org.springframework.data.domain.Page.empty());
+
+        service.pendientes(org.springframework.data.domain.PageRequest.of(0, 10));
+
+        ArgumentCaptor<java.util.Collection<String>> roles = ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(solicitudes).pendientesPara(roles.capture(), eq(20L), any());
+        assertEquals(Set.of("COMPRADOR", "APROBADOR"), Set.copyOf(roles.getValue()));
     }
 
     @Test

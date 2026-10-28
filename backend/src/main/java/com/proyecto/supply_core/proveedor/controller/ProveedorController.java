@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.proveedor.dto.ActualizarProveedorRequest;
 import com.proyecto.supply_core.proveedor.dto.EvaluacionResponse;
@@ -30,6 +32,7 @@ import jakarta.validation.constraints.Positive;
  * Administración de proveedores: ADMIN_COMPRAS aprueba, rechaza y suspende.
  * COMPRADOR y AUDITOR pueden consultar (el comprador elige a quién invitar a una RFQ).
  */
+@RequiereModulo(Modulos.PROVEEDORES)
 @RestController
 @RequestMapping("/api/proveedores")
 @RequiereRol(Roles.ADMIN_COMPRAS)

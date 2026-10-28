@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.ia.dto.ConfirmarCampoRequest;
 import com.proyecto.supply_core.ia.dto.DigitacionRequest;
 import com.proyecto.supply_core.ia.dto.ProcesamientoResponse;
@@ -23,6 +25,7 @@ import jakarta.validation.constraints.Positive;
  * Revisión de cotizaciones por archivo (UC-08): ver lo que leyó la IA, confirmar o corregir datos dudosos,
  * digitarla a mano o reintentar la lectura. Compras, y solo con la RFQ ya cerrada (sobre cerrado).
  */
+@RequiereModulo(Modulos.IA)
 @RestController
 @RequestMapping("/api/cotizaciones/{cotizacionId}/extraccion")
 @RequiereRol({ Roles.COMPRADOR, Roles.ADMIN_COMPRAS })

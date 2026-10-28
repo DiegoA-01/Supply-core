@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="16 0 128 156" role="img" aria-label="Supply-Core">
+<title>Supply-Core · Cajabot</title>
+<line x1="80" y1="28" x2="80" y2="15" stroke="#0B5C56" stroke-width="3" stroke-linecap="round"/>
+<circle cx="80" cy="10" r="5.5" fill="#F59E0B"/>
+<polygon points="38,40 122,40 114,28 46,28" fill="#0B5C56"/>
+<rect x="74" y="28" width="12" height="12" fill="#F59E0B"/>
+<rect x="38" y="40" width="84" height="72" rx="14" fill="#0F766E"/>
+<rect x="48" y="54" width="64" height="44" rx="10" fill="#0B1F2E"/>
+<rect x="61" y="66" width="9" height="13" rx="4.5" fill="#5EEAD4"/>
+<rect x="90" y="66" width="9" height="13" rx="4.5" fill="#5EEAD4"/>
+<path d="M70 87 Q80 94 90 87" fill="none" stroke="#5EEAD4" stroke-width="3" stroke-linecap="round"/>
+<circle cx="34" cy="76" r="6" fill="#0B5C56"/>
+<circle cx="126" cy="76" r="6" fill="#0B5C56"/>
+<rect x="56" y="112" width="48" height="26" rx="8" fill="#0B1F2E"/>
+<circle cx="80" cy="125" r="4.5" fill="#F59E0B"/>
+<line x1="56" y1="120" x2="38" y2="134" stroke="#0F766E" stroke-width="7" stroke-linecap="round"/>
+<line x1="104" y1="120" x2="124" y2="108" stroke="#0F766E" stroke-width="7" stroke-linecap="round"/>
+<line x1="128" y1="104" x2="138" y2="82" stroke="#F59E0B" stroke-width="5" stroke-linecap="round"/>
+<line x1="138" y1="82" x2="140" y2="76" stroke="#667085" stroke-width="3" stroke-linecap="round"/>
+<rect x="64" y="138" width="11" height="12" rx="3" fill="#0B1F2E"/>
+<rect x="85" y="138" width="11" height="12" rx="3" fill="#0B1F2E"/>
+</svg>

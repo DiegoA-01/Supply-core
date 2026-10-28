@@ -5,6 +5,8 @@ import java.math.BigDecimal;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -19,6 +21,7 @@ import jakarta.validation.constraints.Size;
  * @param topeAnticipoPct    tope de los anticipos como % del total de la orden (opcional; si no viene no cambia)
  * @param toleranciaFacturaPct   diferencia aceptada entre factura y recepción, en % (opcional)
  * @param toleranciaFacturaMonto diferencia aceptada entre factura y recepción, en monto fijo (opcional)
+ * @param slaAprobacionHoras horas para decidir una solicitud pendiente antes de escalarla, de 0 (sin SLA) a 720 (opcional)
  */
 public record EmpresaRequest(
         @NotBlank(message = "es obligatoria")
@@ -46,5 +49,8 @@ public record EmpresaRequest(
         BigDecimal toleranciaFacturaPct,
         @DecimalMin(value = "0", message = "no puede ser negativa")
         @Digits(integer = 16, fraction = 2, message = "máximo 16 enteros y 2 decimales")
-        BigDecimal toleranciaFacturaMonto) {
+        BigDecimal toleranciaFacturaMonto,
+        @Min(value = 0, message = "no puede ser negativo")
+        @Max(value = 720, message = "no puede superar 720 horas (30 días)")
+        Integer slaAprobacionHoras) {
 }

@@ -83,6 +83,10 @@ public class Adjudicacion {
     @Column(name = "aprobado_por_usuario_id")
     private Long aprobadoPorUsuarioId;
 
+    /** Delegación con la que se aprobó; {@code null} si el aprobador usó su propio rol. */
+    @Column(name = "delegacion_id")
+    private Long delegacionId;
+
     @Column(name = "aprobado_en")
     private LocalDateTime aprobadoEn;
 

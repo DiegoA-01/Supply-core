@@ -40,6 +40,7 @@ import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
 import com.proyecto.supply_core.compra.solicitud.repository.SolicitudCompraRepository;
 import com.proyecto.supply_core.empresa.entity.PoliticaAprobacion;
 import com.proyecto.supply_core.empresa.enums.TipoPolitica;
+import com.proyecto.supply_core.delegacion.service.DelegacionService;
 import com.proyecto.supply_core.empresa.repository.PoliticaAprobacionRepository;
 import com.proyecto.supply_core.empresa.service.PoliticaAprobacionService;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
@@ -82,6 +83,7 @@ public class AdjudicacionService {
     private final UsuarioRepository usuarioRepository;
     private final AuditoriaService auditoriaService;
     private final NotificacionService notificacionService;
+    private final DelegacionService delegaciones;
 
     /**
      * @param adjudicacionRepository adjudicaciones
@@ -94,12 +96,15 @@ public class AdjudicacionService {
      * @param usuarioRepository      usuarios del proveedor ganador
      * @param auditoriaService       registro de acciones
      * @param notificacionService    avisos
+     * @param delegaciones           autoridad delegada para aprobar (18-c)
      */
     public AdjudicacionService(AdjudicacionRepository adjudicacionRepository, AnalisisRepository analisisRepository,
             RfqRepository rfqRepository, SolicitudCompraRepository solicitudRepository,
             CotizacionRepository cotizacionRepository, PoliticaAprobacionService politicaService,
             PoliticaAprobacionRepository politicaRepository, UsuarioRepository usuarioRepository,
-            AuditoriaService auditoriaService, NotificacionService notificacionService) {
+            AuditoriaService auditoriaService, NotificacionService notificacionService,
+            DelegacionService delegaciones) {
+        this.delegaciones = delegaciones;
         this.adjudicacionRepository = adjudicacionRepository;
         this.analisisRepository = analisisRepository;
         this.rfqRepository = rfqRepository;
@@ -202,10 +207,10 @@ public class AdjudicacionService {
         String rol = politicaRepository.findWithRolById(a.getPoliticaAprobacionId())
                 .map(p -> p.getRolAprobador().getCodigo())
                 .orElseThrow(() -> new IllegalStateException("Adjudicación " + id + " sin política"));
-        if (!sesion.tieneAlgunRol(rol)) {
-            throw new AccesoDenegadoException("Esta adjudicación la aprueba el rol " + rol);
-        }
+        // con su propio rol o por una delegación vigente (nunca la de quien adjudicó)
+        Long delegacionId = delegaciones.autorizar(sesion, rol, a.getUsuarioId()).orElse(null);
         a.setAprobadoPorUsuarioId(sesion.id());
+        a.setDelegacionId(delegacionId);
         a.setAprobadoEn(LocalDateTime.now());
         a.setObservacionesAprobacion(req.observaciones() == null || req.observaciones().isBlank()
                 ? null : req.observaciones().trim());
@@ -221,7 +226,8 @@ public class AdjudicacionService {
         }
         auditoriaService.exito(AccionAuditoria.ADJUDICACION_DECIDIR, EntidadAuditada.ADJUDICACION, id,
                 a.getRfq().getConsecutivo() + "; decision=" + a.getEstado()
-                        + (a.getObservacionesAprobacion() == null ? "" : "; obs=" + a.getObservacionesAprobacion()));
+                        + (a.getObservacionesAprobacion() == null ? "" : "; obs=" + a.getObservacionesAprobacion())
+                        + (delegacionId == null ? "" : "; porDelegacion=" + delegacionId));
         return AdjudicacionResponse.of(a);
     }
 
@@ -259,7 +265,7 @@ public class AdjudicacionService {
     @Transactional(readOnly = true)
     public PageResponse<AdjudicacionResponse> pendientes(Pageable pageable) {
         UsuarioAutenticado sesion = SesionActual.usuario();
-        return PageResponse.of(adjudicacionRepository.pendientesPara(sesion.roles(), sesion.id(),
+        return PageResponse.of(adjudicacionRepository.pendientesPara(delegaciones.rolesEfectivos(sesion), sesion.id(),
                 Ordenamiento.validar(pageable, CAMPOS_ORDENABLES)), AdjudicacionResponse::of);
     }
 

@@ -47,6 +47,9 @@ import com.proyecto.supply_core.compra.orden.entity.OrdenCompra;
 import com.proyecto.supply_core.compra.orden.enums.EstadoOrden;
 import com.proyecto.supply_core.compra.orden.repository.OrdenCompraRepository;
 import com.proyecto.supply_core.compra.orden.repository.OrdenEstadoHistorialRepository;
+import com.proyecto.supply_core.compra.solicitud.entity.SolicitudCompra;
+import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
+import com.proyecto.supply_core.compra.solicitud.repository.SolicitudCompraRepository;
 import com.proyecto.supply_core.compra.rfq.entity.RfqLinea;
 import com.proyecto.supply_core.inventario.entity.Bodega;
 import com.proyecto.supply_core.inventario.entity.Producto;
@@ -72,8 +75,9 @@ class OrdenServiceTest {
     private final NotificacionService notificaciones = mock(NotificacionService.class);
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
     private final PagoRepository pagos = mock(PagoRepository.class);
+    private final SolicitudCompraRepository solicitudes = mock(SolicitudCompraRepository.class);
     private final OrdenCompraService service = new OrdenCompraService(ordenes, historial, adjudicaciones, bodegas,
-            unidades, usuarios, consecutivos, auditoria, notificaciones, pagos);
+            unidades, usuarios, consecutivos, auditoria, notificaciones, pagos, solicitudes);
     private final OrdenProveedorService proveedorService = new OrdenProveedorService(service, ordenes, auditoria,
             notificaciones);
 
@@ -202,6 +206,56 @@ class OrdenServiceTest {
                         new NuevaVersionRequest.CambioCantidad(v1.lineas().get(0).id(), new BigDecimal("24"))))));
         assertEquals("ORDEN_TOTAL_MENOR_PAGADO", e.getCodigo()); // 12852 < 20000
         assertEquals(EstadoOrden.EMITIDA, guardadas.get(0).getEstado());
+    }
+
+    @Test
+    void laVersionDeUnaOrdenDeContratoSoloBajaLaCantidadYConservaElOrigen() {
+        var v1 = emitir();
+        OrdenCompra o = guardadas.get(0);
+        o.setAdjudicacionId(null);
+        o.setContratoId(7L);
+        o.setSolicitudId(9L);
+        o.getLineas().get(0).setContratoPrecioId(300L);
+        Long linea = v1.lineas().get(0).id();
+
+        assertEquals("CONTRATO_TOPE_EXCEDIDO", assertThrows(NegocioException.class, () -> service.nuevaVersion(v1.id(),
+                new NuevaVersionRequest("Pedir más unidades", null, null, null,
+                        List.of(new NuevaVersionRequest.CambioCantidad(linea, new BigDecimal("60")))))).getCodigo());
+
+        var v2 = service.nuevaVersion(v1.id(), new NuevaVersionRequest("Reducir el pedido", null, null, null,
+                List.of(new NuevaVersionRequest.CambioCantidad(linea, new BigDecimal("24")))));
+        OrdenCompra nueva = guardadas.get(1);
+        assertEquals(2, v2.version());
+        assertEquals(7L, nueva.getContratoId());
+        assertEquals(9L, nueva.getSolicitudId());
+        assertEquals(300L, nueva.getLineas().get(0).getContratoPrecioId());
+    }
+
+    @Test
+    void cancelarUnaOrdenDirectaDevuelveLaSolicitudAAprobada() {
+        var v1 = emitir();
+        OrdenCompra o = guardadas.get(0);
+        o.setAdjudicacionId(null);
+        o.setContratoId(7L);
+        o.setSolicitudId(9L);
+        SolicitudCompra s = new SolicitudCompra();
+        s.setId(9L);
+        s.setEstado(EstadoSolicitud.ADJUDICADA);
+        when(solicitudes.findById(9L)).thenReturn(Optional.of(s));
+
+        service.cancelar(v1.id(), "El proveedor no puede entregar");
+
+        assertEquals(EstadoOrden.CANCELADA, o.getEstado());
+        assertEquals(EstadoSolicitud.APROBADA, s.getEstado());
+    }
+
+    @Test
+    void cancelarUnaOrdenConAdjudicacionNoTocaLaSolicitud() {
+        var v1 = emitir();
+
+        service.cancelar(v1.id(), "Cambio de planes");
+
+        verify(solicitudes, org.mockito.Mockito.never()).findById(any());
     }
 
     @Test

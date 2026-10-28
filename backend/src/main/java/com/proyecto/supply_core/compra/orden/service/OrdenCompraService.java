@@ -38,6 +38,8 @@ import com.proyecto.supply_core.compra.orden.entity.OrdenEstadoHistorial;
 import com.proyecto.supply_core.compra.orden.enums.EstadoOrden;
 import com.proyecto.supply_core.compra.orden.repository.OrdenCompraRepository;
 import com.proyecto.supply_core.compra.orden.repository.OrdenEstadoHistorialRepository;
+import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
+import com.proyecto.supply_core.compra.solicitud.repository.SolicitudCompraRepository;
 import com.proyecto.supply_core.inventario.entity.Bodega;
 import com.proyecto.supply_core.inventario.repository.BodegaRepository;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
@@ -79,6 +81,7 @@ public class OrdenCompraService {
     private final AuditoriaService auditoriaService;
     private final NotificacionService notificacionService;
     private final PagoRepository pagoRepository;
+    private final SolicitudCompraRepository solicitudRepository;
 
     /**
      * @param ordenRepository        órdenes
@@ -91,12 +94,14 @@ public class OrdenCompraService {
      * @param auditoriaService       registro de acciones
      * @param notificacionService    avisos
      * @param pagoRepository         pagos (una versión no puede quedar por debajo de lo pagado)
+     * @param solicitudRepository    solicitud de una orden directa (vuelve a APROBADA si se cancela)
      */
     public OrdenCompraService(OrdenCompraRepository ordenRepository, OrdenEstadoHistorialRepository historialRepository,
             AdjudicacionRepository adjudicacionRepository, BodegaRepository bodegaRepository,
             UnidadMedidaService unidadMedidaService, UsuarioRepository usuarioRepository,
             ConsecutivoGenerator consecutivos, AuditoriaService auditoriaService,
-            NotificacionService notificacionService, PagoRepository pagoRepository) {
+            NotificacionService notificacionService, PagoRepository pagoRepository,
+            SolicitudCompraRepository solicitudRepository) {
         this.ordenRepository = ordenRepository;
         this.historialRepository = historialRepository;
         this.adjudicacionRepository = adjudicacionRepository;
@@ -107,6 +112,7 @@ public class OrdenCompraService {
         this.auditoriaService = auditoriaService;
         this.notificacionService = notificacionService;
         this.pagoRepository = pagoRepository;
+        this.solicitudRepository = solicitudRepository;
     }
 
     /**
@@ -190,6 +196,8 @@ public class OrdenCompraService {
 
         OrdenCompra nueva = new OrdenCompra();
         nueva.setAdjudicacionId(actual.getAdjudicacionId());
+        nueva.setContratoId(actual.getContratoId());
+        nueva.setSolicitudId(actual.getSolicitudId());
         nueva.setProveedor(actual.getProveedor());
         nueva.setBodegaDestino(req.bodegaDestinoId() == null ? actual.getBodegaDestino() : bodegaActiva(req.bodegaDestinoId()));
         nueva.setUsuarioId(SesionActual.usuario().id());
@@ -206,7 +214,13 @@ public class OrdenCompraService {
             if (cantidad.signum() == 0) {
                 continue; // línea quitada
             }
+            if (l.getContratoPrecioId() != null && cantidad.compareTo(l.getCantidad()) > 0) {
+                throw new NegocioException("CONTRATO_TOPE_EXCEDIDO", "La línea de " + l.getProducto().getNombre()
+                        + " viene de un contrato: su cantidad solo puede bajar de " + l.getCantidad().toPlainString()
+                        + "; para pedir más, emita una orden nueva y se revisa el tope");
+            }
             OrdenCompraLinea copia = new OrdenCompraLinea();
+            copia.setContratoPrecioId(l.getContratoPrecioId());
             copia.setCotizacionLineaId(l.getCotizacionLineaId());
             copia.setProducto(l.getProducto());
             copia.setCantidad(cantidad);
@@ -253,6 +267,11 @@ public class OrdenCompraService {
         OrdenCompra o = bloquear(id);
         exigirTransicion(o, EstadoOrden.CANCELADA);
         o.setEstado(EstadoOrden.CANCELADA);
+        if (o.getAdjudicacionId() == null && o.getSolicitudId() != null) {
+            // orden directa de contrato: la solicitud vuelve a estar lista para otra compra
+            solicitudRepository.findById(o.getSolicitudId()).filter(s -> s.getEstado() == EstadoSolicitud.ADJUDICADA)
+                    .ifPresent(s -> s.setEstado(EstadoSolicitud.APROBADA));
+        }
         historial(o, EstadoOrden.CANCELADA, texto);
         avisarProveedor(o, EventoNotificacion.ORDEN_ACTUALIZADA, "La orden " + o.getConsecutivo() + " fue CANCELADA: " + texto);
         auditoriaService.exito(AccionAuditoria.ORDEN_CANCELAR, EntidadAuditada.ORDEN_COMPRA, id,

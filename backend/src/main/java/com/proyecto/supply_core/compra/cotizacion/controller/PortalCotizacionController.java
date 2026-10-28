@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.compra.cotizacion.dto.CotizacionRequest;
 import com.proyecto.supply_core.compra.cotizacion.dto.CotizacionResponse;
 import com.proyecto.supply_core.compra.cotizacion.service.CotizacionService;
@@ -23,6 +25,7 @@ import jakarta.validation.constraints.Positive;
 /**
  * Cotización del proveedor para una RFQ a la que fue invitado (UC-07). Solo PROVEEDOR.
  */
+@RequiereModulo(Modulos.RFQ_COTIZACIONES)
 @RestController
 @RequestMapping("/api/portal/rfqs/{rfqId}/cotizacion")
 @RequiereRol(Roles.PROVEEDOR)

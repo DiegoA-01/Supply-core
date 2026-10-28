@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.security.annotation.RequiereModulo;
+import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.compra.rfq.dto.RfqCrearRequest;
 import com.proyecto.supply_core.compra.rfq.dto.RfqDatosRequest;
@@ -30,6 +32,7 @@ import jakarta.validation.constraints.Positive;
 /**
  * RFQ (UC-06). Escribe el COMPRADOR; consultan compras, aprobadores y auditoría.
  */
+@RequiereModulo(Modulos.RFQ_COTIZACIONES)
 @RestController
 @RequestMapping("/api/rfqs")
 @RequiereRol({ Roles.COMPRADOR, Roles.ADMIN_COMPRAS, Roles.APROBADOR, Roles.AUDITOR })

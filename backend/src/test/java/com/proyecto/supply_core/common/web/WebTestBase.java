@@ -13,8 +13,10 @@ import com.proyecto.supply_core.empresa.repository.CentroCostoRepository;
 import com.proyecto.supply_core.empresa.repository.EmpresaRepository;
 import com.proyecto.supply_core.empresa.repository.SedeRepository;
 import com.proyecto.supply_core.inventario.repository.ProductoRepository;
+import com.proyecto.supply_core.plataforma.service.AccesoEmpresaService;
 import com.proyecto.supply_core.proveedor.repository.ProveedorRepository;
 import com.proyecto.supply_core.security.config.SecurityBeansConfig;
+import com.proyecto.supply_core.security.context.PlataformaAutenticada;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.security.interceptor.RolInterceptor;
 import com.proyecto.supply_core.security.jwt.JwtUtil;
@@ -63,6 +65,10 @@ public abstract class WebTestBase {
     @MockitoBean
     protected SedeRepository sedeRepository;
 
+    /** Simulado: no lanza nada, así que toda empresa tiene suscripción y todos los módulos. */
+    @MockitoBean
+    protected AccesoEmpresaService accesoEmpresaService;
+
     /**
      * Header {@code Authorization} con un JWT real de un usuario interno.
      *
@@ -72,6 +78,15 @@ public abstract class WebTestBase {
     protected String bearer(String... roles) {
         return "Bearer " + jwtUtil.generar(new UsuarioAutenticado(1L, "usuario@prueba.com", "Usuario Prueba",
                 Set.of(roles), null, 1L));
+    }
+
+    /**
+     * Header {@code Authorization} con un JWT real de la sesión del dueño de la plataforma (sin empresa).
+     *
+     * @return valor del header ("Bearer ...")
+     */
+    protected String bearerPlataforma() {
+        return "Bearer " + jwtUtil.generarPlataforma(new PlataformaAutenticada(3L, "dueno@supplycore.local", "Dueño"));
     }
 
     /**

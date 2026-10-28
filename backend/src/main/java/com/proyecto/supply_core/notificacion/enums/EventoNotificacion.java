@@ -53,7 +53,13 @@ public enum EventoNotificacion {
     /** Una factura no cuadra con lo recibido y espera la decisión de compras (destino: ADMIN_COMPRAS). */
     FACTURA_EN_REVISION("Factura por revisar"),
     /** Compras aprobó o anularon una factura (destino: el administrativo que la registró). */
-    FACTURA_DECIDIDA("Decisión sobre la factura");
+    FACTURA_DECIDIDA("Decisión sobre la factura"),
+    /** Una solicitud pendiente va por el 80 % del tiempo para decidirse. */
+    SOLICITUD_SLA_POR_VENCER("Solicitud por vencer en aprobación"),
+    /** Una solicitud pendiente venció su tiempo y pasó a la política de mayor tramo. */
+    SOLICITUD_ESCALADA("Solicitud escalada"),
+    /** Un aprobador le delegó sus decisiones. */
+    DELEGACION_ASIGNADA("Delegación de aprobación asignada");
 
     /** Asunto del correo. */
     private final String asunto;

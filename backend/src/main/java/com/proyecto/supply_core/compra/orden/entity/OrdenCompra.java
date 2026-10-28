@@ -51,8 +51,17 @@ public class OrdenCompra {
     @Column(name = "empresa_id", nullable = false, updatable = false)
     private Long empresaId;
 
-    @Column(name = "adjudicacion_id", nullable = false, updatable = false)
+    /** Adjudicación de origen; {@code null} en una orden directa de contrato (paso 18-b). */
+    @Column(name = "adjudicacion_id", updatable = false)
     private Long adjudicacionId;
+
+    /** Contrato de origen; solo en una orden directa. */
+    @Column(name = "contrato_id", updatable = false)
+    private Long contratoId;
+
+    /** Solicitud de origen; solo en una orden directa (en las demás se llega por adjudicación y RFQ). */
+    @Column(name = "solicitud_id", updatable = false)
+    private Long solicitudId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "proveedor_id", nullable = false, updatable = false)

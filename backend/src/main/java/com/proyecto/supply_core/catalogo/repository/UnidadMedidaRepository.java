@@ -1,6 +1,7 @@
 package com.proyecto.supply_core.catalogo.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -40,6 +41,14 @@ public interface UnidadMedidaRepository extends JpaRepository<UnidadMedida, Long
      * @return {@code true} si existe
      */
     boolean existsByCodigoIgnoreCase(String codigo);
+
+    /**
+     * Busca una unidad por código sin distinguir mayúsculas (carga masiva).
+     *
+     * @param codigo código de la unidad
+     * @return unidad, si existe
+     */
+    Optional<UnidadMedida> findByCodigoIgnoreCase(String codigo);
 
     /**
      * Indica si el registro existe y está activo (validaciones de requests).

@@ -24,6 +24,15 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
     boolean existsByCodigoIgnoreCase(String codigo);
 
     /**
+     * Busca un producto por código sin distinguir mayúsculas, con categoría y unidad (carga masiva).
+     *
+     * @param codigo código del producto
+     * @return producto, si existe
+     */
+    @EntityGraph(attributePaths = { "categoria", "unidadMedida" })
+    Optional<Producto> findByCodigoIgnoreCase(String codigo);
+
+    /**
      * Indica si otro producto usa el código (ediciones).
      *
      * @param codigo código en mayúsculas

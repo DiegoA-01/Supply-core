@@ -50,6 +50,10 @@ public class AprobacionSolicitud {
     @Column(length = 500, updatable = false)
     private String observaciones;
 
+    /** Delegación con la que se decidió; {@code null} si decidió con su propio rol. */
+    @Column(name = "delegacion_id", updatable = false)
+    private Long delegacionId;
+
     @Column(name = "decidido_en", nullable = false, updatable = false)
     private LocalDateTime decididoEn;
 
@@ -64,11 +68,27 @@ public class AprobacionSolicitud {
      */
     public AprobacionSolicitud(Long solicitudCompraId, Long usuarioAprobadorId, Long politicaAprobacionId,
             DecisionAprobacion decision, String observaciones) {
+        this(solicitudCompraId, usuarioAprobadorId, politicaAprobacionId, decision, observaciones, null);
+    }
+
+    /**
+     * Crea una decisión lista para insertar, indicando si se tomó por delegación.
+     *
+     * @param solicitudCompraId    solicitud decidida
+     * @param usuarioAprobadorId   quién decide
+     * @param politicaAprobacionId política que exigía la aprobación
+     * @param decision             decisión
+     * @param observaciones        comentario (obligatorio si no es APROBADA)
+     * @param delegacionId         delegación con la que decide ({@code null} si decide con su propio rol)
+     */
+    public AprobacionSolicitud(Long solicitudCompraId, Long usuarioAprobadorId, Long politicaAprobacionId,
+            DecisionAprobacion decision, String observaciones, Long delegacionId) {
         this.solicitudCompraId = solicitudCompraId;
         this.usuarioAprobadorId = usuarioAprobadorId;
         this.politicaAprobacionId = politicaAprobacionId;
         this.decision = decision;
         this.observaciones = observaciones;
+        this.delegacionId = delegacionId;
     }
 
     /** Fija la fecha de la decisión al insertar. */

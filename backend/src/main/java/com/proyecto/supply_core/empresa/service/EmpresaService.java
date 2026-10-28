@@ -72,6 +72,9 @@ public class EmpresaService {
         if (req.toleranciaFacturaMonto() != null) {
             e.setToleranciaFacturaMonto(req.toleranciaFacturaMonto());
         }
+        if (req.slaAprobacionHoras() != null) {
+            e.setSlaAprobacionHoras(req.slaAprobacionHoras());
+        }
         auditoriaService.exito(AccionAuditoria.EMPRESA_EDITAR, EntidadAuditada.EMPRESA, e.getId(),
                 "antes: " + antes + " | después: " + describir(e));
         return EmpresaResponse.of(e);
@@ -97,6 +100,7 @@ public class EmpresaService {
     private static String describir(Empresa e) {
         return "razonSocial=" + e.getRazonSocial() + ", nit=" + e.getNit() + ", moneda=" + e.getMonedaBase()
                 + ", topeAnticipoPct=" + e.getTopeAnticipoPct() + ", toleranciaFacturaPct=" + e.getToleranciaFacturaPct()
-                + ", toleranciaFacturaMonto=" + e.getToleranciaFacturaMonto();
+                + ", toleranciaFacturaMonto=" + e.getToleranciaFacturaMonto() + ", slaAprobacionHoras="
+                + e.getSlaAprobacionHoras();
     }
 }

@@ -22,6 +22,14 @@ public interface EmpresaRepository extends JpaRepository<Empresa, Long> {
     boolean existsByNitIgnoreCaseAndIdNot(String nit, Long id);
 
     /**
+     * Indica si alguna empresa ya usa el NIT (alta de una empresa nueva).
+     *
+     * @param nit NIT a verificar
+     * @return {@code true} si existe
+     */
+    boolean existsByNitIgnoreCase(String nit);
+
+    /**
      * Resuelve el id de una empresa por su código público.
      *
      * @param codigo código público (p. ej. {@code demo})

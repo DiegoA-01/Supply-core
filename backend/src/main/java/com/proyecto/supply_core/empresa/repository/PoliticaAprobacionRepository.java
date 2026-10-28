@@ -2,9 +2,11 @@ package com.proyecto.supply_core.empresa.repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import com.proyecto.supply_core.empresa.entity.PoliticaAprobacion;
 import com.proyecto.supply_core.empresa.enums.TipoPolitica;
@@ -39,4 +41,13 @@ public interface PoliticaAprobacionRepository extends JpaRepository<PoliticaApro
      */
     @EntityGraph(attributePaths = "rolAprobador")
     Optional<PoliticaAprobacion> findWithRolById(Long id);
+
+    /**
+     * Códigos de los roles que aprueban en alguna política activa de la empresa. Solo quien tiene uno de ellos
+     * tiene algo que delegar.
+     *
+     * @return códigos de rol, sin repetir
+     */
+    @Query("select distinct p.rolAprobador.codigo from PoliticaAprobacion p where p.activo = true")
+    Set<String> rolesAprobadoresActivos();
 }
