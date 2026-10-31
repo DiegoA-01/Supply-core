@@ -58,5 +58,7 @@ public enum EntidadAuditada {
     /** Tabla {@code recepcion}. */
     RECEPCION,
     /** Tabla {@code factura_proveedor}. */
-    FACTURA
+    FACTURA,
+    /** Exportación de información (archivo descargado o enviado por correo). */
+    EXPORTACION
 }

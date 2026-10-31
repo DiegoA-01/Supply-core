@@ -14,4 +14,14 @@ public interface EmailClient {
      * @param cuerpo texto
      */
     void enviar(String para, String asunto, String cuerpo);
+
+    /**
+     * Envía un correo de texto plano con un archivo adjunto.
+     *
+     * @param para    destinatario
+     * @param asunto  asunto
+     * @param cuerpo  texto
+     * @param adjunto archivo adjunto
+     */
+    void enviarConAdjunto(String para, String asunto, String cuerpo, Adjunto adjunto);
 }

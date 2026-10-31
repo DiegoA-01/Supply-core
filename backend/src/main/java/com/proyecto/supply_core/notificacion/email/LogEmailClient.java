@@ -24,4 +24,18 @@ public class LogEmailClient implements EmailClient {
     public void enviar(String para, String asunto, String cuerpo) {
         log.info("[EMAIL simulado] para={} asunto=\"{}\" cuerpo=\"{}\"", para, asunto, cuerpo);
     }
+
+    /**
+     * Registra el correo y los datos del adjunto en el log (nivel INFO), sin el contenido del archivo.
+     *
+     * @param para    destinatario
+     * @param asunto  asunto
+     * @param cuerpo  texto
+     * @param adjunto archivo adjunto
+     */
+    @Override
+    public void enviarConAdjunto(String para, String asunto, String cuerpo, Adjunto adjunto) {
+        log.info("[EMAIL simulado] para={} asunto=\"{}\" cuerpo=\"{}\" adjunto={} ({} bytes)", para, asunto, cuerpo,
+                adjunto.nombre(), adjunto.contenido().length);
+    }
 }

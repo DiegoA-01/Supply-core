@@ -175,6 +175,17 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Formato de exportación desconocido o que ese dato no ofrece.
+     *
+     * @param ex excepción lanzada al interpretar {@code ?formato=}
+     * @return 400 con los formatos válidos
+     */
+    @ExceptionHandler(FormatoNoSoportadoException.class)
+    public ResponseEntity<ErrorResponse> formatoNoSoportado(FormatoNoSoportadoException ex) {
+        return responder(HttpStatus.BAD_REQUEST, ErrorResponse.of("FORMATO_NO_SOPORTADO", ex.getMessage()));
+    }
+
+    /**
      * Ordenamiento por un campo que no existe en consultas derivadas (p. ej. {@code ?sort=campoInventado}).
      *
      * @param ex excepción de Spring Data

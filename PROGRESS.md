@@ -1,9 +1,8 @@
 # Supply-Core — Progreso del backend
 
-> Última actualización: 2026-10-28 · Estado: **pasos 0 a 18, 18-a a 18-d y SaaS fase 2 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración) y consola de plataforma con planes y módulos (V23)**.
-> **615 pruebas en verde** (36 de fuga y de extremo a extremo entre empresas contra MySQL real), Javadoc sin advertencias (`doclint=all`), 23 migraciones Flyway, 50 controllers.
+> Última actualización: 2026-10-31 · Estado: **pasos 0 a 18, 18-a a 18-d y SaaS fase 2 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración), consola de plataforma con planes y módulos (V23) y exportación a Excel y PDF, parte 1 (sin migración)**.
+> **634 pruebas en verde** (37 de fuga y de extremo a extremo entre empresas contra MySQL real), Javadoc sin advertencias (`doclint=all`), 23 migraciones Flyway, 51 controllers.
 > Detalle vivo para Claude: `.claude/skills/supply-core/references/estado.md`, `plan-backend.md` y `saas.md`. Reglas no negociables: `CLAUDE.md`.
-> **Commit pendiente:** nada de lo hecho desde el paso 16 está commiteado (fase SaaS, pasos 17 y 17-bis, documentos). Última confirmación en git: «Feat: se agrega modulo pago».
 
 ---
 
@@ -150,6 +149,7 @@ Todo el código está en `backend/src/main/java/com/proyecto/supply_core/`. Cada
 | `documento/storage/LocalStorageClient` | Guarda en `backend/almacenamiento/` (detrás de la interfaz `StorageClient`) |
 | `proveedor/service/ProveedorReglaDocumentos` | Primera `ReglaAccesoDocumentos` (documentos del proveedor) |
 | `notificacion/service/NotificacionService` | `notificar(usuario)` / `notificarRol(rol)` (solo usuarios de la misma empresa): guarda la interna en la transacción y envía el correo después del commit |
+| `exportacion/service/ExportacionService` | Exporta stock, kardex y solicitudes a Excel y la orden de compra a PDF reutilizando los Services de cada pantalla (mismos permisos y empresa); tope de 10.000 filas; descarga o correo al usuario de la sesión; audita cada exportación |
 | `notificacion/email/EmailClient` | Interfaz de correo; `LogEmailClient` solo escribe en el log (cambiar por SMTP sin tocar los Services) |
 
 ### Compras, recepción, factura e IA
@@ -345,6 +345,7 @@ Orden final: 17 ✅ → 17-bis ✅ → 18 → 18-a a 18-d → SaaS 2 → SaaS 3 
 ### Pendientes técnicos conocidos
 - Pasar `@Value` a `@ConfigurationProperties` (CORS y admin) y crear perfiles `dev`/`prod`. En `prod`, exigir `JWT_SECRET`.
 - `@DataJpaTest` con Testcontainers cuando haya Docker (hoy las pruebas contra BD usan el MySQL local, base `supply_core_test`).
+- Exportación parte 2: reportes de gasto y proveedores en Excel/PDF, PDF de la orden para el proveedor desde su portal, nombres (no ids) de centro de costo y solicitante en el Excel de solicitudes.
 - Correo real: reemplazar `LogEmailClient` por un `EmailClient` SMTP con credenciales en `application-local.yaml`.
 - Revocar los refresh tokens al cambiar o restablecer la contraseña y al desactivar un usuario (hoy el corte llega al vencer el JWT, máximo 15 min). MFA para admins.
 - Rate limit en memoria: con varias instancias usar Redis; detrás de un proxy configurar la IP real (`server.forward-headers-strategy`).

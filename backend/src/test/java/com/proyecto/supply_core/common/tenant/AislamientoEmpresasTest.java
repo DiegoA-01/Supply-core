@@ -371,6 +371,47 @@ class AislamientoEmpresasTest {
     }
 
     @Test
+    void lasExportacionesSoloLlevanDatosDeLaEmpresaDelTokenYQuedanAuditadas() throws Exception {
+        String compradorA = token(empresaA, usuarioA, "COMPRADOR");
+        mvc.perform(get("/api/exportaciones/ordenes/" + ordenB + "?formato=pdf").header(HttpHeaders.AUTHORIZATION, compradorA))
+                .andExpect(status().isNotFound());
+        mvc.perform(post("/api/exportaciones/ordenes/" + ordenB + "/correo?formato=pdf")
+                        .header(HttpHeaders.AUTHORIZATION, compradorA))
+                .andExpect(status().isNotFound());
+
+        byte[] pdf = mvc.perform(get("/api/exportaciones/ordenes/" + ordenA + "?formato=pdf")
+                        .header(HttpHeaders.AUTHORIZATION, compradorA))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+        try (org.apache.pdfbox.pdmodel.PDDocument doc = org.apache.pdfbox.Loader.loadPDF(pdf)) {
+            String texto = new org.apache.pdfbox.text.PDFTextStripper().getText(doc);
+            assertTrue(texto.contains("OC-FUGA-A"));
+            assertFalse(texto.contains("Empresa B"));
+        }
+
+        byte[] xlsx = mvc.perform(get("/api/exportaciones/inventario/stock?formato=xlsx")
+                        .header(HttpHeaders.AUTHORIZATION, compradorA))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+        try (org.apache.poi.xssf.usermodel.XSSFWorkbook libro = new org.apache.poi.xssf.usermodel.XSSFWorkbook(
+                new java.io.ByteArrayInputStream(xlsx))) {
+            for (org.apache.poi.ss.usermodel.Row fila : libro.getSheetAt(0)) {
+                for (org.apache.poi.ss.usermodel.Cell celda : fila) {
+                    assertFalse(celda.toString().contains("empresa B"), celda.toString());
+                }
+            }
+        }
+        mvc.perform(get("/api/exportaciones/inventario/kardex?formato=xlsx&productoId=" + productoB)
+                        .header(HttpHeaders.AUTHORIZATION, compradorA))
+                .andExpect(status().isOk());
+
+        Integer auditadasA = jdbc.queryForObject("SELECT COUNT(*) FROM auditoria WHERE accion = 'EXPORTAR_ARCHIVO'"
+                + " AND empresa_id = ? AND entidad_id = ?", Integer.class, empresaA, ordenA);
+        Integer auditadasB = jdbc.queryForObject("SELECT COUNT(*) FROM auditoria WHERE accion = 'EXPORTAR_ARCHIVO'"
+                + " AND empresa_id = ?", Integer.class, empresaB);
+        assertEquals(1, auditadasA);
+        assertEquals(0, auditadasB);
+    }
+
+    @Test
     void elAdminDeUnaEmpresaSoloListaSusUsuarios() throws Exception {
         mvc.perform(get("/api/usuarios").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "ADMIN_SISTEMA")))
                 .andExpect(status().isOk())

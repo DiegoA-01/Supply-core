@@ -184,5 +184,9 @@ public enum AccionAuditoria {
     /** Se anuló una factura registrada por error. */
     FACTURA_ANULAR,
     /** Se adjuntó el PDF de una factura. */
-    FACTURA_ARCHIVO
+    FACTURA_ARCHIVO,
+    /** Se descargó un archivo exportado (Excel o PDF). */
+    EXPORTAR_ARCHIVO,
+    /** Se envió por correo un archivo exportado. */
+    EXPORTAR_CORREO
 }

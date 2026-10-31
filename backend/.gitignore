@@ -37,3 +37,6 @@ src/main/resources/application-local.yaml
 
 ### Archivos subidos (documentos) ###
 almacenamiento/
+
+# Archivos subidos con el perfil demo
+almacenamiento-demo/

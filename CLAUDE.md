@@ -31,6 +31,7 @@ Al iniciar cada sesión, usa la skill caveman en nivel full.
 - Pruebas de fuga entre empresas: `AislamientoEmpresasTest` usa MySQL real en la base separada `supply_core_test` (perfil `test`, Flyway la recrea). Toda entidad o consulta nueva de negocio debe sumar su prueba allí.
 - Proveedores se autorregistran (pendientes) y ADMIN_COMPRAS los habilita; luego cotizan desde su portal.
 - El proveedor inicia sesión como `usuario` con `proveedor_id` + rol PROVEEDOR (un solo login).
+- Exportación (`exportacion/`): Excel con POI y PDF con OpenPDF; reutiliza los Services de cada pantalla (no consulta por su cuenta) y el correo con adjunto va solo al usuario de la sesión.
 - Esquema solo por Flyway (`ddl-auto: none`). Nunca editar un `V*` ya ejecutado: crear `V{n+1}__...sql`.
 - Fuente de verdad del esquema: `backend/src/main/resources/db/migration/V1__esquema_inicial.sql`.
 
