@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Supply-Core">
+<title>Supply-Core</title>
+<polygon points="60,10 79,35 41,35" fill="#0F766E"/>
+<rect x="50" y="34" width="20" height="58" fill="#0B1F2E"/>
+<g stroke="#5EEAD4" stroke-width="2.2" stroke-linecap="round"><line x1="51" y1="43" x2="69" y2="39"/><line x1="51" y1="49" x2="69" y2="45"/><line x1="51" y1="83" x2="69" y2="79"/><line x1="51" y1="89" x2="69" y2="85"/></g>
+<rect x="35" y="55" width="15" height="22" rx="2" fill="#D97706"/>
+<rect x="50" y="55" width="20" height="22" fill="#F59E0B"/>
+<rect x="70" y="55" width="15" height="22" rx="2" fill="#B45309"/>
+<rect x="32" y="92" width="14" height="16" rx="2" fill="#0B5C56"/>
+<rect x="46" y="92" width="28" height="16" fill="#0F766E"/>
+<rect x="74" y="92" width="14" height="16" rx="2" fill="#0A4B46"/>
+</svg>
