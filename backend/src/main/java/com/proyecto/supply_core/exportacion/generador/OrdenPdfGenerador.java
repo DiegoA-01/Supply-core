@@ -25,6 +25,7 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import com.proyecto.supply_core.compra.orden.dto.OrdenResponse;
 import com.proyecto.supply_core.empresa.dto.EmpresaResponse;
+import com.proyecto.supply_core.proveedor.dto.ProveedorResponse;
 
 /**
  * PDF de una orden de compra con el encabezado de la empresa (OpenPDF).
@@ -49,11 +50,13 @@ public class OrdenPdfGenerador {
      *
      * @param empresa     empresa emisora (encabezado)
      * @param orden       orden con sus líneas
+     * @param proveedor   proveedor de la orden (NIT y contacto)
      * @param generadoPor nombre de quien exporta
      * @return bytes del PDF
      * @throws IllegalStateException si OpenPDF no puede armar el documento
      */
-    public byte[] generar(EmpresaResponse empresa, OrdenResponse orden, String generadoPor) {
+    public byte[] generar(EmpresaResponse empresa, OrdenResponse orden, ProveedorResponse proveedor,
+            String generadoPor) {
         ByteArrayOutputStream salida = new ByteArrayOutputStream();
         Document doc = new Document(PageSize.A4, 36, 36, 36, 36);
         try {
@@ -73,7 +76,7 @@ public class OrdenPdfGenerador {
             titulo.setSpacingAfter(8);
             doc.add(titulo);
 
-            doc.add(datosGenerales(orden));
+            doc.add(datosGenerales(orden, proveedor));
             doc.add(lineas(orden, empresa.monedaBase()));
             doc.add(totales(orden, empresa.monedaBase()));
 
@@ -92,17 +95,26 @@ public class OrdenPdfGenerador {
     }
 
     /**
-     * Tabla de dos columnas con proveedor, estado, entrega y origen de la orden.
+     * Tabla de dos columnas con proveedor (NIT y contacto), estado, entrega y origen de la orden.
      *
      * @param o orden
+     * @param p proveedor de la orden
      * @return tabla
      */
-    private static PdfPTable datosGenerales(OrdenResponse o) {
+    private static PdfPTable datosGenerales(OrdenResponse o, ProveedorResponse p) {
         PdfPTable t = new PdfPTable(new float[] { 1.3f, 3f });
         t.setWidthPercentage(100);
         t.setSpacingAfter(10);
         par(t, "Proveedor", o.proveedorRazonSocial());
-        par(t, "Estado", o.estado().name());
+        par(t, "NIT del proveedor", p.nit());
+        String contacto = unir(p.correoContacto(), p.telefono());
+        if (!contacto.isEmpty()) {
+            par(t, "Contacto", contacto);
+        }
+        if (p.direccion() != null && !p.direccion().isBlank()) {
+            par(t, "Dirección del proveedor", p.direccion());
+        }
+        par(t, "Estado", Etiquetas.de(o.estado()));
         par(t, "Emitida", o.creadoEn() == null ? "" : o.creadoEn().format(FECHA_HORA));
         par(t, "Bodega de destino", o.bodegaDestinoNombre());
         par(t, "Lugar de entrega", o.lugarEntrega());
@@ -134,9 +146,9 @@ public class OrdenPdfGenerador {
             t.addCell(new Phrase(l.productoCodigo(), NORMAL));
             t.addCell(new Phrase(l.productoNombre(), NORMAL));
             t.addCell(new Phrase(l.unidad(), NORMAL));
-            t.addCell(numero(l.cantidad()));
+            t.addCell(alDerecha(cantidad(l.cantidad())));
             t.addCell(numero(l.precioUnitario()));
-            t.addCell(numero(l.impuestoPct()));
+            t.addCell(alDerecha(cantidad(l.impuestoPct())));
             t.addCell(numero(l.subtotal()));
         }
         return t;
@@ -177,15 +189,55 @@ public class OrdenPdfGenerador {
     }
 
     /**
-     * Celda numérica alineada a la derecha.
+     * Celda de monto alineada a la derecha.
      *
-     * @param n número
+     * @param n monto
      * @return celda
      */
     private static PdfPCell numero(BigDecimal n) {
-        PdfPCell c = new PdfPCell(new Phrase(formato(n), NORMAL));
+        return alDerecha(formato(n));
+    }
+
+    /**
+     * Celda de texto alineada a la derecha.
+     *
+     * @param texto texto
+     * @return celda
+     */
+    private static PdfPCell alDerecha(String texto) {
+        PdfPCell c = new PdfPCell(new Phrase(texto, NORMAL));
         c.setHorizontalAlignment(Element.ALIGN_RIGHT);
         return c;
+    }
+
+    /**
+     * Une los textos que tengan contenido con " · ".
+     *
+     * @param textos textos ({@code null} o vacíos se omiten)
+     * @return texto unido, vacío si ninguno tiene contenido
+     */
+    private static String unir(String... textos) {
+        StringBuilder sb = new StringBuilder();
+        for (String t : textos) {
+            if (t != null && !t.isBlank()) {
+                sb.append(sb.isEmpty() ? "" : " · ").append(t.trim());
+            }
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Cantidad o porcentaje en formato colombiano, sin decimales si es entero (10 y 19, no 10,00 y 19,00).
+     *
+     * @param n número ({@code null} = vacío)
+     * @return texto
+     */
+    static String cantidad(BigDecimal n) {
+        if (n == null) {
+            return "";
+        }
+        DecimalFormat f = new DecimalFormat("#,##0.####", DecimalFormatSymbols.getInstance(COLOMBIA));
+        return f.format(n);
     }
 
     /**
