@@ -1,0 +1,17 @@
+.cabecera { margin-bottom: 14px; h2 { margin: 0; display: flex; gap: 8px; align-items: center; } }
+.tres-vias { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.via { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1px solid var(--sc-borde); border-radius: 12px;
+  strong { font-size: 22px; } &.destacada { border-color: #f3b49c; background: #fff8f5; } }
+.margen-arriba { margin-top: 14px; }
+
+.pago { display: flex; flex-direction: column; gap: 6px; padding: 14px 0; border-top: 1px solid #f0f0f0; strong { font-size: 17px; } .chip { align-self: flex-start; } }
+
+.recorrido { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.recorrido li { display: flex; gap: 12px; padding-bottom: 16px; position: relative; div { display: flex; flex-direction: column; } }
+.recorrido li:not(:last-child)::before { content: ''; position: absolute; left: 12px; top: 26px; bottom: 2px; width: 1px; background: var(--sc-borde); }
+.marca-paso { flex: none; display: grid; place-items: center; width: 25px; height: 25px; border-radius: 50%; background: var(--sc-verde-fondo); color: var(--sc-verde);
+  .material-symbols-outlined { font-size: 16px; } &.pendiente { background: var(--sc-ambar-fondo); color: var(--sc-ambar); } }
+
+@media (max-width: 720px) {
+  .tres-vias { grid-template-columns: 1fr; }
+}

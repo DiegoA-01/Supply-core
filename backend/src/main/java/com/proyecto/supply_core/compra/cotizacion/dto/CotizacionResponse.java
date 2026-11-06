@@ -10,6 +10,8 @@ import com.proyecto.supply_core.compra.cotizacion.entity.CotizacionLinea;
 import com.proyecto.supply_core.compra.cotizacion.enums.EstadoCotizacion;
 import com.proyecto.supply_core.compra.cotizacion.enums.OrigenCotizacion;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Cotización. Si {@code sellada} es {@code true} (comprador mirando una RFQ todavía ABIERTA), solo se
  * muestra quién envió y cuándo: montos, condiciones y líneas van vacíos hasta el cierre.
@@ -81,6 +83,7 @@ public record CotizacionResponse(Long id, Long rfqId, Long proveedorId, String p
      * @param precioUnitarioNormalizado precio por unidad de la RFQ (Java)
      * @param subtotal                  neto de la línea (Java)
      */
+    @Schema(name = "CotizacionLinea")
     public record Linea(Long id, Long rfqLineaId, Long productoId, String productoCodigo, BigDecimal cantidadOfertada,
             String unidadOfertada, BigDecimal factorConversion, BigDecimal precioUnitarioOfertado,
             BigDecimal descuentoPct, BigDecimal impuestoPct, BigDecimal precioUnitarioNormalizado,

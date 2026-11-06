@@ -1,0 +1,228 @@
+@use '@angular/material' as mat;
+
+// Material solo aporta comportamiento (diálogos, menús, selects, avisos); el aspecto sale de los tokens de abajo,
+// tomados del mockup (naranja #d93a0b, barra lateral oscura translúcida, tarjetas blancas).
+html {
+  color-scheme: light;
+  @include mat.theme((
+    color: (primary: mat.$orange-palette, tertiary: mat.$red-palette),
+    typography: Inter,
+    density: 0,
+  ));
+
+  --sc-primario: #d93a0b;
+  --sc-primario-hover: #c23308;
+  --sc-primario-claro: #ec5e31;
+  --sc-primario-suave: #fdeee8;
+  --sc-texto: #111111;
+  --sc-texto-2: #5c5c5c;
+  --sc-texto-3: #8a8a8a;
+  --sc-borde: #e6e6e6;
+  --sc-borde-fuerte: #cfcfcf;
+  --sc-fondo: #f1f1f1;
+  --sc-tarjeta: #ffffff;
+  --sc-verde: #15703f;
+  --sc-verde-fondo: #dcfae6;
+  --sc-ambar: #9a4510;
+  --sc-ambar-fondo: #fdebd8;
+  --sc-rojo: #b93127;
+  --sc-rojo-fondo: #fde3df;
+  --sc-gris-fondo: #ececec;
+  --sc-radio: 14px;
+  --sc-radio-chico: 10px;
+  --sc-sombra: 0 1px 2px rgb(0 0 0 / 4%), 0 4px 16px rgb(0 0 0 / 4%);
+
+  // Material con los colores del mockup
+  --mat-sys-primary: var(--sc-primario);
+  --mat-sys-on-primary: #fff;
+  --mat-sys-surface: #fff;
+  --mat-sys-surface-container: #fff;
+  --mat-sys-surface-container-high: #fff;
+  --mat-sys-corner-extra-large: 18px;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px;
+  color: var(--sc-texto);
+  background: var(--sc-fondo);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--sc-primario); }
+
+.material-symbols-outlined { font-size: 20px; vertical-align: middle; }
+
+// ---------------------------------------------------------------- encabezado de página
+.pagina { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+.migas { font-size: 13px; color: var(--sc-texto-2); margin: 0 0 4px; }
+.migas a { color: inherit; text-decoration: none; }
+.migas a:hover { text-decoration: underline; }
+
+.encabezado { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 16px; }
+.encabezado h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
+.encabezado p { margin: 4px 0 0; color: var(--sc-texto-2); }
+.encabezado .acciones { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+// ---------------------------------------------------------------- tarjetas y rejillas
+.tarjeta {
+  background: var(--sc-tarjeta);
+  border: 1px solid var(--sc-borde);
+  border-radius: var(--sc-radio);
+  box-shadow: var(--sc-sombra);
+  padding: 20px;
+  min-width: 0;
+}
+.tarjeta.sin-relleno { padding: 0; overflow: hidden; }
+.tarjeta.suave { background: #f6f6f6; box-shadow: none; }
+.tarjeta.destacada { border-color: #f3b49c; background: #fff8f5; }
+.tarjeta h2, .tarjeta h3 { font-size: 16px; font-weight: 600; margin: 0 0 12px; }
+.tarjeta-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.tarjeta-cabecera h2, .tarjeta-cabecera h3 { margin: 0; }
+
+.rejilla { display: grid; gap: 16px; }
+.rejilla.kpis { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.rejilla.principal { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); align-items: start; }
+.columna { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+@media (max-width: 1100px) {
+  .rejilla.principal { grid-template-columns: minmax(0, 1fr); }
+}
+
+.kpi .etiqueta { font-size: 14px; color: var(--sc-texto-2); }
+.kpi .valor { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; margin: 6px 0 4px; }
+.kpi .valor.peligro { color: var(--sc-rojo); }
+.kpi .nota { font-size: 13px; color: var(--sc-texto-2); }
+
+// ---------------------------------------------------------------- botones
+.boton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 42px; padding: 0 18px;
+  border-radius: var(--sc-radio-chico);
+  border: 1px solid var(--sc-borde-fuerte);
+  background: #fff; color: var(--sc-texto);
+  font: inherit; font-weight: 600; font-size: 15px;
+  cursor: pointer; text-decoration: none; white-space: nowrap;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.boton:hover:not(:disabled) { background: #f6f6f6; }
+.boton:focus-visible { outline: 3px solid #f6b9a3; outline-offset: 1px; }
+.boton:disabled { opacity: .55; cursor: not-allowed; }
+.boton.primario { background: var(--sc-primario); border-color: var(--sc-primario); color: #fff; }
+.boton.primario:hover:not(:disabled) { background: var(--sc-primario-hover); }
+.boton.peligro { color: var(--sc-rojo); border-color: #f0b7b0; }
+.boton.peligro:hover:not(:disabled) { background: var(--sc-rojo-fondo); }
+.boton.oscuro { background: #111; border-color: #111; color: #fff; }
+.boton.chico { min-height: 34px; padding: 0 12px; font-size: 14px; }
+.boton.bloque { width: 100%; }
+
+.pastillas { display: flex; flex-wrap: wrap; gap: 8px; }
+.pastilla {
+  min-height: 40px; padding: 0 16px; border-radius: 999px;
+  border: 1px solid var(--sc-borde); background: #fff; color: var(--sc-texto);
+  font: inherit; font-weight: 500; cursor: pointer;
+}
+.pastilla.activa { background: #111; border-color: #111; color: #fff; }
+
+// ---------------------------------------------------------------- chips de estado
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 13px; font-weight: 500; line-height: 1.4; white-space: nowrap;
+  background: var(--sc-gris-fondo); color: #3d3d3d;
+}
+.chip.verde { background: var(--sc-verde-fondo); color: var(--sc-verde); }
+.chip.ambar { background: var(--sc-ambar-fondo); color: var(--sc-ambar); }
+.chip.rojo { background: var(--sc-rojo-fondo); color: var(--sc-rojo); }
+.chip.naranja { background: var(--sc-primario-suave); color: var(--sc-primario); }
+
+// ---------------------------------------------------------------- avisos
+.aviso {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 12px 14px; border-radius: var(--sc-radio-chico);
+  background: #efefef; color: #333; font-size: 14px;
+}
+.aviso.ambar { background: #fff1e6; border: 1px solid #f6c9a8; color: #7a3a0d; }
+.aviso.rojo { background: var(--sc-rojo-fondo); color: #7d1d16; }
+.aviso.verde { background: #e3f7ea; color: #145c33; }
+.aviso strong { display: block; color: inherit; }
+
+// ---------------------------------------------------------------- tablas
+.tabla-contenedor { overflow-x: auto; }
+table.tabla { width: 100%; border-collapse: collapse; font-size: 15px; }
+.tabla th {
+  text-align: left; font-size: 13px; font-weight: 500; color: var(--sc-texto-2);
+  padding: 12px 14px; background: #f8f8f8; border-bottom: 1px solid var(--sc-borde); white-space: nowrap;
+}
+.tabla td { padding: 14px; border-bottom: 1px solid #efefef; vertical-align: middle; }
+.tabla tr:last-child td { border-bottom: 0; }
+.tabla .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tabla .sub { display: block; font-size: 13px; color: var(--sc-texto-2); }
+.tabla tfoot td { font-weight: 600; border-top: 1px solid var(--sc-borde); }
+.tabla tr.seleccionable { cursor: pointer; }
+.tabla tr.seleccionable:hover td { background: #fbfbfb; }
+.tabla tr.seleccionada td { background: var(--sc-primario-suave); }
+
+.pares { display: flex; flex-direction: column; }
+.pares .par { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--sc-borde); }
+.pares .par:last-child { border-bottom: 0; }
+.pares .par span:first-child { color: var(--sc-texto-2); }
+.pares .par span:last-child { font-weight: 600; text-align: right; }
+
+// ---------------------------------------------------------------- formularios
+.campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.campo label { font-size: 14px; font-weight: 500; }
+.campo .ayuda { font-size: 13px; color: var(--sc-texto-2); }
+.campo .error { font-size: 13px; color: var(--sc-rojo); }
+.entrada {
+  width: 100%; min-height: 44px; padding: 10px 12px;
+  border: 1px solid var(--sc-borde-fuerte); border-radius: var(--sc-radio-chico);
+  font: inherit; color: var(--sc-texto); background: #fff;
+}
+.entrada:focus { outline: 2px solid #f6b9a3; border-color: var(--sc-primario); }
+.entrada.num { text-align: right; font-variant-numeric: tabular-nums; }
+textarea.entrada { min-height: 84px; resize: vertical; }
+
+// Contraseña con botón para mostrarla y revisar que esté bien escrita
+.con-ojo { position: relative; }
+.con-ojo .entrada { padding-right: 48px; }
+.con-ojo .ojo {
+  position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+  display: grid; place-items: center; width: 36px; height: 36px;
+  border: 0; border-radius: 8px; background: transparent; color: var(--sc-texto-2); cursor: pointer;
+  &:hover { background: #f3f3f3; color: var(--sc-texto); }
+  &:focus-visible { outline: 2px solid #f6b9a3; }
+}
+.formulario { display: grid; gap: 16px; }
+.formulario.dos { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+// ---------------------------------------------------------------- utilidades
+.texto-2 { color: var(--sc-texto-2); }
+.texto-chico { font-size: 13px; }
+.negrita { font-weight: 600; }
+.fila { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.separado { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.oculto-movil { }
+.vacio { padding: 32px 16px; text-align: center; color: var(--sc-texto-2); }
+.cargando { padding: 32px 16px; text-align: center; color: var(--sc-texto-3); }
+
+.barra { height: 6px; border-radius: 999px; background: #ececec; overflow: hidden; }
+.barra > span { display: block; height: 100%; border-radius: inherit; background: var(--sc-primario); }
+
+@media (max-width: 720px) {
+  body { font-size: 14px; }
+  .encabezado h1 { font-size: 22px; }
+  .kpi .valor { font-size: 26px; }
+  .oculto-movil { display: none !important; }
+  .tarjeta { padding: 16px; }
+}
+
+// Diálogos de Material con el radio del mockup
+.mat-mdc-dialog-surface { border-radius: 18px !important; }
+.mat-mdc-snack-bar-container .mdc-snackbar__surface { border-radius: 12px !important; }

@@ -1,0 +1,77 @@
+<div class="pantalla">
+  <section class="mensaje" aria-hidden="true">
+    <div class="marca"><img src="logo.svg" alt="" width="32" height="32"><span>Supply-Core</span></div>
+
+    <div class="lema">
+      <h1>Compra mejor. Controla cada peso, de la solicitud al pago.</h1>
+      <ul>
+        <li><span class="material-symbols-outlined">auto_awesome</span>
+          <div><strong>La IA explica, tú decides</strong>Compara cotizaciones y lee archivos de proveedores. El dinero lo calcula el sistema, nunca la IA.</div></li>
+        <li><span class="material-symbols-outlined">receipt_long</span>
+          <div><strong>Cruce de tres vías</strong>Orden, recepción y factura se comparan solos antes de pagar.</div></li>
+        <li><span class="material-symbols-outlined">shield</span>
+          <div><strong>Datos aislados por empresa</strong>Cada empresa ve solo lo suyo. Sesiones cortas y auditoría de acciones sensibles.</div></li>
+      </ul>
+    </div>
+
+    <div class="ejemplo">
+      <div><span>OC-000118 · Eléctricos del Norte</span><strong>$ 4.593.400</strong></div>
+      <div><span>Recibido y aceptado</span><strong>$ 4.174.520</strong></div>
+      <div><span>Factura del proveedor</span><strong>$ 4.225.000</strong></div>
+      <div class="alerta"><span>Diferencia fuera de tolerancia</span><strong>$ 50.480</strong></div>
+    </div>
+  </section>
+
+  <section class="formulario-ingreso">
+    <div class="marca movil"><img src="logo.svg" alt="" width="32" height="32"><span>Supply-Core</span></div>
+    <h2>Ingresa a tu empresa</h2>
+    <p class="texto-2">Usa el código que te dio el administrador de tu empresa.</p>
+
+    <form [formGroup]="form" (ngSubmit)="ingresar()" class="formulario" novalidate>
+      <div class="campo">
+        <label for="empresa">Código de empresa</label>
+        <input id="empresa" class="entrada" formControlName="empresa" autocomplete="organization" placeholder="el-tornillo">
+        @if (invalido('empresa')) { <span class="error">Escribe el código de tu empresa.</span> }
+      </div>
+      <div class="campo">
+        <label for="correo">Correo</label>
+        <input id="correo" class="entrada" type="email" formControlName="correo" autocomplete="username" placeholder="tu.nombre@empresa.co">
+        @if (invalido('correo')) { <span class="error">Escribe un correo válido.</span> }
+      </div>
+      <div class="campo">
+        <label for="password">Contraseña</label>
+        <div class="con-ojo">
+          <input id="password" class="entrada" [type]="verClave() ? 'text' : 'password'" formControlName="password" autocomplete="current-password">
+          <button type="button" class="ojo" (click)="verClave.set(!verClave())"
+                  [attr.aria-label]="verClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="verClave()">
+            <span class="material-symbols-outlined">{{ verClave() ? 'visibility_off' : 'visibility' }}</span>
+          </button>
+        </div>
+        @if (invalido('password')) { <span class="error">Escribe tu contraseña.</span> }
+      </div>
+
+      <p class="texto-chico texto-2 sin-margen">Tu sesión se renueva sola mientras trabajas.</p>
+      <button type="button" class="enlace" (click)="olvido.set(!olvido())">Olvidé mi contraseña</button>
+      @if (olvido()) {
+        <div class="aviso">Pídele al administrador de tu empresa que la restablezca. La recuperación por correo llega con la fase de seguridad.</div>
+      }
+
+      @if (error(); as e) {
+        <div class="aviso rojo" role="alert"><span class="material-symbols-outlined">error</span>{{ e }}</div>
+      }
+
+      <button type="submit" class="boton primario bloque" [disabled]="enviando()">
+        {{ enviando() ? 'Ingresando…' : 'Ingresar' }}
+      </button>
+
+      <div class="aviso">
+        <span class="material-symbols-outlined">shield</span>
+        Tras 5 intentos fallidos la cuenta se bloquea 15 minutos. Cada acceso queda registrado.
+      </div>
+
+      <p class="texto-chico texto-2 centrado">
+        ¿Eres proveedor? Entra aquí mismo con tu correo · <a routerLink="/plataforma/ingreso">Soy el dueño del software</a>
+      </p>
+    </form>
+  </section>
+</div>

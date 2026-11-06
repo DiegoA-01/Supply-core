@@ -1,0 +1,124 @@
+<div class="marco" [class.movil]="movil()">
+  @if (movil() && menuAbierto()) {
+    <div class="velo" (click)="menuAbierto.set(false)" aria-hidden="true"></div>
+  }
+
+  <aside class="lateral" [class.abierto]="menuAbierto()" aria-label="Menú principal">
+    <a class="marca" routerLink="/app/inicio">
+      <img src="logo.svg" alt="" width="32" height="32">
+      <span>Supply-Core</span>
+    </a>
+
+    <div class="empresa">
+      <strong>{{ sesion.empresa()?.razonSocial ?? 'Tu empresa' }}</strong>
+      @if (sesion.modulos(); as m) {
+        <span>Plan {{ m.plan }} · {{ m.estado === 'ACTIVA' ? 'activo' : (m.estado ?? '').toLowerCase() }}</span>
+      }
+    </div>
+
+    <nav>
+      @for (seccion of secciones(); track seccion.titulo) {
+        <p class="seccion">{{ seccion.titulo }}</p>
+        @for (op of seccion.opciones; track op.ruta) {
+          @if (bloqueada(op)) {
+            <span class="opcion bloqueada" matTooltip="Módulo no contratado en tu plan" matTooltipPosition="right">
+              <span class="material-symbols-outlined">{{ op.icono }}</span>
+              <span class="texto">{{ op.texto }}</span>
+              <span class="material-symbols-outlined candado">lock</span>
+            </span>
+          } @else {
+            <a class="opcion" [routerLink]="op.ruta" routerLinkActive="activa">
+              <span class="material-symbols-outlined">{{ op.icono }}</span>
+              <span class="texto">{{ op.texto }}</span>
+              @if (op.contador && contadores()[op.contador]) {
+                <span class="contador">{{ contadores()[op.contador] }}</span>
+              }
+            </a>
+          }
+        }
+      }
+    </nav>
+
+    <div class="pie">
+      <a class="opcion" routerLink="/plataforma/ingreso">
+        <span class="material-symbols-outlined">shield_person</span>
+        <span class="texto">Ver como dueño</span>
+      </a>
+      <button type="button" class="opcion salir" (click)="sesion.salir()">
+        <span class="material-symbols-outlined">logout</span>
+        <span class="texto">Cerrar sesión</span>
+      </button>
+    </div>
+  </aside>
+
+  <div class="contenido">
+    <header class="superior">
+      @if (movil()) {
+        <button type="button" class="icono-boton" (click)="menuAbierto.set(true)" aria-label="Abrir menú">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
+      }
+      <form class="buscador" (ngSubmit)="buscar()" role="search">
+        <span class="material-symbols-outlined">search</span>
+        <input type="search" name="q" [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)"
+               placeholder="Buscar solicitudes, órdenes, RFQ…" aria-label="Buscar por consecutivo">
+      </form>
+
+      <button type="button" class="icono-boton campana" [matMenuTriggerFor]="menuNotificaciones" (menuOpened)="abrirNotificaciones()"
+              [attr.aria-label]="'Notificaciones: ' + notificaciones.noLeidas() + ' sin leer'">
+        <span class="material-symbols-outlined">notifications</span>
+        @if (notificaciones.noLeidas() > 0) { <span class="punto"></span> }
+      </button>
+
+      <button type="button" class="usuario" [matMenuTriggerFor]="menuUsuario" aria-label="Menú de tu cuenta">
+        <span class="avatar">{{ iniciales() }}</span>
+        <span class="datos oculto-movil">
+          <strong>{{ sesion.usuario()?.nombre }}</strong>
+          <span>{{ rolPrincipal() }}</span>
+        </span>
+        <span class="material-symbols-outlined flecha">expand_more</span>
+      </button>
+    </header>
+
+    @if (sesion.soloLectura()) {
+      <div class="aviso ambar franja">
+        <span class="material-symbols-outlined">info</span>
+        La suscripción de tu empresa está en mora: puedes consultar, pero no registrar cambios.
+      </div>
+    }
+
+    <main class="principal">
+      <router-outlet />
+    </main>
+  </div>
+</div>
+
+<mat-menu #menuNotificaciones="matMenu" xPosition="before" class="menu-notificaciones">
+  <div class="notif-cabecera" (click)="$event.stopPropagation()">
+    <strong>Notificaciones</strong>
+    @if (notificaciones.noLeidas() > 0) {
+      <button type="button" class="boton chico" (click)="marcarLeidas()">Marcar leídas</button>
+    }
+  </div>
+  @for (n of recientes(); track n.id) {
+    <div class="notif" [class.nueva]="!n.leida">
+      <span>{{ n.mensaje }}</span>
+      <small>{{ n.creadoEn | fecha: 'hora' }}</small>
+    </div>
+  } @empty {
+    <p class="notif vacia">No tienes notificaciones.</p>
+  }
+</mat-menu>
+
+<mat-menu #menuUsuario="matMenu" xPosition="before">
+  <div class="menu-usuario-cabecera">
+    <strong>{{ sesion.usuario()?.nombre }}</strong>
+    <span>{{ sesion.usuario()?.correo }}</span>
+  </div>
+  <button mat-menu-item type="button" (click)="sesion.salir()">
+    <span class="material-symbols-outlined">logout</span> Cerrar sesión
+  </button>
+  <button mat-menu-item type="button" (click)="sesion.salirDeTodo()">
+    <span class="material-symbols-outlined">devices</span> Cerrar en todos mis dispositivos
+  </button>
+</mat-menu>

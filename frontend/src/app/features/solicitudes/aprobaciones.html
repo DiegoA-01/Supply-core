@@ -1,0 +1,126 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Solicitudes</p>
+    <div class="encabezado">
+      <div>
+        <h1>{{ pestana() === 'pendientes' ? 'Solicitudes por aprobar' : 'Solicitudes' }}</h1>
+        <p>{{ totalPendientes() }} esperan una decisión. Las más viejas van primero.</p>
+      </div>
+      <div class="acciones pastillas">
+        <button type="button" class="pastilla" [class.activa]="pestana() === 'pendientes'" (click)="cambiar('pendientes')">Pendientes · {{ totalPendientes() }}</button>
+        <button type="button" class="pastilla" [class.activa]="pestana() === 'APROBADA'" (click)="cambiar('APROBADA')">Aprobadas</button>
+        <button type="button" class="pastilla" [class.activa]="pestana() === 'todas'" (click)="cambiar('todas')">Todas</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="dos-paneles">
+    <section class="tarjeta sin-relleno bandeja" aria-label="Lista de solicitudes">
+      @if (lista(); as l) {
+        @for (s of l; track s.id) {
+          <button type="button" class="item" [class.activo]="seleccionada()?.id === s.id" (click)="abrir(s)">
+            <span class="separado">
+              <strong>{{ s.consecutivo }}</strong>
+              @if (horas(s); as h) {
+                <span class="chip" [class.rojo]="h >= horasLimite() * 0.8" [class.ambar]="h >= horasLimite() * 0.5 && h < horasLimite() * 0.8">{{ h }} h</span>
+              } @else {
+                <sc-estado [valor]="s.estado" />
+              }
+            </span>
+            <span class="texto-2">Requerida para el {{ s.fechaRequerida | fecha }}</span>
+            <span class="texto-chico texto-2">Monto estimado <strong class="texto-negro">{{ s.montoEstimado | pesos }}</strong></span>
+          </button>
+        } @empty {
+          <p class="vacio">No hay solicitudes en esta bandeja.</p>
+        }
+      } @else {
+        <p class="cargando">Cargando…</p>
+      }
+    </section>
+
+    @if (seleccionada(); as s) {
+      <div class="columna">
+        <section class="tarjeta">
+          <div class="fila titulo">
+            <h2>{{ s.consecutivo }}</h2>
+            <sc-estado [valor]="s.estado" />
+          </div>
+          <div class="datos">
+            <div><span>Solicitante</span><strong>{{ solicitante() ?? 'Usuario #' + s.usuarioSolicitanteId }}</strong></div>
+            <div><span>Centro de costo</span><strong>{{ centro()?.nombre ?? '#' + s.centroCostoId }}</strong></div>
+            <div><span>Fecha requerida</span><strong>{{ s.fechaRequerida | fecha }}</strong></div>
+          </div>
+          @if (politica(); as p) {
+            <div class="datos">
+              <div><span>Política aplicada</span><strong>{{ p.rolAprobadorNombre ?? p.rolAprobador }} · desde {{ p.montoDesde | pesos }}</strong></div>
+            </div>
+          }
+          @if (s.motivo) { <p><span class="texto-2">Justificación:</span> {{ s.motivo }}</p> }
+          @if (s.excedePresupuesto) {
+            <div class="aviso ambar"><span class="material-symbols-outlined">warning</span>
+              <div><strong>Excede el presupuesto: se envió como excepción.</strong>{{ s.justificacionExcepcion }}</div></div>
+          }
+        </section>
+
+        <section class="tarjeta sin-relleno">
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Costo de referencia</th></tr></thead>
+              <tbody>
+                @for (l of s.lineas; track l.id) {
+                  <tr>
+                    <td><strong>{{ l.productoNombre }}</strong><span class="sub">{{ l.productoCodigo }}</span></td>
+                    <td class="num">{{ l.cantidad | numero }} {{ l.unidadCodigo }}</td>
+                    <td class="num">{{ l.costoReferencia | pesos }}</td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr><td colspan="2" class="num">Total estimado</td><td class="num">{{ s.montoEstimado | pesos }}</td></tr>
+              </tfoot>
+            </table>
+          </div>
+          @if (s.montoIncompleto) {
+            <p class="aviso ambar margen">Algún producto no tiene costo de referencia: el total estimado está incompleto.</p>
+          }
+        </section>
+
+        @if (presupuesto(); as p) {
+          <section class="tarjeta">
+            <div class="fila titulo">
+              <h3>Presupuesto de {{ centro()?.nombre }} · {{ s.fechaRequerida | fecha: 'corta' }}</h3>
+              <span class="chip" [class.ambar]="(p.usoPct ?? 0) >= 80" [class.rojo]="(p.usoPct ?? 0) >= 100">Uso {{ p.usoPct | numero }} %</span>
+            </div>
+            <div class="barra grande"><span [style.width.%]="(p.usoPct ?? 0) > 100 ? 100 : p.usoPct"></span></div>
+            <div class="separado texto-2 margen-arriba">
+              <span>Comprometido {{ p.comprometido | pesos }} de {{ p.monto | pesos }}</span>
+              <span>Disponible: <strong class="texto-negro">{{ p.disponible | pesos }}</strong></span>
+            </div>
+          </section>
+        }
+
+        @if (puedeDecidir()) {
+          <section class="tarjeta">
+            <h3>Tu decisión <span class="texto-chico texto-2">Se registra en la auditoría con tu usuario y la hora</span></h3>
+            <div class="campo">
+              <label for="obs">Observaciones</label>
+              <textarea id="obs" class="entrada" [ngModel]="observaciones()" (ngModelChange)="observaciones.set($event)"
+                        placeholder="Obligatorias si devuelves o rechazas"></textarea>
+            </div>
+            <div class="fila margen-arriba">
+              <button type="button" class="boton primario" [disabled]="enviando()" (click)="decidir('APROBADA')">
+                <span class="material-symbols-outlined">check</span> Aprobar
+              </button>
+              <button type="button" class="boton" [disabled]="enviando()" (click)="decidir('DEVUELTA')">Devolver al solicitante</button>
+              <button type="button" class="boton peligro" [disabled]="enviando()" (click)="decidir('RECHAZADA')">Rechazar</button>
+            </div>
+            <p class="texto-chico texto-2"><span class="material-symbols-outlined pequeno">shield</span>
+              Si nadie decide en {{ horasLimite() }} h, la solicitud se escala a la política de mayor monto.</p>
+          </section>
+        }
+      </div>
+    } @else if (lista()?.length) {
+      <p class="cargando">Cargando…</p>
+    }
+  </div>
+</div>

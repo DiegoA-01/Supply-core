@@ -8,6 +8,8 @@ import com.proyecto.supply_core.despacho.entity.Despacho;
 import com.proyecto.supply_core.despacho.entity.DespachoLinea;
 import com.proyecto.supply_core.despacho.enums.EstadoDespacho;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Detalle de un despacho.
  *
@@ -59,6 +61,7 @@ public record DespachoResponse(Long id, String consecutivo, EstadoDespacho estad
      * @param cantidadBase         cantidad descontada en la unidad del producto (al confirmar)
      * @param unidadProductoCodigo unidad del producto (la del stock)
      */
+    @Schema(name = "DespachoLinea")
     public record Linea(Long id, Long productoId, String productoCodigo, String productoNombre, Long unidadMedidaId,
             String unidadCodigo, BigDecimal cantidad, BigDecimal cantidadBase, String unidadProductoCodigo) {
 

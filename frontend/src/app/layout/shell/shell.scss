@@ -1,0 +1,118 @@
+:host { display: block; min-height: 100vh; }
+
+.marco {
+  display: grid;
+  grid-template-columns: 272px minmax(0, 1fr);
+  gap: 20px;
+  min-height: 100vh;
+  padding: 16px;
+  background:
+    radial-gradient(900px 500px at 0% 0%, #f6c8b7 0%, transparent 60%),
+    radial-gradient(700px 600px at 20% 100%, #f3cdbf 0%, transparent 55%),
+    linear-gradient(180deg, #fbf4f1 0%, #ededed 40%, #ececec 100%);
+}
+
+// Barra lateral oscura translúcida del mockup
+.lateral {
+  position: sticky; top: 16px;
+  height: calc(100vh - 32px);
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 20px 16px;
+  border-radius: 28px;
+  color: #fff;
+  background: linear-gradient(180deg, rgb(122 100 92 / 96%) 0%, rgb(76 76 76 / 97%) 30%, rgb(72 72 72 / 97%) 75%, rgb(107 75 65 / 97%) 100%);
+  box-shadow: 0 20px 40px rgb(60 30 20 / 18%), inset 0 1px 0 rgb(255 255 255 / 12%);
+  overflow-y: auto;
+}
+
+.marca { display: flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; font-weight: 700; font-size: 19px; padding: 4px 8px 12px; }
+
+.empresa {
+  display: flex; flex-direction: column; gap: 2px;
+  margin: 0 0 12px; padding: 12px 14px;
+  border-radius: 12px; border: 1px solid rgb(255 255 255 / 18%); background: rgb(255 255 255 / 8%);
+  strong { font-size: 14px; }
+  span { font-size: 12px; color: rgb(255 255 255 / 65%); }
+}
+
+.seccion { margin: 14px 10px 6px; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: rgb(255 255 255 / 45%); }
+
+.opcion {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 42px; padding: 0 12px;
+  border-radius: 10px; color: rgb(255 255 255 / 85%); text-decoration: none; font-size: 15px;
+  transition: background .15s;
+  .texto { flex: 1; }
+  &:hover { background: rgb(255 255 255 / 8%); }
+  &.activa { color: #fff; background: linear-gradient(180deg, #f06a3c, #e04a17); box-shadow: 0 6px 16px rgb(217 58 11 / 35%); }
+  &.bloqueada { color: rgb(255 255 255 / 38%); cursor: not-allowed; }
+  &.salir { width: 100%; border: 0; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+}
+
+// Pie del menú lateral: siempre visible para salir sin buscar el menú del usuario
+.pie {
+  display: flex; flex-direction: column; gap: 2px;
+  margin-top: auto; padding-top: 12px; border-top: 1px solid rgb(255 255 255 / 12%);
+}
+
+.contador { min-width: 24px; padding: 1px 7px; border-radius: 999px; background: rgb(255 255 255 / 22%); font-size: 12px; font-weight: 600; text-align: center; }
+.candado { font-size: 16px; }
+
+.contenido { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+.superior {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  border-radius: 20px;
+  background: rgb(255 255 255 / 75%);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgb(255 255 255 / 90%);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 5%);
+}
+
+.buscador {
+  flex: 1; max-width: 440px; min-width: 0;
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 14px; min-height: 44px; border-radius: 12px; background: #f6f2f0; color: var(--sc-texto-2);
+  input { flex: 1; width: 100%; border: 0; background: transparent; font: inherit; color: var(--sc-texto); outline: none; min-width: 0; }
+}
+
+.icono-boton {
+  position: relative; display: grid; place-items: center;
+  width: 44px; height: 44px; border-radius: 12px; border: 0; background: #f6f2f0; color: #333; cursor: pointer;
+}
+.campana { margin-left: auto; }
+.punto { position: absolute; top: 10px; right: 11px; width: 8px; height: 8px; border-radius: 50%; background: var(--sc-primario); }
+
+.usuario {
+  display: flex; align-items: center; gap: 10px;
+  border: 0; background: transparent; cursor: pointer; font: inherit; text-align: left; padding: 4px;
+  .datos { display: flex; flex-direction: column; strong { font-size: 15px; } span { font-size: 13px; color: var(--sc-texto-2); } }
+  .flecha { color: var(--sc-texto-2); }
+}
+.avatar { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--sc-primario-suave); color: #8a3a1c; font-weight: 600; font-size: 14px; }
+
+.principal { padding: 4px 8px 32px; min-width: 0; }
+.franja { margin: 0 8px; }
+
+// Pantallas angostas: el menú lateral pasa a ser un panel
+.marco.movil {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 10px;
+  .lateral {
+    position: fixed; z-index: 30; top: 10px; left: 10px; bottom: 10px; height: auto; width: min(290px, 85vw);
+    transform: translateX(calc(-100% - 20px)); transition: transform .2s ease;
+    &.abierto { transform: none; }
+  }
+  .principal { padding: 0 2px 24px; }
+  .superior { gap: 8px; padding: 10px; }
+  .icono-boton { flex: none; }
+}
+.velo { position: fixed; inset: 0; z-index: 20; background: rgb(0 0 0 / 35%); }
+
+// Menús de Material
+.notif-cabecera { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px 10px; }
+.notif { display: flex; flex-direction: column; gap: 2px; padding: 10px 16px; border-top: 1px solid #f0f0f0; max-width: 360px; font-size: 14px;
+  small { color: var(--sc-texto-3); } &.nueva { background: #fff6f2; } &.vacia { color: var(--sc-texto-2); margin: 0; } }
+.menu-usuario-cabecera { display: flex; flex-direction: column; padding: 8px 16px 10px; border-bottom: 1px solid #f0f0f0;
+  span { font-size: 13px; color: var(--sc-texto-2); } }

@@ -1,0 +1,72 @@
+import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { Observable } from 'rxjs';
+
+import {
+  CentroCosto, DecisionSolicitud, Pagina, Politica, Presupuesto, Solicitud, SolicitudResumen, Usuario,
+} from '../api/modelos';
+import { api, parametros } from '../http/api';
+
+/** Solicitudes de compra, aprobación y presupuesto. */
+@Injectable({ providedIn: 'root' })
+export class ComprasService {
+  private readonly http = inject(HttpClient);
+
+  /** Bandeja del aprobador (incluye las delegadas). */
+  pendientes(tamano = 50): Observable<Pagina<SolicitudResumen>> {
+    return this.http.get<Pagina<SolicitudResumen>>(api('/api/solicitudes/pendientes-aprobacion'),
+      { params: parametros({ size: tamano, sort: 'enviadoEn,asc' }) });
+  }
+
+  /**
+   * Solicitudes visibles para el usuario (el solicitante solo ve las suyas).
+   *
+   * @param filtros estado y texto del consecutivo
+   */
+  buscar(filtros: { estado?: string | null; texto?: string | null; tamano?: number }): Observable<Pagina<SolicitudResumen>> {
+    return this.http.get<Pagina<SolicitudResumen>>(api('/api/solicitudes'), {
+      params: parametros({ estado: filtros.estado, texto: filtros.texto, size: filtros.tamano ?? 50, sort: 'creadoEn,desc' }),
+    });
+  }
+
+  /** @param id solicitud */
+  obtener(id: number): Observable<Solicitud> {
+    return this.http.get<Solicitud>(api(`/api/solicitudes/${id}`));
+  }
+
+  /**
+   * Aprueba, devuelve o rechaza.
+   *
+   * @param id            solicitud
+   * @param decision      decisión
+   * @param observaciones obligatorias al devolver o rechazar
+   */
+  decidir(id: number, decision: DecisionSolicitud, observaciones: string): Observable<Solicitud> {
+    return this.http.post<Solicitud>(api(`/api/solicitudes/${id}/decision`), { decision, observaciones });
+  }
+
+  /** Centros de costo de la empresa. */
+  centros(): Observable<CentroCosto[]> {
+    return this.http.get<CentroCosto[]>(api('/api/centros-costo'));
+  }
+
+  /**
+   * Presupuestos de un centro de costo en un año.
+   *
+   * @param centroCostoId centro
+   * @param anio          año
+   */
+  presupuestos(centroCostoId: number, anio: number): Observable<Presupuesto[]> {
+    return this.http.get<Presupuesto[]>(api('/api/presupuestos'), { params: parametros({ centroCostoId, anio }) });
+  }
+
+  /** Políticas de aprobación de la empresa (quién aprueba según el monto). */
+  politicas(): Observable<Politica[]> {
+    return this.http.get<Politica[]>(api('/api/politicas-aprobacion'));
+  }
+
+  /** @param id usuario (solo ADMIN_SISTEMA y AUDITOR pueden leerlo) */
+  usuario(id: number): Observable<Usuario> {
+    return this.http.get<Usuario>(api(`/api/usuarios/${id}`));
+  }
+}
