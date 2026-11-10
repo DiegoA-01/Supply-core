@@ -1,0 +1,7 @@
+.filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; }
+.filtros .campo { min-width: 170px; }
+.filtros .proveedor { flex: 1; min-width: 240px; }
+.enlace { display: inline-flex; align-items: center; text-decoration: none; }
+.naranja { color: #b8400f; }
+.titulo-tabla { padding: 16px 20px; border-bottom: 1px solid var(--sc-borde); }
+.rejilla.dos { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }

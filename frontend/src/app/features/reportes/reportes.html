@@ -1,0 +1,110 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Reportes</p>
+    <div class="encabezado">
+      <div><h1>Reportes</h1><p>Solo lectura. Lo ves únicamente de tu empresa.</p></div>
+    </div>
+  </div>
+
+  <div class="pastillas">
+    <button type="button" class="pastilla" [class.activa]="pestana() === 'gasto'" (click)="cambiar('gasto')">Gasto</button>
+    <a class="pastilla enlace" routerLink="/app/inventario">Inventario</a>
+    <button type="button" class="pastilla" [class.activa]="pestana() === 'proveedores'" (click)="cambiar('proveedores')">Proveedores</button>
+    <button type="button" class="pastilla" [class.activa]="pestana() === 'cuenta'" (click)="cambiar('cuenta')">Estado de cuenta</button>
+  </div>
+
+  <section class="tarjeta filtros">
+    @if (pestana() === 'cuenta') {
+      <div class="campo proveedor">
+        <label for="prov">Proveedor</label>
+        <select id="prov" class="entrada" [ngModel]="proveedorId()" (ngModelChange)="proveedorId.set(+$event)">
+          @for (p of opciones(); track p.proveedorId) { <option [value]="p.proveedorId">{{ p.razonSocial }}</option> }
+        </select>
+      </div>
+    }
+    <div class="campo"><label for="desde">Desde</label><input id="desde" type="date" class="entrada" [ngModel]="desde()" (ngModelChange)="desde.set($event)"></div>
+    <div class="campo"><label for="hasta">Hasta</label><input id="hasta" type="date" class="entrada" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)"></div>
+    <button type="button" class="boton primario" [disabled]="cargando()" (click)="consultar()">Consultar</button>
+  </section>
+
+  @switch (pestana()) {
+    @case ('cuenta') {
+      @if (cuenta(); as c) {
+        <div class="rejilla kpis">
+          <div class="tarjeta kpi"><div class="etiqueta">Total ordenado</div><div class="valor">{{ c.totalOrdenado | pesos }}</div><div class="nota">{{ c.ordenes?.length ?? 0 }} órdenes vigentes</div></div>
+          <div class="tarjeta kpi"><div class="etiqueta">Facturado</div><div class="valor">{{ c.totalFacturado | pesos }}</div><div class="nota">facturas no anuladas</div></div>
+          <div class="tarjeta kpi"><div class="etiqueta">Pagado</div><div class="valor">{{ c.totalPagado | pesos }}</div><div class="nota">anticipos y pagos finales</div></div>
+          <div class="tarjeta kpi destacada"><div class="etiqueta">Saldo a pagar</div><div class="valor naranja">{{ c.saldo | pesos }}</div><div class="nota">lo que se le debe hoy</div></div>
+        </div>
+        <section class="tarjeta sin-relleno">
+          <div class="separado titulo-tabla"><strong>{{ c.razonSocial }} · NIT {{ c.nit }}</strong></div>
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead><tr><th>Orden</th><th>Fecha</th><th>Estado</th><th class="num">Total</th><th class="num">Facturado</th><th class="num">Pagado</th><th class="num">Saldo</th></tr></thead>
+              <tbody>
+                @for (o of c.ordenes ?? []; track o.ordenId) {
+                  <tr>
+                    <td><a [routerLink]="['/app/ordenes', o.ordenId]">{{ o.consecutivo }}</a></td>
+                    <td>{{ o.fecha | fecha: 'corta' }}</td>
+                    <td><sc-estado [valor]="o.estado" /></td>
+                    <td class="num">{{ o.total | pesos }}</td>
+                    <td class="num">{{ o.facturado ? (o.facturado | pesos) : 'sin factura' }}</td>
+                    <td class="num">{{ o.pagado | pesos }}</td>
+                    <td class="num negrita">{{ o.saldo | pesos }}</td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="7" class="vacio">Sin órdenes en el periodo.</td></tr>
+                }
+              </tbody>
+              @if (c.ordenes?.length) {
+                <tfoot><tr><td colspan="3">Totales</td><td class="num">{{ c.totalOrdenado | pesos }}</td><td class="num">{{ c.totalFacturado | pesos }}</td><td class="num">{{ c.totalPagado | pesos }}</td><td class="num">{{ c.saldo | pesos }}</td></tr></tfoot>
+              }
+            </table>
+          </div>
+        </section>
+        <p class="texto-chico texto-2">Saldo = factura vigente (o el total de la orden si aún no hay factura) − pagos registrados. No incluye órdenes canceladas, reemplazadas ni rechazadas.</p>
+      } @else if (!opciones().length) {
+        <p class="tarjeta vacio">Aún no hay proveedores con órdenes para consultar.</p>
+      }
+    }
+    @case ('gasto') {
+      @if (gasto(); as g) {
+        <div class="rejilla kpis">
+          <div class="tarjeta kpi"><div class="etiqueta">Total con impuestos</div><div class="valor">{{ g.total | pesos }}</div><div class="nota">{{ g.ordenes }} órdenes vigentes</div></div>
+          <div class="tarjeta kpi"><div class="etiqueta">Subtotal</div><div class="valor">{{ g.subtotal | pesos }}</div><div class="nota">impuestos {{ g.impuestos | pesos }}</div></div>
+          <div class="tarjeta kpi"><div class="etiqueta">Pagado</div><div class="valor">{{ g.pagado | pesos }}</div><div class="nota">en el periodo</div></div>
+        </div>
+        <div class="rejilla dos">
+          <section class="tarjeta sin-relleno">
+            <div class="titulo-tabla"><strong>Por categoría</strong></div>
+            <table class="tabla"><tbody>
+              @for (x of g.porCategoria ?? []; track x.id) { <tr><td>{{ x.nombre }}</td><td class="num">{{ x.ordenes }} órd.</td><td class="num">{{ x.total | pesos }}</td></tr> }
+              @empty { <tr><td class="vacio">Sin datos.</td></tr> }
+            </tbody></table>
+          </section>
+          <section class="tarjeta sin-relleno">
+            <div class="titulo-tabla"><strong>Por proveedor</strong></div>
+            <table class="tabla"><tbody>
+              @for (x of g.porProveedor ?? []; track x.id) { <tr><td>{{ x.nombre }}</td><td class="num">{{ x.ordenes }} órd.</td><td class="num">{{ x.total | pesos }}</td></tr> }
+              @empty { <tr><td class="vacio">Sin datos.</td></tr> }
+            </tbody></table>
+          </section>
+        </div>
+      }
+    }
+    @case ('proveedores') {
+      <section class="tarjeta sin-relleno">
+        <table class="tabla">
+          <thead><tr><th>#</th><th>Proveedor</th><th class="num">Score</th><th class="num">Órdenes</th><th class="num">Total ordenado</th></tr></thead>
+          <tbody>
+            @for (p of ranking() ?? []; track p.proveedorId) {
+              <tr><td>{{ p.posicion }}</td><td>{{ p.razonSocial }}</td><td class="num">{{ p.score | puntaje }}</td><td class="num">{{ p.ordenes }}</td><td class="num">{{ p.totalOrdenado | pesos }}</td></tr>
+            } @empty {
+              <tr><td colspan="5" class="vacio">{{ ranking() ? 'Sin órdenes en el periodo.' : 'Cargando…' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </section>
+    }
+  }
+</div>

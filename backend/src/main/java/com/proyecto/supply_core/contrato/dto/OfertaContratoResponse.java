@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Oferta de un contrato vigente para una solicitud aprobada: cuánto costaría al precio pactado y si se puede emitir
  * la orden directa. Solo informa: la persona decide si emite la orden directa o va por RFQ.
@@ -56,6 +58,7 @@ public record OfertaContratoResponse(Long contratoId, String numero, Long provee
      * @param disponible     lo que queda del tope ({@code null} si no hay tope)
      * @param excedeTope     si la cantidad pasa de lo que queda del tope
      */
+    @Schema(name = "OfertaContratoLinea")
     public record Linea(Long productoId, String productoNombre, BigDecimal cantidad, BigDecimal precioUnitario,
             BigDecimal impuestoPct, BigDecimal subtotal, BigDecimal disponible, boolean excedeTope) {
     }

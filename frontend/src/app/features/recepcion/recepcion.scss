@@ -1,0 +1,26 @@
+.corta { width: 84px; }
+.chips { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.margen-arriba { margin-top: 14px; }
+h3 { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+
+.zona-archivo {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 24px; border: 1.5px dashed var(--sc-borde-fuerte); border-radius: 12px; text-align: center; cursor: pointer;
+  input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  &:hover { border-color: var(--sc-primario); }
+}
+
+.excedente { display: flex; flex-direction: column; gap: 6px; padding: 14px 0; border-top: 1px solid #f0f0f0; margin-top: 10px; }
+.par-simple { display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid #f3f3f3; }
+
+// En el celular cada producto se ve como una tarjeta con sus campos uno debajo del otro.
+@media (max-width: 720px) {
+  .recepcion thead { display: none; }
+  .recepcion tr { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; padding: 14px; border-bottom: 1px solid var(--sc-borde); }
+  .recepcion td { padding: 0; border: 0; text-align: left; }
+  .recepcion td:first-child, .recepcion td:nth-child(2), .recepcion td:last-child, .recepcion td:nth-child(5) { grid-column: 1 / -1; }
+  .recepcion td.num:nth-child(2)::before { content: 'Pedido: '; color: var(--sc-texto-2); }
+  .recepcion td:nth-child(3)::before { content: 'Llegó'; display: block; font-size: 13px; color: var(--sc-texto-2); }
+  .recepcion td:nth-child(4)::before { content: 'Rechazado'; display: block; font-size: 13px; color: var(--sc-texto-2); }
+  .corta { width: 100%; }
+}

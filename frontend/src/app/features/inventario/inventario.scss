@@ -1,0 +1,11 @@
+h2 { display: flex; align-items: center; gap: 8px; }
+.filtros { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--sc-borde); }
+.categoria { width: auto; min-width: 220px; }
+.barra.ancha { width: 200px; }
+.margen-arriba { margin-top: 14px; }
+.fin { align-self: end; }
+.error-fila { color: var(--sc-rojo); margin: 4px 0; }
+
+@media (max-width: 720px) {
+  .categoria { width: 100%; min-width: 0; }
+}

@@ -358,9 +358,8 @@ Orden final: 17 ✅ → 17-bis ✅ → 18 → 18-a a 18-d → SaaS 2 → SaaS 3 
 - Pagos: si una orden con pagos se cancela o el proveedor la rechaza, el saldo a favor solo queda visible en el resumen; no hay devolución (fuera de alcance).
 - Factura: una sola vigente por orden; considerar facturación por entregas si algún cliente la pide.
 - Despacho: carga del cierre de caja desde Excel/CSV, si la ferretería usa otro programa de caja.
-- Frontend Angular: `frontend/` sigue vacío.
+- Frontend Angular: base con las 10 vistas del mockup (rama `feature/frontend-initial`); faltan las pantallas fuera del mockup (ver `references/frontend.md`).
 - **Seguridad personal:** en la sesión del 2026-10-23 la contraseña local de MySQL apareció en pantalla; cámbiala si compartes la conversación o el repositorio.
-- **Commit pendiente:** todo el trabajo desde el paso 16 está sin commitear (la rama actual es `feature/modulo1`; hay más de 100 archivos nuevos o modificados, incluidos los PDF de `docs/`).
 
 ### Cómo retomar
 ```bash
@@ -379,4 +378,4 @@ cd backend
 
 - **Mockup de la aplicación** (2026-10-27): lienzo de 10 pantallas publicado como Artifact (10 pantallas: ingreso, inicio, solicitudes con aprobación, comparador con IA, orden con cruce de tres vías, recepción con calidad, inventario con reorden, estado de cuenta de reportes, consola del dueño y portal del proveedor). Es solo diseño: usa los colores base `#0F766E` (verde azulado), `#0B1F2E` (azul noche) y `#F59E0B` (ámbar). Las pantallas del presupuesto, contratos, delegación y consola con módulos que hizo el backend después no están dibujadas todavía.
 - **Logo: Cajabot** (2026-10-28): mascota elegida por el usuario (una caja con cara, antena y herramienta). Archivos en `branding/`: `cajabot-icono.svg` y `.png`, `cajabot-icono-oscuro.svg`, `cajabot-logo-vertical.svg` y `.png`, `cajabot-logo-horizontal.svg`. Pendiente: convertir el nombre a curvas o fijar la tipografía final, probar el favicon a 16 px y exportar PNG de 512, 192 y 32, y poner el logo en el mockup. Los archivos `supply-core-*.svg` (tuerca con tornillo) son un boceto descartado y se pueden borrar.
-- **Frontend Angular:** sin empezar (`frontend/` vacío). Se hará después de SaaS 3 y del paso 19. Hay una skill de diseño de interfaces (`design-taste-frontend`) disponible para esa etapa.
+- **Frontend Angular:** empezado el 2026-11-05 con las 10 vistas del mockup (Angular 22 + Material, conectado a la API real). El equipo decidió adelantarlo a SaaS 3 y al paso 19. Hay una skill de diseño de interfaces (`design-taste-frontend`) disponible para esa etapa.
