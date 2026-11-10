@@ -1,6 +1,7 @@
 package com.proyecto.supply_core.exportacion.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -11,6 +12,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -52,7 +54,9 @@ import com.proyecto.supply_core.compra.orden.service.OrdenCompraService;
 import com.proyecto.supply_core.compra.solicitud.dto.SolicitudResumenResponse;
 import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
 import com.proyecto.supply_core.compra.solicitud.service.SolicitudService;
+import com.proyecto.supply_core.empresa.dto.CentroCostoResponse;
 import com.proyecto.supply_core.empresa.dto.EmpresaResponse;
+import com.proyecto.supply_core.empresa.service.CentroCostoService;
 import com.proyecto.supply_core.empresa.service.EmpresaService;
 import com.proyecto.supply_core.exportacion.dto.ArchivoExportado;
 import com.proyecto.supply_core.exportacion.enums.DestinoExportacion;
@@ -66,8 +70,13 @@ import com.proyecto.supply_core.inventario.enums.TipoMovimiento;
 import com.proyecto.supply_core.inventario.service.MovimientoInventarioService;
 import com.proyecto.supply_core.notificacion.email.Adjunto;
 import com.proyecto.supply_core.notificacion.email.EmailClient;
+import com.proyecto.supply_core.proveedor.dto.ProveedorResponse;
+import com.proyecto.supply_core.proveedor.enums.EstadoProveedor;
+import com.proyecto.supply_core.proveedor.service.ProveedorService;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
+import com.proyecto.supply_core.usuario.dto.UsuarioResponse;
+import com.proyecto.supply_core.usuario.service.UsuarioService;
 
 class ExportacionServiceTest {
 
@@ -75,10 +84,13 @@ class ExportacionServiceTest {
     private final SolicitudService solicitudes = mock(SolicitudService.class);
     private final OrdenCompraService ordenes = mock(OrdenCompraService.class);
     private final EmpresaService empresas = mock(EmpresaService.class);
+    private final UsuarioService usuarios = mock(UsuarioService.class);
+    private final CentroCostoService centros = mock(CentroCostoService.class);
+    private final ProveedorService proveedores = mock(ProveedorService.class);
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
     private final EmailClient email = mock(EmailClient.class);
     private final ExportacionService service = new ExportacionService(movimientos, solicitudes, ordenes, empresas,
-            new ExcelGenerador(), new OrdenPdfGenerador(), auditoria, email);
+            usuarios, centros, proveedores, new ExcelGenerador(), new OrdenPdfGenerador(), auditoria, email);
 
     @BeforeEach
     void sesion() {
@@ -88,6 +100,11 @@ class ExportacionServiceTest {
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
         when(empresas.obtener()).thenReturn(new EmpresaResponse(1L, "Ferretería El Tornillo", "900123456-7",
                 "Calle 10 # 5-20", "COP", null, null, null, 24, null));
+        when(usuarios.obtener(3L)).thenReturn(usuario(3L, "Ana Compras"));
+        when(centros.listar(null)).thenReturn(List.of(new CentroCostoResponse(2L, "CC-02", "Obras", true)));
+        when(proveedores.obtener(11L)).thenReturn(new ProveedorResponse(11L, "Eléctricos del Norte", "901555444-1",
+                "ventas@norte.com", "3001234567", "Cra 7 # 12-30", null, EstadoProveedor.HABILITADO, null, List.of(),
+                null, null));
     }
 
     @AfterEach
@@ -112,6 +129,9 @@ class ExportacionServiceTest {
             assertEquals("Código", hoja.getRow(4).getCell(0).getStringCellValue());
             assertEquals("CAB-12", hoja.getRow(5).getCell(0).getStringCellValue());
             assertEquals(150.5, hoja.getRow(5).getCell(4).getNumericCellValue());
+            // una cantidad con decimales los muestra; una entera, no (1 y no 1,00)
+            assertEquals("#,##0.####", hoja.getRow(5).getCell(4).getCellStyle().getDataFormatString());
+            assertEquals("#,##0", hoja.getRow(6).getCell(4).getCellStyle().getDataFormatString());
             // un texto que parece fórmula se guarda como texto, no se ejecuta
             assertEquals("=CMD()", hoja.getRow(6).getCell(0).getStringCellValue());
             // la columna alcanza para el dato más largo, no solo para su título
@@ -155,8 +175,11 @@ class ExportacionServiceTest {
         try (XSSFWorkbook libro = new XSSFWorkbook(new ByteArrayInputStream(a.contenido()))) {
             Sheet hoja = libro.getSheetAt(0);
             assertEquals("Kardex CAB-12 - Cable", hoja.getRow(1).getCell(0).getStringCellValue());
-            assertEquals("ENTRADA_COMPRA", hoja.getRow(5).getCell(1).getStringCellValue());
-            assertEquals("RECEPCION #5", hoja.getRow(5).getCell(8).getStringCellValue());
+            assertEquals("Entrada por compra", hoja.getRow(5).getCell(1).getStringCellValue());
+            assertEquals("#,##0", hoja.getRow(5).getCell(4).getCellStyle().getDataFormatString());
+            assertEquals("Recepción #5", hoja.getRow(5).getCell(8).getStringCellValue());
+            assertEquals("Usuario", hoja.getRow(4).getCell(9).getStringCellValue());
+            assertEquals("Ana Compras", hoja.getRow(5).getCell(9).getStringCellValue());
             // una fecha en una columna angosta se vería como ####
             assertTrue(hoja.getColumnWidth(0) >= "yyyy-mm-dd hh:mm".length() * 256);
         }
@@ -176,7 +199,12 @@ class ExportacionServiceTest {
         try (XSSFWorkbook libro = new XSSFWorkbook(new ByteArrayInputStream(a.contenido()))) {
             Sheet hoja = libro.getSheetAt(0);
             assertEquals("SOL-000009", hoja.getRow(5).getCell(0).getStringCellValue());
+            assertEquals("Aprobada", hoja.getRow(5).getCell(1).getStringCellValue());
+            assertEquals("CC-02 - Obras", hoja.getRow(5).getCell(2).getStringCellValue());
+            assertEquals("Ana Compras", hoja.getRow(5).getCell(3).getStringCellValue());
             assertEquals("No", hoja.getRow(5).getCell(6).getStringCellValue());
+            // el monto conserva sus dos decimales
+            assertEquals("#,##0.00##", hoja.getRow(5).getCell(5).getCellStyle().getDataFormatString());
         }
 
         when(solicitudes.buscar(isNull(), isNull(), isNull(), isNull(), any()))
@@ -201,6 +229,13 @@ class ExportacionServiceTest {
         assertTrue(texto.contains("NIT 900123456-7"));
         assertTrue(texto.contains("OC-000005"));
         assertTrue(texto.contains("Eléctricos del Norte"));
+        assertTrue(texto.contains("901555444-1"), texto);
+        assertTrue(texto.contains("ventas@norte.com · 3001234567"), texto);
+        assertTrue(texto.contains("Cra 7 # 12-30"), texto);
+        assertTrue(texto.contains("Emitida"), texto);
+        assertFalse(texto.contains("EMITIDA"), texto);
+        // cantidad e IVA sin decimales sobrantes; los montos con dos
+        assertTrue(texto.contains("M 100 10.000,00 19 1.000.000,00"), texto);
         assertTrue(texto.contains("Cambio de cantidad"));
         assertTrue(texto.contains("1.190.000,00 COP"), texto);
         verify(auditoria).exito(eq(AccionAuditoria.EXPORTAR_ARCHIVO), eq(EntidadAuditada.EXPORTACION), eq(5L),
@@ -254,6 +289,31 @@ class ExportacionServiceTest {
         try (XSSFWorkbook libro = new XSSFWorkbook(new ByteArrayInputStream(a.contenido()))) {
             assertEquals(ExcelGenerador.ANCHO_MAXIMO * 256, libro.getSheetAt(0).getColumnWidth(1));
         }
+    }
+
+    @Test
+    void unUsuarioOCentroQueYaNoSeEncuentraSaleConSuIdSinRomperLaExportacion() throws Exception {
+        SolicitudResumenResponse s = new SolicitudResumenResponse(9L, "SOL-000009", EstadoSolicitud.EN_RFQ, 8L, 40L,
+                null, BigDecimal.ONE, true, null, LocalDateTime.of(2026, 10, 19, 9, 0));
+        when(solicitudes.buscar(isNull(), isNull(), isNull(), isNull(), any()))
+                .thenReturn(new PageResponse<>(List.of(s, s), 0, 2, 2, 1));
+        when(usuarios.obtener(40L)).thenThrow(new NoEncontradoException("Usuario", 40L));
+
+        ArchivoExportado a = service.solicitudes("xlsx", null, null, null, null, DestinoExportacion.DESCARGA);
+
+        try (XSSFWorkbook libro = new XSSFWorkbook(new ByteArrayInputStream(a.contenido()))) {
+            Sheet hoja = libro.getSheetAt(0);
+            assertEquals("En cotización (RFQ)", hoja.getRow(5).getCell(1).getStringCellValue());
+            assertEquals("#8", hoja.getRow(5).getCell(2).getStringCellValue());
+            assertEquals("#40", hoja.getRow(5).getCell(3).getStringCellValue());
+        }
+        // el mismo solicitante en varias filas se consulta una sola vez
+        verify(usuarios, times(1)).obtener(40L);
+    }
+
+    private static UsuarioResponse usuario(Long id, String nombre) {
+        return new UsuarioResponse(id, nombre, "u" + id + "@ferreteria.com", true, Set.of("COMPRADOR"), null, null,
+                null, null);
     }
 
     private static OrdenResponse orden() {

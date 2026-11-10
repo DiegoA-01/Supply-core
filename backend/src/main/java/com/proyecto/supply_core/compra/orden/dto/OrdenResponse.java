@@ -9,6 +9,8 @@ import com.proyecto.supply_core.compra.orden.entity.OrdenCompra;
 import com.proyecto.supply_core.compra.orden.entity.OrdenEstadoHistorial;
 import com.proyecto.supply_core.compra.orden.enums.EstadoOrden;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Orden de compra con líneas e historial.
  *
@@ -72,6 +74,7 @@ public record OrdenResponse(Long id, String consecutivo, int version, Long orden
      * @param impuestoPct    impuesto %
      * @param subtotal       neto
      */
+    @Schema(name = "OrdenLinea")
     public record Linea(Long id, Long productoId, String productoCodigo, String productoNombre, String unidad,
             BigDecimal cantidad, BigDecimal precioUnitario, BigDecimal impuestoPct, BigDecimal subtotal) {
     }

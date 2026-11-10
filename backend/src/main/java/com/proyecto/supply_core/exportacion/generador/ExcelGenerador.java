@@ -49,6 +49,36 @@ public class ExcelGenerador {
     private static final DateTimeFormatter FECHA_HORA = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final DecimalFormat NUMERO = new DecimalFormat("#,##0.00##",
             DecimalFormatSymbols.getInstance(Locale.ROOT));
+    private static final DecimalFormat CANTIDAD = new DecimalFormat("#,##0.####",
+            DecimalFormatSymbols.getInstance(Locale.ROOT));
+
+    /**
+     * Cantidad de producto (no dinero): sin decimales si es entera ({@code 28}) y con los que tenga si no
+     * ({@code 150,5}). Un {@link BigDecimal} suelto se escribe como monto, con dos decimales.
+     *
+     * @param valor cantidad ({@code null} deja la celda vacía)
+     */
+    public record Cantidad(BigDecimal valor) {
+
+        /**
+         * Envuelve una cantidad.
+         *
+         * @param valor cantidad ({@code null} = celda vacía)
+         * @return la cantidad envuelta, o {@code null} si no hay valor
+         */
+        public static Cantidad de(BigDecimal valor) {
+            return valor == null ? null : new Cantidad(valor);
+        }
+
+        /**
+         * Indica si no tiene parte decimal ({@code 28.000} sí, {@code 150.5} no).
+         *
+         * @return {@code true} si es entera
+         */
+        boolean esEntera() {
+            return valor.signum() == 0 || valor.stripTrailingZeros().scale() <= 0;
+        }
+    }
 
     /**
      * Genera el libro.
@@ -128,6 +158,7 @@ public class ExcelGenerador {
         return switch (valor) {
             case null -> 0;
             case BigDecimal n -> ((DecimalFormat) NUMERO.clone()).format(n).length();
+            case Cantidad c -> ((DecimalFormat) CANTIDAD.clone()).format(c.valor()).length();
             case LocalDateTime f -> "yyyy-mm-dd hh:mm".length();
             case LocalDate f -> "yyyy-mm-dd".length();
             case Boolean b -> "No".length();
@@ -136,7 +167,8 @@ public class ExcelGenerador {
     }
 
     /**
-     * Escribe un valor según su tipo: números y fechas con formato, booleanos como Sí/No, lo demás como texto.
+     * Escribe un valor según su tipo: montos, cantidades y fechas con formato, booleanos como Sí/No, lo demás
+     * como texto.
      *
      * @param celda   celda destino
      * @param valor   valor ({@code null} deja la celda vacía)
@@ -148,6 +180,10 @@ public class ExcelGenerador {
             case BigDecimal n -> {
                 celda.setCellValue(n.doubleValue());
                 celda.setCellStyle(estilos.numero);
+            }
+            case Cantidad c -> {
+                celda.setCellValue(c.valor().doubleValue());
+                celda.setCellStyle(c.esEntera() ? estilos.entero : estilos.decimal);
             }
             case Number n -> celda.setCellValue(n.doubleValue());
             case LocalDateTime f -> {
@@ -171,6 +207,8 @@ public class ExcelGenerador {
         private final CellStyle negrita;
         private final CellStyle cabecera;
         private final CellStyle numero;
+        private final CellStyle entero;
+        private final CellStyle decimal;
         private final CellStyle fecha;
         private final CellStyle fechaHora;
 
@@ -195,6 +233,10 @@ public class ExcelGenerador {
             short formatoNumero = libro.createDataFormat().getFormat("#,##0.00##");
             numero = libro.createCellStyle();
             numero.setDataFormat(formatoNumero);
+            entero = libro.createCellStyle();
+            entero.setDataFormat(libro.createDataFormat().getFormat("#,##0"));
+            decimal = libro.createCellStyle();
+            decimal.setDataFormat(libro.createDataFormat().getFormat("#,##0.####"));
             fecha = libro.createCellStyle();
             fecha.setDataFormat(libro.createDataFormat().getFormat("yyyy-mm-dd"));
             fechaHora = libro.createCellStyle();

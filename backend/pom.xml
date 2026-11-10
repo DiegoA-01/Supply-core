@@ -34,7 +34,19 @@
 		<poi.version>5.4.1</poi.version>
 		<pdfbox.version>3.0.5</pdfbox.version>
 		<openpdf.version>2.0.3</openpdf.version>
+		<swagger-core.version>2.2.55</swagger-core.version>
 	</properties>
+	<dependencyManagement>
+		<dependencies>
+			<!-- anthropic-java trae swagger-annotations 2.2.31, que tapa a la de springdoc y rompe /v3/api-docs
+			     en cuanto se usa @Schema: se alinea con la versión de swagger-core que usa springdoc -->
+			<dependency>
+				<groupId>io.swagger.core.v3</groupId>
+				<artifactId>swagger-annotations</artifactId>
+				<version>${swagger-core.version}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

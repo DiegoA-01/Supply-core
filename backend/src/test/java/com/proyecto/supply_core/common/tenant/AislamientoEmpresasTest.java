@@ -388,6 +388,7 @@ class AislamientoEmpresasTest {
         try (org.apache.pdfbox.pdmodel.PDDocument doc = org.apache.pdfbox.Loader.loadPDF(pdf)) {
             String texto = new org.apache.pdfbox.text.PDFTextStripper().getText(doc);
             assertTrue(texto.contains("OC-FUGA-A"));
+            assertTrue(texto.contains("NIT del proveedor"), texto);
             assertFalse(texto.contains("Empresa B"));
         }
 

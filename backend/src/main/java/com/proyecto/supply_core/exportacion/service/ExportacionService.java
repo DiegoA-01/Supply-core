@@ -4,8 +4,13 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -17,18 +22,23 @@ import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.common.exception.FormatoNoSoportadoException;
 import com.proyecto.supply_core.common.exception.NegocioException;
+import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.common.exception.ParametroInvalidoException;
 import com.proyecto.supply_core.compra.orden.dto.OrdenResponse;
 import com.proyecto.supply_core.compra.orden.service.OrdenCompraService;
 import com.proyecto.supply_core.compra.solicitud.dto.SolicitudResumenResponse;
 import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
 import com.proyecto.supply_core.compra.solicitud.service.SolicitudService;
+import com.proyecto.supply_core.empresa.dto.CentroCostoResponse;
 import com.proyecto.supply_core.empresa.dto.EmpresaResponse;
+import com.proyecto.supply_core.empresa.service.CentroCostoService;
 import com.proyecto.supply_core.empresa.service.EmpresaService;
 import com.proyecto.supply_core.exportacion.dto.ArchivoExportado;
 import com.proyecto.supply_core.exportacion.enums.DestinoExportacion;
 import com.proyecto.supply_core.exportacion.enums.FormatoExportacion;
+import com.proyecto.supply_core.exportacion.generador.Etiquetas;
 import com.proyecto.supply_core.exportacion.generador.ExcelGenerador;
+import com.proyecto.supply_core.exportacion.generador.ExcelGenerador.Cantidad;
 import com.proyecto.supply_core.exportacion.generador.OrdenPdfGenerador;
 import com.proyecto.supply_core.inventario.dto.MovimientoFiltro;
 import com.proyecto.supply_core.inventario.dto.MovimientoResponse;
@@ -36,14 +46,18 @@ import com.proyecto.supply_core.inventario.dto.StockResponse;
 import com.proyecto.supply_core.inventario.service.MovimientoInventarioService;
 import com.proyecto.supply_core.notificacion.email.Adjunto;
 import com.proyecto.supply_core.notificacion.email.EmailClient;
+import com.proyecto.supply_core.proveedor.dto.ProveedorResponse;
+import com.proyecto.supply_core.proveedor.service.ProveedorService;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
+import com.proyecto.supply_core.usuario.service.UsuarioService;
 
 /**
  * Exporta información a Excel o PDF y la entrega como descarga o por correo.
  * <p>No consulta la base de datos por su cuenta: usa los mismos Services que las pantallas, así que cada rol exporta
  * solo lo que ya puede ver (p. ej. el solicitante, solo sus solicitudes) y cada empresa solo sus datos. Tampoco
  * calcula montos: escribe los que esos Services devuelven. Cada exportación queda en la auditoría.</p>
+ * <p>Los archivos son para personas: muestran nombres en lugar de ids y estados legibles ({@link Etiquetas}).</p>
  */
 @Service
 public class ExportacionService {
@@ -59,28 +73,38 @@ public class ExportacionService {
     private final SolicitudService solicitudService;
     private final OrdenCompraService ordenService;
     private final EmpresaService empresaService;
+    private final UsuarioService usuarioService;
+    private final CentroCostoService centroCostoService;
+    private final ProveedorService proveedorService;
     private final ExcelGenerador excel;
     private final OrdenPdfGenerador ordenPdf;
     private final AuditoriaService auditoriaService;
     private final EmailClient emailClient;
 
     /**
-     * @param movimientoService existencias y kardex
-     * @param solicitudService  solicitudes de compra (aplica quién ve cuáles)
-     * @param ordenService      órdenes de compra
-     * @param empresaService    datos de la empresa para el encabezado
-     * @param excel             generador de libros de Excel
-     * @param ordenPdf          generador del PDF de la orden
-     * @param auditoriaService  registro de cada exportación
-     * @param emailClient       envío del adjunto
+     * @param movimientoService  existencias y kardex
+     * @param solicitudService   solicitudes de compra (aplica quién ve cuáles)
+     * @param ordenService       órdenes de compra
+     * @param empresaService     datos de la empresa para el encabezado
+     * @param usuarioService     nombres de los usuarios (solicitante, quien hizo el movimiento)
+     * @param centroCostoService nombres de los centros de costo
+     * @param proveedorService   NIT y contacto del proveedor de la orden
+     * @param excel              generador de libros de Excel
+     * @param ordenPdf           generador del PDF de la orden
+     * @param auditoriaService   registro de cada exportación
+     * @param emailClient        envío del adjunto
      */
     public ExportacionService(MovimientoInventarioService movimientoService, SolicitudService solicitudService,
-            OrdenCompraService ordenService, EmpresaService empresaService, ExcelGenerador excel,
+            OrdenCompraService ordenService, EmpresaService empresaService, UsuarioService usuarioService,
+            CentroCostoService centroCostoService, ProveedorService proveedorService, ExcelGenerador excel,
             OrdenPdfGenerador ordenPdf, AuditoriaService auditoriaService, EmailClient emailClient) {
         this.movimientoService = movimientoService;
         this.solicitudService = solicitudService;
         this.ordenService = ordenService;
         this.empresaService = empresaService;
+        this.usuarioService = usuarioService;
+        this.centroCostoService = centroCostoService;
+        this.proveedorService = proveedorService;
         this.excel = excel;
         this.ordenPdf = ordenPdf;
         this.auditoriaService = auditoriaService;
@@ -103,7 +127,7 @@ public class ExportacionService {
         List<StockResponse> stock = movimientoService.existencias(productoId, bodegaId);
         exigirTope(stock.size());
         List<List<Object>> filas = stock.stream().<List<Object>>map(s -> Arrays.asList(s.productoCodigo(),
-                s.productoNombre(), s.unidad(), s.bodegaNombre(), s.cantidad())).toList();
+                s.productoNombre(), s.unidad(), s.bodegaNombre(), Cantidad.de(s.cantidad()))).toList();
         byte[] bytes = excel.generar("Stock por bodega", empresa(), usuario().nombre(),
                 List.of("Código", "Producto", "Unidad", "Bodega", "Cantidad"), filas);
         ArchivoExportado archivo = new ArchivoExportado(nombre("inventario-stock", f), f, bytes, filas.size());
@@ -128,17 +152,19 @@ public class ExportacionService {
         PageResponse<MovimientoResponse> pagina = movimientoService.buscar(filtro,
                 PageRequest.of(0, MAX_FILAS, Sort.by(Sort.Direction.ASC, "creadoEn")));
         exigirTope(pagina.totalElementos());
+        Map<Long, String> usuarios = nombresUsuarios(
+                pagina.contenido().stream().map(MovimientoResponse::usuarioId).toList());
         List<List<Object>> filas = pagina.contenido().stream().<List<Object>>map(m -> Arrays.asList(m.creadoEn(),
-                m.tipo().name(), m.bodegaOrigenNombre(), m.bodegaDestinoNombre(), m.cantidad(), m.stockResultante(),
-                m.stockResultanteDestino(), m.motivo(),
-                m.referenciaTipo() == null ? null : m.referenciaTipo() + " #" + m.referenciaId(), m.usuarioId()))
+                Etiquetas.de(m.tipo()), m.bodegaOrigenNombre(), m.bodegaDestinoNombre(), Cantidad.de(m.cantidad()),
+                Cantidad.de(m.stockResultante()), Cantidad.de(m.stockResultanteDestino()), m.motivo(),
+                Etiquetas.referencia(m.referenciaTipo(), m.referenciaId()), usuarios.get(m.usuarioId())))
                 .toList();
         String titulo = pagina.contenido().isEmpty() ? "Kardex producto " + filtro.productoId()
                 : "Kardex " + pagina.contenido().getFirst().productoCodigo() + " - "
                         + pagina.contenido().getFirst().productoNombre();
         byte[] bytes = excel.generar(titulo, empresa(), usuario().nombre(),
                 List.of("Fecha", "Tipo", "Bodega origen", "Bodega destino", "Cantidad", "Stock resultante",
-                        "Stock resultante destino", "Motivo", "Referencia", "Usuario (id)"),
+                        "Stock resultante destino", "Motivo", "Referencia", "Usuario"),
                 filas);
         ArchivoExportado archivo = new ArchivoExportado(nombre("kardex-producto-" + filtro.productoId(), f), f, bytes,
                 filas.size());
@@ -164,11 +190,15 @@ public class ExportacionService {
         PageResponse<SolicitudResumenResponse> pagina = solicitudService.buscar(texto, estado, solicitanteId,
                 centroCostoId, PageRequest.of(0, MAX_FILAS, Sort.by(Sort.Direction.DESC, "creadoEn")));
         exigirTope(pagina.totalElementos());
+        Map<Long, String> centros = nombresCentrosCosto();
+        Map<Long, String> usuarios = nombresUsuarios(
+                pagina.contenido().stream().map(SolicitudResumenResponse::usuarioSolicitanteId).toList());
         List<List<Object>> filas = pagina.contenido().stream().<List<Object>>map(s -> Arrays.asList(s.consecutivo(),
-                s.estado().name(), s.centroCostoId(), s.usuarioSolicitanteId(), s.fechaRequerida(), s.montoEstimado(),
-                s.montoIncompleto(), s.enviadoEn(), s.creadoEn())).toList();
+                Etiquetas.de(s.estado()), centros.getOrDefault(s.centroCostoId(), sinNombre(s.centroCostoId())),
+                usuarios.get(s.usuarioSolicitanteId()), s.fechaRequerida(), s.montoEstimado(), s.montoIncompleto(),
+                s.enviadoEn(), s.creadoEn())).toList();
         byte[] bytes = excel.generar("Solicitudes de compra", empresa(), usuario().nombre(),
-                List.of("Consecutivo", "Estado", "Centro de costo (id)", "Solicitante (id)", "Fecha requerida",
+                List.of("Consecutivo", "Estado", "Centro de costo", "Solicitante", "Fecha requerida",
                         "Monto estimado", "Monto incompleto", "Enviada", "Creada"),
                 filas);
         ArchivoExportado archivo = new ArchivoExportado(nombre("solicitudes", f), f, bytes, filas.size());
@@ -176,7 +206,7 @@ public class ExportacionService {
     }
 
     /**
-     * Orden de compra en PDF con el encabezado de la empresa.
+     * Orden de compra en PDF con el encabezado de la empresa y el NIT y contacto del proveedor.
      *
      * @param formato {@code pdf}
      * @param id      orden
@@ -188,7 +218,8 @@ public class ExportacionService {
     public ArchivoExportado orden(String formato, Long id, DestinoExportacion destino) {
         FormatoExportacion f = exigir(formato, SOLO_PDF, "La orden de compra");
         OrdenResponse orden = ordenService.obtener(id);
-        byte[] bytes = ordenPdf.generar(empresa(), orden, usuario().nombre());
+        ProveedorResponse proveedor = proveedorService.obtener(orden.proveedorId());
+        byte[] bytes = ordenPdf.generar(empresa(), orden, proveedor, usuario().nombre());
         ArchivoExportado archivo = new ArchivoExportado(orden.consecutivo() + "-v" + orden.version() + "." + f.extension(),
                 f, bytes, orden.lineas().size());
         return entregar(archivo, destino, id, "ORDEN_COMPRA; " + orden.consecutivo() + " v" + orden.version());
@@ -272,6 +303,47 @@ public class ExportacionService {
      */
     private static String nombre(String base, FormatoExportacion formato) {
         return base + "-" + LocalDateTime.now().format(SELLO) + "." + formato.extension();
+    }
+
+    /**
+     * Nombre de cada usuario, consultado una vez por id con el mismo Service de la pantalla de usuarios (solo ve los
+     * de la empresa de la sesión). Uno que ya no exista sale como {@code #id}.
+     *
+     * @param ids ids de usuario (puede repetir y traer {@code null})
+     * @return nombre por id
+     */
+    private Map<Long, String> nombresUsuarios(Collection<Long> ids) {
+        Map<Long, String> nombres = new HashMap<>();
+        for (Long id : ids.stream().filter(Objects::nonNull).collect(Collectors.toSet())) {
+            String nombre;
+            try {
+                nombre = usuarioService.obtener(id).nombreCompleto();
+            } catch (NoEncontradoException e) {
+                nombre = sinNombre(id);
+            }
+            nombres.put(id, nombre);
+        }
+        return nombres;
+    }
+
+    /**
+     * Código y nombre de cada centro de costo de la empresa, p. ej. "CC-01 - Administración".
+     *
+     * @return texto por id
+     */
+    private Map<Long, String> nombresCentrosCosto() {
+        return centroCostoService.listar(null).stream()
+                .collect(Collectors.toMap(CentroCostoResponse::id, c -> c.codigo() + " - " + c.nombre()));
+    }
+
+    /**
+     * Texto para un id cuyo nombre no se encontró.
+     *
+     * @param id id ({@code null} = vacío)
+     * @return p. ej. {@code #7}
+     */
+    private static String sinNombre(Long id) {
+        return id == null ? null : "#" + id;
     }
 
     /**

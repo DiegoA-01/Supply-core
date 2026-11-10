@@ -1,0 +1,146 @@
+<div class="pagina">
+  @if (orden(); as o) {
+    <div>
+      <p class="migas"><a routerLink="/app/inicio">Inicio</a> / <a routerLink="/app/recepcion">Recepción</a> / {{ o.consecutivo }}</p>
+      <div class="encabezado">
+        <div>
+          <h1>Recibir mercancía · {{ o.consecutivo }}</h1>
+          <p>{{ o.proveedorRazonSocial }} · destino {{ o.bodegaDestinoNombre }}</p>
+        </div>
+        <div class="acciones">
+          <sc-estado [valor]="resumen()?.estadoOrden" />
+          <span class="chip">Entrega {{ (resumen()?.recepciones?.length ?? 0) + 1 }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="rejilla principal">
+      <div class="columna">
+        <section class="tarjeta sin-relleno">
+          <div class="tabla-contenedor">
+            <table class="tabla recepcion">
+              <thead>
+                <tr><th>Producto</th><th class="num">Pedido</th><th class="num">Llegó</th><th class="num">Rechazado</th><th>Motivo del rechazo</th><th>Resultado</th></tr>
+              </thead>
+              <tbody>
+                @for (a of resumen()?.lineas ?? []; track a.ordenLineaId) {
+                  <tr>
+                    <td><strong>{{ a.productoNombre }}</strong><span class="sub">Ya aceptado: {{ a.aceptado | numero }} · falta: {{ a.faltante | numero }}</span></td>
+                    <td class="num">{{ a.pedido | numero }}</td>
+                    <td class="num">
+                      <input type="number" min="0" class="entrada num corta" [attr.aria-label]="'Llegó de ' + a.productoNombre"
+                             [disabled]="!puedeRecibir()" [ngModel]="valor(a).recibido" (ngModelChange)="cambiar(a, 'recibido', $event)">
+                    </td>
+                    <td class="num">
+                      <input type="number" min="0" class="entrada num corta" [attr.aria-label]="'Rechazado de ' + a.productoNombre"
+                             [disabled]="!puedeRecibir()" [ngModel]="valor(a).rechazado" (ngModelChange)="cambiar(a, 'rechazado', $event)">
+                    </td>
+                    <td>
+                      @if ((valor(a).rechazado ?? 0) > 0) {
+                        <select class="entrada" [attr.aria-label]="'Motivo del rechazo de ' + a.productoNombre"
+                                [ngModel]="valor(a).motivo" (ngModelChange)="cambiar(a, 'motivo', $event)">
+                          <option value="" disabled>Elige</option>
+                          @for (m of motivos; track m) { <option [value]="m">{{ m | etiqueta }}</option> }
+                        </select>
+                      } @else { <span class="texto-2">—</span> }
+                    </td>
+                    <td>
+                      @if (resultado(a); as r) {
+                        <div class="chips">
+                          @if (r.cantidadAceptada) { <span class="chip verde">{{ r.cantidadAceptada | numero }} aceptadas</span> }
+                          @if (r.cantidadRechazada) { <span class="chip rojo">{{ r.cantidadRechazada | numero }} rechazadas</span> }
+                          @if (r.cantidadFaltante) { <span class="chip ambar">faltan {{ r.cantidadFaltante | numero }}</span> }
+                          @if (r.cantidadExcedente) { <span class="chip">{{ r.cantidadExcedente | numero }} de excedente</span> }
+                        </div>
+                      } @else { <span class="texto-chico texto-2">Lo calcula el sistema al registrar</span> }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        @if (puedeRecibir()) {
+          <section class="tarjeta">
+            <h3>Evidencia <span class="texto-chico texto-2">Opcional · foto de la mercancía o del remisionado</span></h3>
+            <label class="zona-archivo">
+              <span class="material-symbols-outlined">upload</span>
+              <span>{{ evidencia()?.name ?? 'Elige una foto o PDF' }}</span>
+              <span class="texto-chico texto-2">JPG, PNG o PDF · hasta 10 MB</span>
+              <input type="file" accept="image/*,application/pdf" capture="environment" (change)="elegirArchivo($event)">
+            </label>
+            <div class="campo margen-arriba">
+              <label for="obs">Observaciones</label>
+              <textarea id="obs" class="entrada" [ngModel]="observaciones()" (ngModelChange)="observaciones.set($event)"
+                        placeholder="Ej. 4 breakers con carcasa rota, se fotografiaron"></textarea>
+            </div>
+          </section>
+        }
+      </div>
+
+      <div class="columna">
+        <section class="tarjeta">
+          @if (registrada()) {
+            <h3>Qué pasó al registrar</h3>
+            <div class="pares">
+              <div class="par"><span>Entraron al stock</span><span>{{ totales().aceptada | numero }} und.</span></div>
+              <div class="par"><span>Rechazadas, no entran</span><span>{{ totales().rechazada | numero }} und.</span></div>
+              <div class="par"><span>Excedente, en revisión</span><span>{{ totales().excedente | numero }} und.</span></div>
+              <div class="par"><span>Falta por llegar</span><span>{{ totales().faltante | numero }} und.</span></div>
+            </div>
+          } @else {
+            <h3>Registrar la entrega</h3>
+          }
+          <div class="aviso margen-arriba">
+            <span class="material-symbols-outlined">shield</span>
+            El sistema reparte las cantidades, no la persona. Lo rechazado queda como devolución pendiente al proveedor.
+          </div>
+          @if (puedeRecibir()) {
+            <div class="campo margen-arriba">
+              <label for="bodega">Bodega que recibe</label>
+              <select id="bodega" class="entrada" [ngModel]="bodegaId()" (ngModelChange)="bodegaId.set(+$event)">
+                @for (b of bodegas(); track b.id) { <option [value]="b.id">{{ b.nombre }}</option> }
+              </select>
+            </div>
+            <button type="button" class="boton primario bloque margen-arriba" [disabled]="trabajando()" (click)="registrar()">Registrar recepción</button>
+            <a class="boton bloque margen-arriba" routerLink="/app/recepcion">Cancelar</a>
+          } @else if (!sesion.tieneRol(['ALMACENISTA'])) {
+            <p class="texto-chico texto-2">Solo bodega (ALMACENISTA) registra recepciones.</p>
+          }
+        </section>
+
+        @if (excedentes().length) {
+          <section class="tarjeta">
+            <h3>Excedente por resolver</h3>
+            <span class="chip">Compras decide</span>
+            @for (l of excedentes(); track l.id) {
+              <div class="excedente">
+                <strong>{{ l.productoNombre }} · +{{ l.cantidadExcedente | numero }} und.</strong>
+                <span class="texto-chico texto-2">No suma al stock hasta que lo aceptes o lo devuelvas.</span>
+                @if (puedeResolver()) {
+                  <div class="fila">
+                    <button type="button" class="boton chico" (click)="resolver(l, 'ACEPTAR')">Aceptar al stock</button>
+                    <button type="button" class="boton chico" (click)="resolver(l, 'DEVOLVER')">Devolver al proveedor</button>
+                  </div>
+                }
+              </div>
+            }
+            @if (!puedeResolver()) { <p class="texto-chico texto-2">Solo COMPRADOR o ADMIN_COMPRAS pueden resolver.</p> }
+          </section>
+        }
+
+        @if (resumen()?.recepciones?.length) {
+          <section class="tarjeta">
+            <h3>Entregas anteriores</h3>
+            @for (r of resumen()!.recepciones; track r.id) {
+              <div class="par-simple"><span>{{ r.recibidoEn | fecha: 'hora' }}</span><span class="texto-2">{{ r.bodegaNombre }}</span></div>
+            }
+          </section>
+        }
+      </div>
+    </div>
+  } @else {
+    <p class="cargando">Cargando…</p>
+  }
+</div>

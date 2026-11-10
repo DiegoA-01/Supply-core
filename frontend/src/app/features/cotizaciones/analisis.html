@@ -1,0 +1,191 @@
+<div class="pagina">
+  @if (rfq(); as r) {
+    <div>
+      <p class="migas"><a routerLink="/app/inicio">Inicio</a> / <a routerLink="/app/cotizaciones">Cotizaciones</a> / {{ r.solicitudConsecutivo }} / {{ r.consecutivo }}</p>
+      <div class="encabezado">
+        <div>
+          <h1>{{ r.consecutivo }} · Análisis de cotizaciones</h1>
+          <p>{{ cotizaciones().length }} cotizaciones recibidas · {{ r.cerradaEn ? 'cerró el ' : 'cierra el ' }}{{ (r.cerradaEn ?? r.fechaLimite) | fecha: 'hora' }}</p>
+        </div>
+        <div class="acciones">
+          @if (analisis(); as a) {
+            <span class="chip" [class.verde]="publicado()"><span class="material-symbols-outlined">auto_awesome</span>{{ publicado() ? 'Análisis publicado' : 'Análisis en borrador' }}</span>
+          }
+          <sc-estado [valor]="r.estado" />
+        </div>
+      </div>
+    </div>
+
+    @if (analisis()?.pendientes?.length) {
+      <div class="aviso ambar">
+        <span class="material-symbols-outlined">warning</span>
+        <div>
+          <strong>Falta confirmar {{ analisis()!.pendientes!.length }} dato(s) antes de publicar</strong>
+          @for (p of analisis()!.pendientes; track p) { <div>{{ p }}</div> }
+        </div>
+      </div>
+    }
+
+    @if (sinAnalisis()) {
+      <section class="tarjeta vacio-analisis">
+        <span class="material-symbols-outlined grande">auto_awesome</span>
+        <h2>Aún no hay análisis</h2>
+        <p class="texto-2">El sistema calcula el puntaje de cada cotización con los pesos vigentes. La IA luego explica el resultado.</p>
+        @if (esComprador() && r.estado === 'CERRADA') {
+          <button type="button" class="boton primario" [disabled]="trabajando()" (click)="generar()">Calcular análisis</button>
+        } @else if (r.estado === 'ABIERTA') {
+          <p class="texto-chico texto-2">La RFQ sigue abierta: el análisis se hace cuando cierre.</p>
+        }
+      </section>
+    } @else if (analisis()) {
+      <div class="rejilla principal">
+        <div class="columna">
+          @for (res of resultados(); track res.cotizacionId) {
+            <article class="tarjeta oferta" [class.destacada]="res.cotizacionId === recomendada()">
+              <span class="posicion" [class.primera]="res.posicion === 1">{{ res.posicion }}</span>
+              <div class="oferta-texto">
+                <strong>{{ res.proveedor }}</strong>
+                @if (cotizacion(res); as c) {
+                  <span class="texto-chico texto-2">{{ c.origen === 'ARCHIVO' ? 'Archivo leído por IA' : 'Formulario' }} · plazo {{ c.plazoEntregaDias ?? '?' }} días @if (c.garantiaMeses) { · garantía {{ c.garantiaMeses }} meses }</span>
+                }
+              </div>
+              <div class="puntaje">
+                <span class="texto-chico texto-2">Puntaje</span>
+                <div class="barra"><span [style.width.%]="res.scoreFinal"></span></div>
+              </div>
+              <strong class="score">{{ res.scoreFinal | puntaje }}</strong>
+              <div class="monto"><strong>{{ res.costoTotal | pesos }}</strong><span class="texto-chico texto-2">total con IVA</span></div>
+              @if (res.cotizacionId === recomendada()) {
+                <span class="chip verde">Recomendada</span>
+              } @else if (res.anomalias?.length) {
+                <span class="chip ambar">{{ res.anomalias![0]!.tipo | etiqueta }}</span>
+              }
+            </article>
+          }
+
+          <section class="tarjeta sin-relleno">
+            <div class="tabla-contenedor">
+              <table class="tabla">
+                <thead>
+                  <tr>
+                    <th>Criterio (peso)</th>
+                    @for (res of resultados(); track res.cotizacionId) { <th class="num">{{ res.proveedor }}</th> }
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (c of criterios(); track c.codigo) {
+                    <tr>
+                      <td>{{ nombreCriterio(c.codigo) }} ({{ c.peso | numero }} %)</td>
+                      @for (res of resultados(); track res.cotizacionId) { <td class="num">{{ ponderado(res, c.codigo) | puntaje }}</td> }
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td>Total calculado por el sistema</td>
+                    @for (res of resultados(); track res.cotizacionId) { <td class="num">{{ res.scoreFinal | puntaje }}</td> }
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <div class="columna">
+          <section class="tarjeta suave">
+            <h3><span class="material-symbols-outlined">auto_awesome</span> Explicación de la IA</h3>
+            @if (analisis()?.explicacionGeneral) {
+              <p>{{ analisis()!.explicacionGeneral }}</p>
+            } @else {
+              <p class="texto-2">Todavía no hay explicación.</p>
+              @if (esComprador() && !publicado() && sesion.tieneModulo('IA')) {
+                <button type="button" class="boton chico" [disabled]="trabajando()" (click)="explicar()">Pedir explicación a la IA</button>
+              }
+            }
+            <p class="texto-chico texto-2">La IA solo explica. Los puntajes y los montos los calculó el sistema.</p>
+          </section>
+
+          @if (alertas().length) {
+            <section class="tarjeta">
+              <h3>Alertas</h3>
+              @for (a of alertas(); track $index) {
+                <div class="alerta">
+                  <span class="chip" [class.ambar]="a.severidad !== 'ALTA'" [class.rojo]="a.severidad === 'ALTA'">{{ a.tipo | etiqueta }}</span>
+                  <div><strong>{{ a.proveedor }}</strong><span class="texto-chico texto-2">{{ a.descripcion }}</span></div>
+                </div>
+              }
+            </section>
+          }
+
+          @if (adjudicacion(); as adj) {
+            <section class="tarjeta">
+              <div class="fila titulo"><h3>Adjudicación</h3><sc-estado [valor]="adj.estado" /></div>
+              <div class="pares">
+                <div class="par"><span>Proveedor</span><span>{{ adj.proveedorRazonSocial }}</span></div>
+                <div class="par"><span>Monto</span><span>{{ adj.montoTotal | pesos }}</span></div>
+                <div class="par"><span>Sigue la recomendación</span><span>{{ adj.sigueRecomendacion ? 'Sí' : 'No' }}</span></div>
+              </div>
+              @if (adj.justificacion) { <p class="texto-chico">Justificación: {{ adj.justificacion }}</p> }
+              @if (adj.estado === 'APROBADA' && esComprador()) {
+                <h3 class="margen-arriba">Emitir la orden</h3>
+                <div class="formulario">
+                  <div class="campo">
+                    <label for="bodega">Bodega de destino</label>
+                    <select id="bodega" class="entrada" [ngModel]="orden().bodegaDestinoId" (ngModelChange)="cambiarOrden('bodegaDestinoId', +$event)">
+                      @for (b of bodegas(); track b.id) { <option [value]="b.id">{{ b.nombre }}</option> }
+                    </select>
+                  </div>
+                  <div class="campo">
+                    <label for="lugar">Lugar de entrega</label>
+                    <input id="lugar" class="entrada" [ngModel]="orden().lugarEntrega" (ngModelChange)="cambiarOrden('lugarEntrega', $event)">
+                  </div>
+                  <div class="campo">
+                    <label for="fecha">Entrega esperada</label>
+                    <input id="fecha" type="date" class="entrada" [ngModel]="orden().fechaEntregaEsperada" (ngModelChange)="cambiarOrden('fechaEntregaEsperada', $event)">
+                  </div>
+                  <button type="button" class="boton primario" [disabled]="trabajando()" (click)="emitir()">Emitir orden de compra</button>
+                </div>
+              } @else if (adj.estado === 'PENDIENTE_APROBACION') {
+                <p class="aviso">Por el monto, un aprobador debe confirmar la adjudicación antes de emitir la orden.</p>
+              }
+            </section>
+          } @else if (esComprador()) {
+            <section class="tarjeta">
+              <h3>Tu decisión</h3>
+              @if (!publicado()) {
+                <p class="texto-2">Publica el análisis para poder adjudicar.</p>
+                <button type="button" class="boton primario bloque" [disabled]="trabajando() || !!analisis()?.pendientes?.length" (click)="publicar()">Publicar análisis</button>
+              } @else {
+                <div class="formulario">
+                  <div class="campo">
+                    <label for="proveedor">Proveedor a adjudicar</label>
+                    <select id="proveedor" class="entrada" [ngModel]="elegida()" (ngModelChange)="elegida.set(+$event)">
+                      @for (res of resultados(); track res.cotizacionId) {
+                        <option [value]="res.cotizacionId">{{ res.proveedor }}{{ res.cotizacionId === recomendada() ? ' (recomendada)' : '' }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="campo">
+                    <label for="justificacion">Justificación</label>
+                    <textarea id="justificacion" class="entrada" [ngModel]="justificacion()" (ngModelChange)="justificacion.set($event)"
+                              placeholder="Obligatoria si eliges un proveedor distinto al recomendado"></textarea>
+                    @if (!sigueRecomendacion()) { <span class="ayuda">Te apartas de la recomendación: la justificación queda en la auditoría.</span> }
+                  </div>
+                  <button type="button" class="boton primario" [disabled]="trabajando()" (click)="adjudicar()">Adjudicar</button>
+                </div>
+              }
+              @if (pesos(); as p) {
+                <p class="texto-chico texto-2 margen-arriba">
+                  Pesos vigentes: @for (x of p.pesos; track x.codigo; let ultimo = $last) { {{ x.nombre }} {{ x.peso | numero }}{{ ultimo ? '' : ',' }} }.
+                  Cada análisis guarda los pesos con que se calculó y no cambian después.
+                </p>
+              }
+            </section>
+          }
+        </div>
+      </div>
+    }
+  } @else {
+    <p class="cargando">Cargando…</p>
+  }
+</div>

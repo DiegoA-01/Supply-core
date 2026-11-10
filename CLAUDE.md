@@ -6,7 +6,7 @@ Al iniciar cada sesión, usa la skill caveman en nivel full.
 
 ## Stack y comandos
 - Backend: `backend` — Java 21, Spring Boot 4.1.1, JPA, Web MVC, Validation, Flyway, MySQL 8, Lombok. Paquete base `com.proyecto.supply_core`.
-- Frontend: `frontend/` (Angular, aún vacío).
+- Frontend: `frontend/` — Angular 22 + Material, `npm start` (proxy a :8080), `npm test`, `npm run api:tipos`. Detalle: `references/frontend.md`.
 - Ejecutar: `cd backend && ./mvnw spring-boot:run` (secretos en `src/main/resources/application-local.yaml`, gitignored; plantilla `application-local.example.yaml`) · Pruebas: `./mvnw test`
 - Todo método lleva Javadoc (verificar con doclint, ver `backend.md` › Calidad obligatoria).
 
@@ -33,6 +33,7 @@ Al iniciar cada sesión, usa la skill caveman en nivel full.
 - Proveedores se autorregistran (pendientes) y ADMIN_COMPRAS los habilita; luego cotizan desde su portal.
 - El proveedor inicia sesión como `usuario` con `proveedor_id` + rol PROVEEDOR (un solo login).
 - Exportación (`exportacion/`): Excel con POI y PDF con OpenPDF; reutiliza los Services de cada pantalla (no consulta por su cuenta) y el correo con adjunto va solo al usuario de la sesión.
+- Frontend: una sola app con zonas `/app`, `/portal` y `/plataforma`; JWT en memoria y refresh en `sessionStorage` (solo `SesionService`); tipos generados del Swagger; la UI nunca calcula dinero ni stock.
 - Esquema solo por Flyway (`ddl-auto: none`). Nunca editar un `V*` ya ejecutado: crear `V{n+1}__...sql`.
 - Fuente de verdad del esquema: `backend/src/main/resources/db/migration/V1__esquema_inicial.sql`.
 
