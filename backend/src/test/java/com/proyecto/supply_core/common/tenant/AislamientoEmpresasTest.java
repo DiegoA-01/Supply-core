@@ -93,6 +93,9 @@ class AislamientoEmpresasTest {
         }
     }
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.proyecto.supply_core.notificacion.email.EmailClient emailClient;
+
     @Autowired private MockMvc mvc;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private JwtUtil jwtUtil;
@@ -1778,6 +1781,230 @@ class AislamientoEmpresasTest {
                 borrarEmpresaDePrueba(empresaC);
             }
             borrarDuenoDePrueba(correo);
+        }
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode entrarComo(String empresa, String correo, String clave) throws Exception {
+        String cuerpo = "{\"empresa\":\"" + empresa + "\",\"correo\":\"" + correo + "\",\"password\":\"" + clave + "\"}";
+        return new com.fasterxml.jackson.databind.ObjectMapper().readTree(mvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON).content(cuerpo))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+    }
+
+    @Test
+    void cambiarLaClaveODesactivarCortanElJwtEnCursoYLosRefreshTokensAlInstante() throws Exception {
+        String ct = MediaType.APPLICATION_JSON_VALUE;
+        Long victima = usuarioInternoDeA("corte@mismo.com", "COMPRADOR");
+        String admin = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+        try {
+            // dos dispositivos con sesión abierta
+            var s1 = entrarComo("demo", "corte@mismo.com", CLAVE);
+            var s2 = entrarComo("demo", "corte@mismo.com", CLAVE);
+            String t1 = "Bearer " + s1.get("token").asText();
+            String t2 = "Bearer " + s2.get("token").asText();
+            mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, t1)).andExpect(status().isOk());
+
+            // el admin restablece la clave: los dos JWT y los dos refresh dejan de servir enseguida
+            mvc.perform(put("/api/usuarios/" + victima + "/password").header(HttpHeaders.AUTHORIZATION, admin)
+                            .contentType(ct).content("{\"passwordNueva\":\"NuevaClave2026\"}"))
+                    .andExpect(status().is2xxSuccessful());
+            mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, t1)).andExpect(status().isUnauthorized());
+            mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, t2)).andExpect(status().isUnauthorized());
+            mvc.perform(post("/api/auth/refresh").contentType(ct)
+                            .content("{\"refreshToken\":\"" + s1.get("refreshToken").asText() + "\"}"))
+                    .andExpect(status().isUnauthorized());
+            mvc.perform(post("/api/auth/login").contentType(ct)
+                            .content("{\"empresa\":\"demo\",\"correo\":\"corte@mismo.com\",\"password\":\"" + CLAVE + "\"}"))
+                    .andExpect(status().isUnauthorized());
+
+            // con la clave nueva entra y su token sirve
+            var s3 = entrarComo("demo", "corte@mismo.com", "NuevaClave2026");
+            String t3 = "Bearer " + s3.get("token").asText();
+            mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, t3)).andExpect(status().isOk());
+
+            // desactivarlo corta su sesión al instante; reactivarlo no revive la sesión vieja
+            mvc.perform(patch("/api/usuarios/" + victima + "/desactivar").header(HttpHeaders.AUTHORIZATION, admin))
+                    .andExpect(status().isOk());
+            mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, t3)).andExpect(status().isUnauthorized());
+            mvc.perform(patch("/api/usuarios/" + victima + "/activar").header(HttpHeaders.AUTHORIZATION, admin))
+                    .andExpect(status().isOk());
+            mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, t3)).andExpect(status().isUnauthorized());
+
+            // cambiar su propia clave también cierra todas sus sesiones, la actual incluida
+            String t4 = "Bearer " + entrarComo("demo", "corte@mismo.com", "NuevaClave2026").get("token").asText();
+            mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, t4)).andExpect(status().isOk());
+            mvc.perform(put("/api/perfil/password").header(HttpHeaders.AUTHORIZATION, t4).contentType(ct)
+                            .content("{\"passwordActual\":\"NuevaClave2026\",\"passwordNueva\":\"OtraClave2026\"}"))
+                    .andExpect(status().isNoContent());
+            mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, t4)).andExpect(status().isUnauthorized());
+            entrarComo("demo", "corte@mismo.com", "OtraClave2026");
+
+            // la otra empresa no se entera: su admin sigue entrando con su token
+            mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "ADMIN_SISTEMA")))
+                    .andExpect(status().isOk());
+        } finally {
+            jdbc.update("DELETE FROM refresh_token WHERE usuario_id = ?", victima);
+            jdbc.update("DELETE FROM notificacion WHERE usuario_id = ?", victima);
+            jdbc.update("DELETE FROM auditoria WHERE usuario_id = ?", victima);
+            jdbc.update("DELETE FROM usuario_rol WHERE usuario_id = ?", victima);
+            jdbc.update("DELETE FROM usuario WHERE id = ?", victima);
+        }
+    }
+
+    private void borrarUsuarioDePrueba(Long id) {
+        jdbc.update("DELETE FROM recuperacion_password WHERE usuario_id = ?", id);
+        jdbc.update("DELETE FROM refresh_token WHERE usuario_id = ?", id);
+        jdbc.update("DELETE FROM notificacion WHERE usuario_id = ?", id);
+        jdbc.update("DELETE FROM auditoria WHERE usuario_id = ?", id);
+        jdbc.update("DELETE FROM usuario_rol WHERE usuario_id = ?", id);
+        jdbc.update("DELETE FROM usuario WHERE id = ?", id);
+    }
+
+    @Test
+    void recuperarLaClaveConUnTokenDeUnSoloUsoCortaLasSesionesYNoCruzaEmpresas() throws Exception {
+        String ct = MediaType.APPLICATION_JSON_VALUE;
+        Long usuario = usuarioInternoDeA("recupera@mismo.com", "COMPRADOR");
+        org.mockito.Mockito.clearInvocations(emailClient);
+        try {
+            var sesion = entrarComo("demo", "recupera@mismo.com", CLAVE);
+            String t1 = "Bearer " + sesion.get("token").asText();
+
+            // responde lo mismo exista o no el correo o la empresa
+            String respuesta = mvc.perform(post("/api/auth/recuperar").contentType(ct)
+                            .content("{\"empresa\":\"demo\",\"correo\":\"recupera@mismo.com\"}"))
+                    .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString();
+            assertEquals(respuesta, mvc.perform(post("/api/auth/recuperar").contentType(ct)
+                            .content("{\"empresa\":\"demo\",\"correo\":\"nadie@mismo.com\"}"))
+                    .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString());
+            assertEquals(respuesta, mvc.perform(post("/api/auth/recuperar").contentType(ct)
+                            .content("{\"empresa\":\"no-existe\",\"correo\":\"recupera@mismo.com\"}"))
+                    .andExpect(status().isAccepted()).andReturn().getResponse().getContentAsString());
+
+            // solo salió un correo, con el valor en claro; en la base queda únicamente su hash
+            org.mockito.ArgumentCaptor<String> cuerpo = org.mockito.ArgumentCaptor.forClass(String.class);
+            org.mockito.Mockito.verify(emailClient, org.mockito.Mockito.times(1))
+                    .enviar(org.mockito.ArgumentMatchers.eq("recupera@mismo.com"), org.mockito.ArgumentMatchers.anyString(),
+                            cuerpo.capture());
+            String texto = cuerpo.getValue();
+            int desde = texto.indexOf("es: ") + 4;
+            String token = texto.substring(desde, texto.indexOf(" .", desde));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM recuperacion_password WHERE token_hash = ?",
+                    Integer.class, token));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM recuperacion_password WHERE usuario_id = ?",
+                    Integer.class, usuario));
+
+            // pedirlo otra vez enseguida no manda otro correo
+            mvc.perform(post("/api/auth/recuperar").contentType(ct)
+                            .content("{\"empresa\":\"demo\",\"correo\":\"recupera@mismo.com\"}"))
+                    .andExpect(status().isAccepted());
+            org.mockito.Mockito.verify(emailClient, org.mockito.Mockito.times(1)).enviar(
+                    org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyString(),
+                    org.mockito.ArgumentMatchers.anyString());
+
+            // el token de una empresa no sirve en la otra ni con una clave débil
+            mvc.perform(post("/api/auth/restablecer").contentType(ct)
+                            .content("{\"empresa\":\"empresa-b\",\"token\":\"" + token + "\",\"passwordNueva\":\"NuevaClave2026\"}"))
+                    .andExpect(status().isUnauthorized());
+            mvc.perform(post("/api/auth/restablecer").contentType(ct)
+                            .content("{\"empresa\":\"demo\",\"token\":\"" + token + "\",\"passwordNueva\":\"corta\"}"))
+                    .andExpect(status().isBadRequest());
+
+            // en su empresa sí: cambia la clave y corta la sesión que había
+            mvc.perform(post("/api/auth/restablecer").contentType(ct)
+                            .content("{\"empresa\":\"demo\",\"token\":\"" + token + "\",\"passwordNueva\":\"NuevaClave2026\"}"))
+                    .andExpect(status().isOk());
+            mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, t1)).andExpect(status().isUnauthorized());
+            mvc.perform(post("/api/auth/refresh").contentType(ct)
+                            .content("{\"refreshToken\":\"" + sesion.get("refreshToken").asText() + "\"}"))
+                    .andExpect(status().isUnauthorized());
+            mvc.perform(post("/api/auth/login").contentType(ct)
+                            .content("{\"empresa\":\"demo\",\"correo\":\"recupera@mismo.com\",\"password\":\"" + CLAVE + "\"}"))
+                    .andExpect(status().isUnauthorized());
+            entrarComo("demo", "recupera@mismo.com", "NuevaClave2026");
+
+            // sirve una sola vez
+            mvc.perform(post("/api/auth/restablecer").contentType(ct)
+                            .content("{\"empresa\":\"demo\",\"token\":\"" + token + "\",\"passwordNueva\":\"OtraClave2026\"}"))
+                    .andExpect(status().isUnauthorized());
+
+            // vencido tampoco: se reabre el token y se le adelanta la fecha de vencimiento
+            jdbc.update("UPDATE recuperacion_password SET usado_en = NULL, expira_en = ? WHERE usuario_id = ?",
+                    java.sql.Timestamp.valueOf(java.time.LocalDateTime.now().minusMinutes(1)), usuario);
+            mvc.perform(post("/api/auth/restablecer").contentType(ct)
+                            .content("{\"empresa\":\"demo\",\"token\":\"" + token + "\",\"passwordNueva\":\"OtraClave2026\"}"))
+                    .andExpect(status().isUnauthorized());
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM auditoria WHERE usuario_id = ? AND accion = "
+                    + "'PASSWORD_RECUPERAR_USAR'", Integer.class, usuario));
+        } finally {
+            borrarUsuarioDePrueba(usuario);
+        }
+    }
+
+    @Test
+    void elMfaVoluntarioExigeElCodigoAlEntrarYUnAdminPuedeReiniciarlo() throws Exception {
+        String ct = MediaType.APPLICATION_JSON_VALUE;
+        Long usuario = usuarioInternoDeA("mfa@mismo.com", "COMPRADOR");
+        String admin = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+        try {
+            // sin MFA entra directo y puede vincular su app
+            var sesion = entrarComo("demo", "mfa@mismo.com", CLAVE);
+            String t0 = "Bearer " + sesion.get("token").asText();
+            var json = new com.fasterxml.jackson.databind.ObjectMapper();
+            String secreto = json.readTree(mvc.perform(post("/api/auth/mfa/configurar").header(HttpHeaders.AUTHORIZATION, t0))
+                            .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                    .get("secretoMfa").asText();
+            mvc.perform(post("/api/auth/mfa/activar").header(HttpHeaders.AUTHORIZATION, t0).contentType(ct)
+                            .content("{\"codigo\":\"000000\"}"))
+                    .andExpect(status().is4xxClientError());
+            long paso = totp.paso(java.time.Instant.now());
+            mvc.perform(post("/api/auth/mfa/activar").header(HttpHeaders.AUTHORIZATION, t0).contentType(ct)
+                            .content("{\"codigo\":\"" + totp.codigo(secreto, paso) + "\"}"))
+                    .andExpect(status().isNoContent());
+
+            // desde ahora el login da un desafío y no una sesión
+            var desafio = json.readTree(mvc.perform(post("/api/auth/login").contentType(ct)
+                            .content("{\"empresa\":\"demo\",\"correo\":\"mfa@mismo.com\",\"password\":\"" + CLAVE + "\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.mfaConfigurado").value(true))
+                    .andExpect(jsonPath("$.token").doesNotExist())
+                    .andExpect(jsonPath("$.secretoMfa").doesNotExist())
+                    .andReturn().getResponse().getContentAsString());
+            String d = desafio.get("desafioMfa").asText();
+
+            // un código malo, uno ya usado y un token de sesión como desafío no abren nada
+            mvc.perform(post("/api/auth/mfa").contentType(ct)
+                            .content("{\"desafio\":\"" + d + "\",\"codigo\":\"000000\"}"))
+                    .andExpect(status().isUnauthorized());
+            mvc.perform(post("/api/auth/mfa").contentType(ct)
+                            .content("{\"desafio\":\"" + d + "\",\"codigo\":\"" + totp.codigo(secreto, paso) + "\"}"))
+                    .andExpect(status().isUnauthorized());
+            mvc.perform(post("/api/auth/mfa").contentType(ct)
+                            .content("{\"desafio\":\"" + t0.substring(7) + "\",\"codigo\":\"" + totp.codigo(secreto, paso + 1) + "\"}"))
+                    .andExpect(status().isUnauthorized());
+
+            // el código bueno y nuevo abre la sesión
+            String sesionMfa = json.readTree(mvc.perform(post("/api/auth/mfa").contentType(ct)
+                            .content("{\"desafio\":\"" + d + "\",\"codigo\":\"" + totp.codigo(secreto, paso + 1) + "\"}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.refreshToken").isNotEmpty())
+                    .andReturn().getResponse().getContentAsString()).get("token").asText();
+            mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + sesionMfa))
+                    .andExpect(status().isOk());
+
+            // un administrador le reinicia el MFA: se corta su sesión y vuelve a entrar sin segundo factor
+            mvc.perform(patch("/api/usuarios/" + usuario + "/mfa/reiniciar").header(HttpHeaders.AUTHORIZATION, admin))
+                    .andExpect(status().isNoContent());
+            mvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + sesionMfa))
+                    .andExpect(status().isUnauthorized());
+            entrarComo("demo", "mfa@mismo.com", CLAVE);
+
+            // no se puede reiniciar el propio y la otra empresa no ve a este usuario
+            mvc.perform(patch("/api/usuarios/" + usuarioA + "/mfa/reiniciar").header(HttpHeaders.AUTHORIZATION, admin))
+                    .andExpect(status().is4xxClientError());
+            mvc.perform(patch("/api/usuarios/" + usuario + "/mfa/reiniciar")
+                            .header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "ADMIN_SISTEMA")))
+                    .andExpect(status().isNotFound());
+        } finally {
+            borrarUsuarioDePrueba(usuario);
         }
     }
 }

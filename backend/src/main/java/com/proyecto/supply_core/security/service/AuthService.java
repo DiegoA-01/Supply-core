@@ -21,6 +21,7 @@ import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.security.dto.LoginRequest;
 import com.proyecto.supply_core.security.dto.LoginResponse;
 import com.proyecto.supply_core.security.dto.UsuarioSesionResponse;
+import com.proyecto.supply_core.security.jwt.DesafioMfaEmpresa;
 import com.proyecto.supply_core.security.jwt.JwtUtil;
 import com.proyecto.supply_core.security.jwt.SesionProperties;
 import com.proyecto.supply_core.usuario.entity.Usuario;
@@ -45,6 +46,7 @@ public class AuthService {
     private final RefreshTokenService refreshTokenService;
     private final SesionProperties sesionProperties;
     private final AccesoEmpresaService accesoEmpresa;
+    private final MfaUsuarioService mfa;
     /** Hash de relleno: se compara aunque el correo no exista para que ambos casos tarden igual. */
     private final String hashFicticio;
 
@@ -57,12 +59,14 @@ public class AuthService {
      * @param refreshTokenService sesiones renovables
      * @param sesionProperties    intentos máximos y duración del bloqueo
      * @param accesoEmpresa       suscripción de la empresa (suspendida o cancelada no entra)
+     * @param mfa                 segundo factor de quien debe usarlo
      */
     public AuthService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, JwtUtil jwtUtil,
             AuditoriaService auditoriaService, ProveedorRepository proveedorRepository,
             RefreshTokenService refreshTokenService, SesionProperties sesionProperties,
-            AccesoEmpresaService accesoEmpresa) {
+            AccesoEmpresaService accesoEmpresa, MfaUsuarioService mfa) {
         this.accesoEmpresa = accesoEmpresa;
+        this.mfa = mfa;
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
@@ -110,11 +114,49 @@ public class AuthService {
         }
         exigirPuedeEntrar(usuario, correo);
 
+        if (mfa.requiere(usuario)) {
+            // contraseña correcta pero todavía no hay sesión: falta el código del segundo factor
+            auditoriaService.exitoDe(usuario.getId(), AccionAuditoria.LOGIN, EntidadAuditada.USUARIO,
+                    usuario.getId(), "correo=" + correo + "; falta el segundo factor");
+            return mfa.desafio(usuario);
+        }
         usuario.setUltimoAcceso(ahora);
         usuario.setIntentosFallidos(0);
         usuario.setBloqueadoHasta(null);
         auditoriaService.exitoDe(usuario.getId(), AccionAuditoria.LOGIN, EntidadAuditada.USUARIO,
                 usuario.getId(), "correo=" + correo);
+        return emitirSesion(usuario, refreshTokenService.emitir(usuario.getId()));
+    }
+
+    /**
+     * Lee el desafío del primer paso para saber en qué empresa continuar el login.
+     *
+     * @param desafio desafío entregado al acertar la contraseña
+     * @return usuario y empresa del desafío
+     * @throws NoAutenticadoException si no es un desafío de empresa, está alterado o venció
+     */
+    public DesafioMfaEmpresa leerDesafio(String desafio) {
+        return jwtUtil.validarDesafioMfaEmpresa(desafio);
+    }
+
+    /**
+     * Segundo paso del login con MFA: verifica el código y abre la sesión. Debe correr dentro de la empresa del
+     * desafío.
+     *
+     * @param usuarioId usuario del desafío
+     * @param codigo    código de 6 dígitos
+     * @return token y datos de sesión
+     * @throws NoAutenticadoException si el código no sirve o la cuenta no puede entrar
+     */
+    @Transactional(noRollbackFor = NoAutenticadoException.class) // los fallos de código deben quedar contados
+    public LoginResponse verificarMfa(Long usuarioId, String codigo) {
+        Usuario usuario = mfa.verificarCodigo(usuarioId, codigo);
+        exigirPuedeEntrar(usuario, usuario.getCorreo());
+        usuario.setUltimoAcceso(LocalDateTime.now());
+        usuario.setIntentosFallidos(0);
+        usuario.setBloqueadoHasta(null);
+        auditoriaService.exitoDe(usuario.getId(), AccionAuditoria.LOGIN, EntidadAuditada.USUARIO,
+                usuario.getId(), "correo=" + usuario.getCorreo() + "; con segundo factor");
         return emitirSesion(usuario, refreshTokenService.emitir(usuario.getId()));
     }
 
@@ -241,7 +283,8 @@ public class AuthService {
     private LoginResponse emitirSesion(Usuario usuario, String refreshToken) {
         UsuarioAutenticado sesion = new UsuarioAutenticado(usuario.getId(), usuario.getCorreo(),
                 usuario.getNombreCompleto(), usuario.codigosRoles(), usuario.getProveedorId(), usuario.getEmpresaId());
-        return new LoginResponse(jwtUtil.generar(sesion), "Bearer", jwtUtil.getExpiracionSegundos(),
+        return new LoginResponse(jwtUtil.generar(sesion, usuario.getVersionSesion()), "Bearer",
+                jwtUtil.getExpiracionSegundos(),
                 UsuarioSesionResponse.of(sesion), refreshToken);
     }
 

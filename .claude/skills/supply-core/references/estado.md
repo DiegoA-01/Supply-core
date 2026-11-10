@@ -18,7 +18,7 @@ Actualizar al cerrar cada tarea (1–2 líneas, con fecha). Lo más reciente arr
 | 9 | E2E, seguridad, docs, despliegue | ⏳ |
 
 ## Siguiente tarea
-Plan detallado por módulos: `plan-backend.md` (pasos 0–18 + 18-a a 18-d + SaaS 2 + 17-bis + 11-bis ✅ → sigue SaaS fase 3 (seguridad restante)).
+Plan detallado por módulos: `plan-backend.md` (pasos 0–18 + 18-a a 18-d + SaaS 2 y 3 + 17-bis + 11-bis ✅ → sigue el paso 19, cierre del backend).
 
 1. ✅ Flyway V1–V3 aplicados (48 tablas). 2. ✅ `security/` (JwtUtil HMAC, AuthFilter `OncePerRequestFilter`, `@RequiereRol` + interceptor).
 3. `POST /auth/login` + `DataInitializer` que cree el admin con BCrypt.
@@ -27,7 +27,7 @@ Plan detallado por módulos: `plan-backend.md` (pasos 0–18 + 18-a a 18-d + Saa
 ## Pendientes conocidos
 - `SupplyCoreApplicationTests` necesita MySQL con credenciales.
 - Admin inicial no creado en la BD del usuario: definir `ADMIN_PASSWORD` al arrancar (login ya probado E2E con usuarios temporales, luego borrados).
-- JWT sin estado: un usuario desactivado conserva su JWT hasta 15 min (el refresh ya lo corta). Sin MFA ni captcha todavía.
+- Sesiones: un usuario desactivado o que cambió su clave pierde su JWT en la siguiente petición (versión de sesión, V24). MFA TOTP para administradores; sin captcha todavía.
 - Rate limit en memoria (por instancia); con varias instancias usar Redis.
 - IP de auditoría = `getRemoteAddr()`; si se despliega detrás de un proxy, configurar `server.forward-headers-strategy` y confiar solo en ese proxy.
 - `Usuario.centroCostoId/proveedorId` se quedan como Long (decisión: no acoplar módulos por JPA); la existencia se valida con `@CentroCostoActivo` (proveedor: aún sin validador de existencia).
@@ -38,6 +38,7 @@ Plan detallado por módulos: `plan-backend.md` (pasos 0–18 + 18-a a 18-d + Saa
 1. ✅ JWT a jjwt. 2. Paso 3 `auditoria/`. 3. Adelantar del paso 9: autorregistro de proveedor (`POST /api/portal/registro`, público) → V4 `proveedor.estado` (PENDIENTE/HABILITADO/RECHAZADO/SUSPENDIDO) → ADMIN_COMPRAS habilita/rechaza; usuario PROVEEDOR inactivo hasta habilitar. 4. Cotizaciones del proveedor en paso 12 (requiere RFQ y `documento/`).
 
 ## Bitácora
+- 2026-11-10: SaaS fase 3 (2026-11-10, V24): el JWT lleva una versión de sesión que sube al cambiar la clave o desactivar al usuario (sus sesiones se cortan en la siguiente petición y se revocan sus refresh tokens), recuperación de contraseña con token de un solo uso por correo, MFA TOTP obligatorio para ADMIN_SISTEMA y voluntario para los demás, cabeceras de seguridad, Dependabot y el script de dos usuarios MySQL. Detalle: `version_sesion` en `usuario` y claim `sv` del JWT (`SesionUsuarioService` lo revisa en `AuthFilter` con memoria de 15 s); `RecuperacionPasswordService` (`POST /api/auth/recuperar` responde igual exista o no la cuenta, `POST /api/auth/restablecer`; token de 256 bits, solo su hash en la base, vence en 30 min, un pedido por minuto); `MfaUsuarioService` (`POST /api/auth/mfa` segundo paso del login con desafío de 5 min que lleva la empresa, `mfa/configurar`, `mfa/activar` y `PATCH /api/usuarios/{id}/mfa/reiniciar`; obligatorio para ADMIN_SISTEMA con `app.sesion.mfa-admin-obligatorio`, apagado en los perfiles `test` y `demo`); `CabecerasSeguridadFilter`. 679 pruebas OK, 40 de fuga, doclint sin advertencias. Sin probar: `backend/sql/permisos.sql` contra un MySQL real.
 - 2026-10-31: `ExcelGenerador` calcula el ancho de cada columna según su contenido (antes solo por el título: las fechas salían `####` y los nombres quedaban cortados), con tope de 60 caracteres. 634 pruebas OK, doclint 0 advertencias.
 - 2026-10-29: Base demo para pruebas reales. Perfil `demo` (`application-demo.yaml`, base `supply_core_demo`, rate limit 300). Sembrada por la API (dueño con MFA → 2 empresas, 8 usuarios por rol, proveedores autorregistrados) y probada: 2 compras completas hasta pago final y exportaciones, 42 intentos de fuga A↔B todos bloqueados. Usuarios demo `*@tornillo.demo` / `*@norte.demo`; la clave no se guarda en el repo.
 - 2026-10-28: Exportación, parte 1 (rama `feature/Downloadfiles`, sin migración). `exportacion/`: `ExcelGenerador` (POI: encabezado de la empresa, filtro, texto nunca como fórmula), `OrdenPdfGenerador` (OpenPDF 2.0.3, totales guardados, formato es-CO), `ExportacionService` (usa los Services de cada pantalla, así cada rol y empresa exporta solo lo que ve; tope 10.000 filas; audita `EXPORTAR_ARCHIVO`/`EXPORTAR_CORREO`), `/api/exportaciones/inventario/stock|kardex`, `/solicitudes` (xlsx) y `/ordenes/{id}` (pdf) con `?formato=` y gemela `POST …/correo` (solo al correo de la sesión). `EmailClient.enviarConAdjunto`; 400 `FORMATO_NO_SOPORTADO`. 17 pruebas nuevas OK + 1 de fuga en `AislamientoEmpresasTest` (MySQL real, 37/37 OK); doclint 0 advertencias. Sigue: parte 2 (más reportes) o SaaS fase 3.

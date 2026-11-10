@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -33,7 +34,10 @@ import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
+import com.proyecto.supply_core.security.service.MfaUsuarioService;
+import com.proyecto.supply_core.security.service.SesionUsuarioService;
 import com.proyecto.supply_core.usuario.dto.CambioPasswordRequest;
+import com.proyecto.supply_core.usuario.dto.RestablecerPasswordRequest;
 import com.proyecto.supply_core.usuario.dto.UsuarioRequest;
 import com.proyecto.supply_core.usuario.dto.UsuarioUpdateRequest;
 import com.proyecto.supply_core.usuario.entity.Rol;
@@ -49,7 +53,9 @@ class UsuarioServiceTest {
     private final RolRepository roles = mock(RolRepository.class);
     private final PasswordEncoder encoder = new BCryptPasswordEncoder(4);
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
-    private final UsuarioService service = new UsuarioService(usuarios, roles, encoder, auditoria);
+    private final SesionUsuarioService sesiones = mock(SesionUsuarioService.class);
+    private final MfaUsuarioService mfa = mock(MfaUsuarioService.class);
+    private final UsuarioService service = new UsuarioService(usuarios, roles, encoder, auditoria, sesiones, mfa);
     private Usuario admin;
 
     @BeforeEach
@@ -118,6 +124,7 @@ class UsuarioServiceTest {
         when(usuarios.countByActivoTrueAndRoles_Codigo("ADMIN_SISTEMA")).thenReturn(2L);
 
         assertFalse(service.desactivar(2L).activo());
+        verify(sesiones).revocarSesiones(otroAdmin);
         verify(auditoria).exito(eq(AccionAuditoria.USUARIO_DESACTIVAR), eq(EntidadAuditada.USUARIO), eq(2L),
                 anyString());
     }
@@ -131,8 +138,29 @@ class UsuarioServiceTest {
                 () -> service.cambiarPasswordPropia(new CambioPasswordRequest("ClaveActual1", "ClaveActual1")))
                 .getCodigo());
 
+        verify(sesiones, never()).revocarSesiones(any()); // un cambio rechazado no corta nada
+
         service.cambiarPasswordPropia(new CambioPasswordRequest("ClaveActual1", "NuevaClave1"));
         assertTrue(encoder.matches("NuevaClave1", admin.getHashPassword()));
+        verify(sesiones).revocarSesiones(admin);
+    }
+
+    @Test
+    void elAdminQueRestableceLaClaveDeOtroLeCortaLasSesiones() {
+        Usuario otro = usuario(2L, "otro@x.com", rol("COMPRADOR"));
+        when(usuarios.findWithRolesById(2L)).thenReturn(Optional.of(otro));
+
+        service.restablecerPassword(2L, new RestablecerPasswordRequest("ClaveNueva12"));
+
+        assertTrue(encoder.matches("ClaveNueva12", otro.getHashPassword()));
+        verify(sesiones).revocarSesiones(otro);
+    }
+
+    @Test
+    void reiniciarElMfaSeDelegaEnElServicioDeMfa() {
+        service.reiniciarMfa(2L);
+
+        verify(mfa).reiniciar(2L);
     }
 
     private static Rol rol(String codigo) {

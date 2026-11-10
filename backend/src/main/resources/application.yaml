@@ -25,6 +25,10 @@ spring:
     enabled: true
     locations: classpath:db/migration
     baseline-on-migrate: false
+    # Las migraciones corren con su propio usuario (dueño del esquema); la aplicación usa DB_USER, que en producción no
+    # puede modificar ni borrar la auditoría. Sin FLYWAY_USER usan las mismas credenciales (desarrollo). Ver backend/sql/permisos.sql
+    user: ${FLYWAY_USER:${DB_USER:root}}
+    password: ${FLYWAY_PASSWORD:${DB_PASSWORD:}}
 
   data:
     web:
@@ -47,6 +51,9 @@ app:
     max-intentos: ${LOGIN_MAX_INTENTOS:5}              # fallos seguidos que bloquean la cuenta
     bloqueo-minutos: ${LOGIN_BLOQUEO_MINUTOS:15}       # duración del bloqueo
     limite-por-minuto: ${RATE_LIMITE_POR_MINUTO:20}    # peticiones/min por IP a login, refresh y registro
+    cache-segundos: ${SESION_CACHE_SEGUNDOS:15}        # cuánto se recuerda si un usuario sigue activo (corte de JWT)
+    recuperacion-minutos: ${RECUPERACION_MINUTOS:30}   # vigencia del token para restablecer una clave olvidada
+    mfa-admin-obligatorio: ${MFA_ADMIN_OBLIGATORIO:true}  # ADMIN_SISTEMA siempre entra con segundo factor (TOTP)
   storage:
     ruta: ${STORAGE_RUTA:./almacenamiento}   # archivos de documentos (fuera de la BD y de git)
     tamano-maximo-bytes: 10485760             # 10 MB

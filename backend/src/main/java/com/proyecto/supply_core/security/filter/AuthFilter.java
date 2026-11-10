@@ -18,6 +18,7 @@ import com.proyecto.supply_core.security.context.PlataformaActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.jwt.JwtUtil;
+import com.proyecto.supply_core.security.service.SesionUsuarioService;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -34,7 +35,8 @@ public class AuthFilter extends OncePerRequestFilter {
     private static final String PREFIJO = "Bearer ";
     /** Rutas sin token: login y autorregistro de proveedores (que no otorga acceso hasta ser aprobado). */
     private static final List<String> RUTAS_PUBLICAS = List.of("/api/auth/login", "/api/auth/refresh",
-            "/api/portal/registro/**", "/api/plataforma/auth/**");
+            "/api/auth/recuperar", "/api/auth/restablecer", "/api/auth/mfa", "/api/portal/registro/**",
+            "/api/plataforma/auth/**");
 
     /** La consola de la plataforma exige su propio token (sin empresa) y nunca el de una empresa. */
     private static final String PREFIJO_PLATAFORMA = "/api/plataforma/";
@@ -44,18 +46,21 @@ public class AuthFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final EmpresaRepository empresaRepository;
+    private final SesionUsuarioService sesionUsuario;
     private final HandlerExceptionResolver exceptionResolver;
     private final AntPathMatcher matcher = new AntPathMatcher();
 
     /**
      * @param jwtUtil           validador de tokens
      * @param empresaRepository resuelve la empresa del autorregistro público por su código
+     * @param sesionUsuario     corta el token de quien cambió su clave o fue desactivado
      * @param exceptionResolver resolver de Spring MVC que invoca al {@code @RestControllerAdvice}
      */
-    public AuthFilter(JwtUtil jwtUtil, EmpresaRepository empresaRepository,
+    public AuthFilter(JwtUtil jwtUtil, EmpresaRepository empresaRepository, SesionUsuarioService sesionUsuario,
             @Qualifier("handlerExceptionResolver") HandlerExceptionResolver exceptionResolver) {
         this.jwtUtil = jwtUtil;
         this.empresaRepository = empresaRepository;
+        this.sesionUsuario = sesionUsuario;
         this.exceptionResolver = exceptionResolver;
     }
 
@@ -115,9 +120,12 @@ public class AuthFilter extends OncePerRequestFilter {
                 if (header == null || !header.startsWith(PREFIJO)) {
                     throw new NoAutenticadoException("Debe iniciar sesión");
                 }
-                UsuarioAutenticado usuario = jwtUtil.validar(header.substring(PREFIJO.length()).trim());
+                String token = header.substring(PREFIJO.length()).trim();
+                UsuarioAutenticado usuario = jwtUtil.validar(token);
                 request.setAttribute(SesionActual.ATRIBUTO, usuario);
                 EmpresaContexto.fijar(usuario.empresaId());
+                // cuenta desactivada o clave cambiada después de emitir el token: ya no sirve, sin esperar su vencimiento
+                sesionUsuario.exigirVigente(usuario.id(), jwtUtil.versionSesion(token));
             }
             chain.doFilter(request, response);
         } catch (NoAutenticadoException | NoEncontradoException ex) {

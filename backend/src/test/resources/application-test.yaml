@@ -16,3 +16,7 @@ app:
     sla-automatico: false
   plataforma:
     cache-segundos: 0           # cada petición lee la suscripción de la base, sin memoria
+  sesion:
+    cache-segundos: 0           # cada petición revisa en la base si el usuario sigue activo
+    limite-por-minuto: 500      # las pruebas inician muchas sesiones seguidas desde la misma IP
+    mfa-admin-obligatorio: false  # las pruebas de siempre inician sesión sin segundo factor; las de MFA lo activan

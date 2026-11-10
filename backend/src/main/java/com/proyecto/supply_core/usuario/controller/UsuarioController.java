@@ -121,6 +121,18 @@ public class UsuarioController {
     }
 
     /**
+     * Quita el segundo factor de un usuario que perdió su teléfono y le corta las sesiones.
+     * Si es ADMIN_SISTEMA, vinculará una app nueva en su próximo login.
+     *
+     * @param id id positivo
+     */
+    @PatchMapping("/{id}/mfa/reiniciar")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void reiniciarMfa(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
+        usuarioService.reiniciarMfa(id);
+    }
+
+    /**
      * Asigna una contraseña nueva a otro usuario.
      *
      * @param id      id positivo

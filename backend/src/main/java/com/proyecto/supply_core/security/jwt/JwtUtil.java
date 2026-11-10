@@ -45,10 +45,14 @@ public class JwtUtil {
     private static final String CLAIM_ROLES = "roles";
     private static final String CLAIM_PROVEEDOR = "prov";
     private static final String CLAIM_EMPRESA = "emp";
+    /** Versión de sesión del usuario al emitir el token; si ya no coincide con la de la base, el token no sirve. */
+    private static final String CLAIM_VERSION_SESION = "sv";
     /** Marca de un token de la plataforma: los de empresa no la llevan y los de plataforma no llevan {@code emp}. */
     private static final String CLAIM_PLATAFORMA = "plat";
     /** Marca del desafío de MFA: sirve solo para entregar el código, no para llamar a la API. */
     private static final String CLAIM_DESAFIO_MFA = "mfa";
+    /** Marca del desafío de MFA de un usuario de empresa: lleva la empresa y no sirve en la consola de la plataforma. */
+    private static final String CLAIM_DESAFIO_MFA_EMPRESA = "mfae";
     /** Tiempo para escribir el código de MFA después de acertar la contraseña. */
     private static final long VIGENCIA_DESAFIO_SEGUNDOS = 300;
 
@@ -93,6 +97,18 @@ public class JwtUtil {
      * @return JWT compacto listo para el header {@code Authorization: Bearer}
      */
     public String generar(UsuarioAutenticado u) {
+        return generar(u, 0);
+    }
+
+    /**
+     * Emite un token que lleva la versión de sesión del usuario: deja de valer cuando esa versión sube (cambio de
+     * clave o desactivación).
+     *
+     * @param u             datos que viajarán en el token
+     * @param versionSesion versión de sesión que tiene hoy el usuario
+     * @return JWT compacto listo para el header {@code Authorization: Bearer}
+     */
+    public String generar(UsuarioAutenticado u, int versionSesion) {
         Instant ahora = reloj.instant();
         return Jwts.builder()
                 .issuer(EMISOR)
@@ -102,6 +118,7 @@ public class JwtUtil {
                 .claim(CLAIM_ROLES, u.roles())
                 .claim(CLAIM_PROVEEDOR, u.proveedorId()) // null = no se incluye
                 .claim(CLAIM_EMPRESA, u.empresaId())
+                .claim(CLAIM_VERSION_SESION, versionSesion)
                 .issuedAt(Date.from(ahora))
                 .expiration(Date.from(ahora.plusSeconds(expiracionSegundos)))
                 .signWith(clave, Jwts.SIG.HS256)
@@ -186,6 +203,48 @@ public class JwtUtil {
     }
 
     /**
+     * Emite el desafío de MFA de un usuario de empresa: se canjea por la sesión al escribir el código. Dura pocos
+     * minutos y lleva la empresa para poder continuar el login dentro de ella.
+     *
+     * @param usuarioId usuario que acertó la contraseña
+     * @param empresaId empresa del usuario
+     * @return JWT compacto de corta vida
+     */
+    public String generarDesafioMfaEmpresa(Long usuarioId, Long empresaId) {
+        Instant ahora = reloj.instant();
+        return Jwts.builder()
+                .issuer(EMISOR)
+                .subject(String.valueOf(usuarioId))
+                .claim(CLAIM_DESAFIO_MFA_EMPRESA, Boolean.TRUE)
+                .claim(CLAIM_EMPRESA, empresaId)
+                .issuedAt(Date.from(ahora))
+                .expiration(Date.from(ahora.plusSeconds(VIGENCIA_DESAFIO_SEGUNDOS)))
+                .signWith(clave, Jwts.SIG.HS256)
+                .compact();
+    }
+
+    /**
+     * Valida el desafío de MFA de un usuario de empresa. Una sesión, un desafío de la plataforma o cualquier otro
+     * token no pasan.
+     *
+     * @param token desafío entregado al acertar la contraseña
+     * @return usuario y empresa a los que pertenece
+     * @throws NoAutenticadoException si no es un desafío de empresa, está alterado o expiró
+     */
+    public DesafioMfaEmpresa validarDesafioMfaEmpresa(String token) {
+        Claims claims = leer(token);
+        try {
+            Number empresa = claims.get(CLAIM_EMPRESA, Number.class);
+            if (!Boolean.TRUE.equals(claims.get(CLAIM_DESAFIO_MFA_EMPRESA, Boolean.class)) || empresa == null) {
+                throw invalido();
+            }
+            return new DesafioMfaEmpresa(Long.valueOf(claims.getSubject()), empresa.longValue());
+        } catch (JwtException | NumberFormatException e) {
+            throw invalido();
+        }
+    }
+
+    /**
      * Verifica firma, emisor y vigencia y devuelve el contenido.
      *
      * @param token JWT recibido
@@ -234,6 +293,18 @@ public class JwtUtil {
         } catch (JwtException | NumberFormatException e) {
             throw invalido(); // firma válida pero contenido inesperado: se trata como inválido
         }
+    }
+
+    /**
+     * Versión de sesión con la que se emitió el token (0 si no lleva ninguna).
+     *
+     * @param token JWT de una empresa ya validado
+     * @return versión de sesión
+     * @throws NoAutenticadoException si el token no se puede leer
+     */
+    public int versionSesion(String token) {
+        Number version = leer(token).get(CLAIM_VERSION_SESION, Number.class);
+        return version == null ? 0 : version.intValue();
     }
 
     /**

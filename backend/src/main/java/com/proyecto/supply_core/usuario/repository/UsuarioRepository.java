@@ -34,6 +34,16 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     Optional<Usuario> findWithRolesById(Long id);
 
     /**
+     * Estado de sesión de un usuario: si sigue activo y su versión de sesión (una consulta liviana por clave).
+     *
+     * @param id id del usuario
+     * @return activo y versión, si existe en la empresa del contexto
+     */
+    @Query("select new com.proyecto.supply_core.usuario.repository.EstadoSesion(u.activo, u.versionSesion) "
+            + "from Usuario u where u.id = :id")
+    Optional<EstadoSesion> estadoSesion(@Param("id") Long id);
+
+    /**
      * Usuarios del portal de un proveedor.
      *
      * @param proveedorId id del proveedor
