@@ -44,6 +44,8 @@ import com.proyecto.supply_core.plataforma.repository.SuscripcionRepository;
 import com.proyecto.supply_core.security.context.PlataformaActual;
 import com.proyecto.supply_core.security.context.PlataformaAutenticada;
 import com.proyecto.supply_core.security.repository.RefreshTokenRepository;
+import com.proyecto.supply_core.usuario.repository.AdministradorVista;
+import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
 
 class EmpresaPlataformaServiceTest {
 
@@ -56,8 +58,9 @@ class EmpresaPlataformaServiceTest {
     private final AccesoEmpresaService acceso = mock(AccesoEmpresaService.class);
     private final PlataformaAuditoriaService auditoria = mock(PlataformaAuditoriaService.class);
     private final RefreshTokenRepository refresh = mock(RefreshTokenRepository.class);
+    private final UsuarioRepository usuarios = mock(UsuarioRepository.class);
     private final EmpresaPlataformaService service = new EmpresaPlataformaService(empresas, suscripciones, planes,
-            modulos, excepciones, alta, acceso, auditoria, refresh);
+            modulos, excepciones, alta, acceso, auditoria, refresh, usuarios);
 
     private Plan basico;
     private Plan pro;
@@ -94,6 +97,35 @@ class EmpresaPlataformaServiceTest {
     @AfterEach
     void limpiar() {
         RequestContextHolder.resetRequestAttributes();
+    }
+
+    @Test
+    void elDetalleMuestraQuienAdministraLaEmpresaConSoloNombreYCorreo() {
+        AdministradorVista admin = mock(AdministradorVista.class);
+        when(admin.getNombre()).thenReturn("Laura Gómez");
+        when(admin.getCorreo()).thenReturn("laura@eltornillo.co");
+        when(usuarios.administradorDe(8L)).thenReturn(List.of(admin));
+
+        var d = service.obtener(8L);
+
+        assertEquals("Laura Gómez", d.administrador().nombre());
+        assertEquals("laura@eltornillo.co", d.administrador().correo());
+        assertEquals("Ferretería El Tornillo", d.empresa().razonSocial());
+        assertEquals("900456789-1", d.empresa().nit());
+        assertEquals("el-tornillo", d.empresa().codigoPublico());
+    }
+
+    @Test
+    void sinAdministradorElDetalleNoFalla() {
+        when(usuarios.administradorDe(8L)).thenReturn(List.of());
+
+        assertEquals(null, service.obtener(8L).administrador());
+    }
+
+    @Test
+    void elCodigoSeGuardaComoSeEscribioSinEspaciosDeMas() {
+        assertEquals("Ferretería DON Martín 2", EmpresaAltaService.normalizarCodigo("  Ferretería   DON\tMartín 2 "));
+        assertEquals("demo", EmpresaAltaService.normalizarCodigo("demo"));
     }
 
     @Test

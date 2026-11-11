@@ -24,6 +24,8 @@ import com.proyecto.supply_core.common.exception.ParametroInvalidoException;
 import com.proyecto.supply_core.common.util.Ordenamiento;
 import com.proyecto.supply_core.security.context.Roles;
 import com.proyecto.supply_core.security.context.SesionActual;
+import com.proyecto.supply_core.security.service.MfaUsuarioService;
+import com.proyecto.supply_core.security.service.SesionUsuarioService;
 import com.proyecto.supply_core.usuario.dto.CambioPasswordRequest;
 import com.proyecto.supply_core.usuario.dto.RestablecerPasswordRequest;
 import com.proyecto.supply_core.usuario.dto.RolResponse;
@@ -55,15 +57,22 @@ public class UsuarioService {
     private final RolRepository rolRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditoriaService auditoriaService;
+    private final SesionUsuarioService sesiones;
+    private final MfaUsuarioService mfa;
 
     /**
      * @param usuarioRepository acceso a usuarios
      * @param rolRepository     acceso a roles
      * @param passwordEncoder   hash BCrypt
      * @param auditoriaService  registro de las acciones sensibles sobre usuarios
+     * @param sesiones          corta las sesiones al cambiar la clave o desactivar la cuenta
+     * @param mfa               segundo factor (reinicio por un administrador)
      */
     public UsuarioService(UsuarioRepository usuarioRepository, RolRepository rolRepository,
-            PasswordEncoder passwordEncoder, AuditoriaService auditoriaService) {
+            PasswordEncoder passwordEncoder, AuditoriaService auditoriaService, SesionUsuarioService sesiones,
+            MfaUsuarioService mfa) {
+        this.sesiones = sesiones;
+        this.mfa = mfa;
         this.usuarioRepository = usuarioRepository;
         this.rolRepository = rolRepository;
         this.passwordEncoder = passwordEncoder;
@@ -178,7 +187,7 @@ public class UsuarioService {
     }
 
     /**
-     * Desactiva un usuario (no se borra: su historial se conserva).
+     * Desactiva un usuario (no se borra: su historial se conserva) y le corta todas las sesiones.
      *
      * @param id usuario
      * @return usuario inactivo
@@ -195,6 +204,7 @@ public class UsuarioService {
             validarNoEsUltimoAdmin();
         }
         u.setActivo(false);
+        sesiones.revocarSesiones(u);
         log.info("Usuario {} desactivado por {}", id, SesionActual.usuario().id());
         auditoriaService.exito(AccionAuditoria.USUARIO_DESACTIVAR, EntidadAuditada.USUARIO, id,
                 "correo=" + u.getCorreo());
@@ -202,7 +212,20 @@ public class UsuarioService {
     }
 
     /**
-     * El administrador asigna una contraseña nueva (p. ej. si el usuario la olvidó).
+     * Quita el segundo factor de un usuario que perdió su teléfono y le corta las sesiones.
+     *
+     * @param id usuario al que se le reinicia el MFA
+     * @throws NegocioException      si intenta reiniciar el suyo propio
+     * @throws NoEncontradoException si no existe
+     */
+    @Transactional
+    public void reiniciarMfa(Long id) {
+        mfa.reiniciar(id);
+    }
+
+    /**
+     * El administrador asigna una contraseña nueva (p. ej. si el usuario la olvidó). Las sesiones abiertas del
+     * usuario se cortan.
      *
      * @param id  usuario
      * @param req contraseña nueva ya validada
@@ -212,6 +235,7 @@ public class UsuarioService {
     public void restablecerPassword(Long id, RestablecerPasswordRequest req) {
         Usuario u = buscarEntidad(id);
         u.setHashPassword(passwordEncoder.encode(req.passwordNueva()));
+        sesiones.revocarSesiones(u);
         log.info("Contraseña del usuario {} restablecida por {}", id, SesionActual.usuario().id());
         // nunca se audita la contraseña, solo el hecho
         auditoriaService.exito(AccionAuditoria.USUARIO_RESTABLECER_PASSWORD, EntidadAuditada.USUARIO, id,
@@ -219,7 +243,8 @@ public class UsuarioService {
     }
 
     /**
-     * El usuario logueado cambia su propia contraseña.
+     * El usuario logueado cambia su propia contraseña. Se cierran todas sus sesiones (también la actual): debe
+     * iniciar sesión de nuevo con la clave nueva.
      *
      * @param req contraseña actual y nueva
      * @throws NegocioException si la actual no coincide o la nueva es igual a la actual
@@ -234,6 +259,7 @@ public class UsuarioService {
             throw new NegocioException("PASSWORD_REPETIDA", "La nueva contraseña debe ser distinta a la actual");
         }
         u.setHashPassword(passwordEncoder.encode(req.passwordNueva()));
+        sesiones.revocarSesiones(u);
         auditoriaService.exito(AccionAuditoria.PASSWORD_CAMBIAR, EntidadAuditada.USUARIO, u.getId(), null);
     }
 

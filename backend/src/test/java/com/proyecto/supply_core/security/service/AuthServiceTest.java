@@ -34,6 +34,7 @@ import com.proyecto.supply_core.proveedor.enums.EstadoProveedor;
 import com.proyecto.supply_core.proveedor.repository.ProveedorRepository;
 import com.proyecto.supply_core.security.dto.LoginRequest;
 import com.proyecto.supply_core.security.dto.LoginResponse;
+import com.proyecto.supply_core.security.jwt.DesafioMfaEmpresa;
 import com.proyecto.supply_core.security.jwt.JwtProperties;
 import com.proyecto.supply_core.security.jwt.JwtUtil;
 import com.proyecto.supply_core.security.jwt.SesionProperties;
@@ -49,6 +50,7 @@ class AuthServiceTest {
     private final ProveedorRepository proveedores = mock(ProveedorRepository.class);
     private final RefreshTokenService refreshTokens = mock(RefreshTokenService.class);
     private final AccesoEmpresaService accesoEmpresa = mock(AccesoEmpresaService.class);
+    private final MfaUsuarioService mfa = mock(MfaUsuarioService.class);
     private AuthService service;
     private Usuario usuario;
 
@@ -57,7 +59,7 @@ class AuthServiceTest {
         JwtUtil jwt = new JwtUtil(new JwtProperties("clave-de-prueba-de-al-menos-32-caracteres!!", 60));
         when(refreshTokens.emitir(5L)).thenReturn("refresh-1");
         service = new AuthService(repo, encoder, jwt, auditoria, proveedores, refreshTokens,
-                new SesionProperties(7, 3, 15, 20), accesoEmpresa);
+                new SesionProperties(7, 3, 15, 20), accesoEmpresa, mfa);
 
         Rol rol = new Rol();
         rol.setCodigo("COMPRADOR");
@@ -207,5 +209,56 @@ class AuthServiceTest {
 
         p.setEstado(EstadoProveedor.HABILITADO);
         assertEquals(40L, service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123")).usuario().proveedorId());
+    }
+
+    @Test
+    void quienDebeUsarMfaRecibeUnDesafioYNoUnaSesion() {
+        when(mfa.requiere(usuario)).thenReturn(true);
+        when(mfa.desafio(usuario)).thenReturn(LoginResponse.conDesafio("desafio", true, null, null));
+
+        LoginResponse r = service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123"));
+
+        assertEquals("desafio", r.desafioMfa());
+        assertNull(r.token());
+        assertNull(r.refreshToken());
+        verify(refreshTokens, never()).emitir(any());
+        assertNull(usuario.getUltimoAcceso()); // todavía no entró
+    }
+
+    @Test
+    void elCodigoCorrectoAbreLaSesionYUnoMaloNo() {
+        when(mfa.verificarCodigo(5L, "123456")).thenReturn(usuario);
+        when(mfa.verificarCodigo(5L, "000000")).thenThrow(new NoAutenticadoException("Código inválido"));
+
+        LoginResponse r = service.verificarMfa(5L, "123456");
+
+        assertNotNull(r.token());
+        assertEquals("refresh-1", r.refreshToken());
+        assertNotNull(usuario.getUltimoAcceso());
+        assertThrows(NoAutenticadoException.class, () -> service.verificarMfa(5L, "000000"));
+        verify(refreshTokens, org.mockito.Mockito.times(1)).emitir(5L);
+    }
+
+    @Test
+    void elTokenDeSesionLlevaLaVersionDeSesionDelUsuario() {
+        usuario.setVersionSesion(7);
+
+        LoginResponse r = service.login(new LoginRequest("demo", "ana@demo.com", "Secreta123"));
+
+        JwtUtil jwt = new JwtUtil(new JwtProperties("clave-de-prueba-de-al-menos-32-caracteres!!", 60));
+        assertEquals(7, jwt.versionSesion(r.token()));
+    }
+
+    @Test
+    void elDesafioDeMfaSeLeeDelJwt() {
+        JwtUtil jwt = new JwtUtil(new JwtProperties("clave-de-prueba-de-al-menos-32-caracteres!!", 60));
+        AuthService conJwtPropio = new AuthService(repo, encoder, jwt, auditoria, proveedores, refreshTokens,
+                new SesionProperties(7, 3, 15, 20), accesoEmpresa, mfa);
+
+        DesafioMfaEmpresa d = conJwtPropio.leerDesafio(jwt.generarDesafioMfaEmpresa(5L, 1L));
+
+        assertEquals(5L, d.usuarioId());
+        assertEquals(1L, d.empresaId());
+        assertThrows(NoAutenticadoException.class, () -> conJwtPropio.leerDesafio("basura"));
     }
 }

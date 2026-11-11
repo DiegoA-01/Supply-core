@@ -102,9 +102,15 @@ class PlataformaConsolaControllerTest extends WebTestBase {
                 .andExpect(status().isCreated());
         verify(empresaService).crear(any());
 
+        // el código de ingreso es texto libre: espacios, mayúsculas, tildes y números
+        mvc.perform(post("/api/plataforma/empresas").contentType(MediaType.APPLICATION_JSON)
+                        .content(ALTA.replace("\"ferrecentro\"", "\"Ferretería Don Martín 2\""))
+                        .header(HttpHeaders.AUTHORIZATION, bearerPlataforma()))
+                .andExpect(status().isCreated());
+
         String[] malos = {
                 ALTA.replace("901223114-5", "12"),
-                ALTA.replace("\"ferrecentro\"", "\"Ferre Centro!\""),
+                ALTA.replace("\"ferrecentro\"", "\"Ferre/Centro\""),
                 ALTA.replace("Clave12345", "corta1"),
                 ALTA.replace("Clave12345", "sinnumeroaqui"),
                 ALTA.replace("laura@ferrecentro.co", "no-es-correo"),

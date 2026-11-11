@@ -75,6 +75,25 @@ public class Usuario {
     @Column(name = "bloqueado_hasta")
     private LocalDateTime bloqueadoHasta;
 
+    /**
+     * Sube en uno al cambiar la clave o desactivar al usuario. El JWT lleva la versión con la que se emitió y deja de
+     * valer cuando ya no coincide.
+     */
+    @Column(name = "version_sesion", nullable = false)
+    private int versionSesion;
+
+    /** Secreto TOTP en base32 del segundo factor. Dato sensible: nunca sale por la API salvo al configurarlo. */
+    @Column(name = "mfa_secreto", length = 64)
+    private String mfaSecreto;
+
+    /** {@code true} cuando ya confirmó un código con ese secreto (desde ahí el login lo exige). */
+    @Column(name = "mfa_activo", nullable = false)
+    private boolean mfaActivo;
+
+    /** Último intervalo de 30 s aceptado, para que un código no se use dos veces. */
+    @Column(name = "mfa_ultimo_paso")
+    private Long mfaUltimoPaso;
+
     @Column(name = "creado_en", nullable = false, updatable = false)
     private LocalDateTime creadoEn;
 

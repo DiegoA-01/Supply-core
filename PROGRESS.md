@@ -1,7 +1,7 @@
 # Supply-Core — Progreso del backend
 
-> Última actualización: 2026-11-05 · Estado: **pasos 0 a 18, 18-a a 18-d y SaaS fase 2 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración), consola de plataforma con planes y módulos (V23) y exportación a Excel y PDF con archivos legibles (sin migración)**.
-> **635 pruebas en verde** (37 de fuga y de extremo a extremo entre empresas contra MySQL real), Javadoc sin advertencias (`doclint=all`), 23 migraciones Flyway, 51 controllers.
+> Última actualización: 2026-11-10 · Estado: **pasos 0 a 18, 18-a a 18-d, SaaS fase 2 y SaaS fase 3 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración), consola de plataforma con planes y módulos (V23), seguridad restante de SaaS 3: sesiones que se cortan, recuperación de clave y MFA de administradores (V24), y exportación a Excel y PDF con archivos legibles (sin migración)**.
+> **687 pruebas en verde** (41 de fuga y de extremo a extremo entre empresas contra MySQL real), Javadoc sin advertencias (`doclint=all`), 24 migraciones Flyway, 51 controllers.
 > Detalle vivo para Claude: `.claude/skills/supply-core/references/estado.md`, `plan-backend.md` y `saas.md`. Reglas no negociables: `CLAUDE.md`.
 
 ---
@@ -16,7 +16,7 @@ Además: usuarios y roles, proveedores, inventario con kardex, documentos, notif
 
 **Giro a SaaS multiempresa (decidido el 2026-10-23).** El software pasa de «una empresa» a vender el uso a varias empresas (ferretería, eléctricos…), cada una con sus datos aislados, sus usuarios y sus roles; el dueño del software activa a cada empresa y sus módulos. Ya está hecho el aislamiento por empresa y la seguridad de sesión; falta la consola del dueño (fase 2), planes y módulos, el cobro de la suscripción y la operación (fases 3 a 5).
 
-**Estamos en:** SaaS fase 3, seguridad restante (MFA para administradores de empresa, recuperación de contraseña, revocar sesiones al cambiar la clave o desactivar al usuario, dos usuarios MySQL). La fase 2, consola de plataforma, planes, módulos y `@RequiereModulo`, quedó hecha el 2026-10-28 con la migración V23.
+**Estamos en:** paso 19, cierre del backend. SaaS fase 3 (2026-11-10, V24): el JWT lleva una versión de sesión que sube al cambiar la clave o desactivar al usuario (sus sesiones se cortan en la siguiente petición y se revocan sus refresh tokens), recuperación de contraseña con token de un solo uso por correo, MFA TOTP obligatorio para ADMIN_SISTEMA y voluntario para los demás, cabeceras de seguridad, Dependabot y el script de dos usuarios MySQL. La fase 2, consola de plataforma, planes, módulos y `@RequiereModulo`, quedó hecha el 2026-10-28 con la migración V23.
 
 **Falta del backend:**
 
@@ -25,7 +25,7 @@ Además: usuarios y roles, proveedores, inventario con kardex, documentos, notif
 | 18 | **Reportes y tableros** (UC-15): gasto, inventario y desempeño de proveedores, con filtros por fecha, categoría y proveedor; solo lectura. Incluye estado de cuenta por proveedor (comprado, pagado, saldo) | Todas las tablas anteriores |
 | 18-a a 18-d | **Compras avanzadas**: presupuesto por centro de costo, contratos y precios pactados, delegación de aprobación y SLA, reorden sugerida; carga masiva por Excel de productos y precios | Solicitud, RFQ, orden, inventario |
 | SaaS 2 ✅ | **Consola de plataforma**: `usuario_plataforma` con MFA, alta de empresa, planes, módulos, `@RequiereModulo`, suspender y reactivar | Todo |
-| SaaS 3 | **Seguridad restante**: MFA, recuperación de clave, revocar sesiones al cambiar clave o desactivar usuario, dos usuarios MySQL, cabeceras seguras, escaneo de dependencias | Seguridad |
+| SaaS 3 ✅ | **Seguridad restante**: MFA de administradores, recuperación de clave, revocar sesiones al cambiar clave o desactivar usuario, cabeceras seguras, Dependabot y script de dos usuarios MySQL (`backend/sql/permisos.sql`, pendiente de aplicar y probar en el ambiente real) | Seguridad |
 | 19 | **Cierre del backend**: prueba de punta a punta con varias empresas, revisión de seguridad, Swagger completo, cruce de totales de la IA, permisos de BD con dos usuarios, limpieza de pendientes técnicos y commit | Todo |
 
 **Después del backend:**
@@ -100,7 +100,8 @@ La evaluación UC-14 la dispara el cierre de la recepción (paso 17).
 | V21 | Contratos: `contrato_proveedor` (vigencia, estado ACTIVO/ANULADO, número único por empresa, CHECKs) y `contrato_precio` (precio, impuesto, tope, único por contrato y producto); `orden_compra.adjudicacion_id` pasa a NULL con `contrato_id` y `solicitud_id` y un CHECK que exige adjudicación o contrato más solicitud; `orden_compra_linea.contrato_precio_id` |
 | V22 | Delegación y SLA: `delegacion_aprobacion` (delegante, delegado, fechas, ACTIVA/REVOCADA, CHECKs); `aprobacion_solicitud.delegacion_id` y `adjudicacion.delegacion_id`; `empresa.sla_aprobacion_horas` (0 a 720, 24 por defecto); `solicitud_compra.sla_aviso_en` y `escalada_en` con índice; eventos SOLICITUD_SLA_POR_VENCER, SOLICITUD_ESCALADA y DELEGACION_ASIGNADA sembrados por empresa |
 | V23 | Plataforma, planes y módulos: `usuario_plataforma` (MFA: secreto, activo y último paso usado; bloqueo), `modulo`, `plan`, `plan_modulo`, `empresa_modulo` (excepciones por empresa), `suscripcion` (una por empresa, estado ENUM), `auditoria_plataforma`; siembra los 10 módulos y los planes BASICO, PROFESIONAL y EMPRESARIAL, y deja a las empresas que ya existen en EMPRESARIAL y ACTIVA |
-| **Próximo libre** | **V24** |
+| V24 | Seguridad fase 3: `usuario.version_sesion` (sube al cambiar la clave o desactivar; el JWT la lleva en el claim `sv`), `usuario.mfa_secreto`, `mfa_activo` y `mfa_ultimo_paso` (TOTP), y tabla `recuperacion_password` (empresa, usuario, hash del token, vencimiento, usado en; único por hash) |
+| **Próximo libre** | **V25** |
 
 ---
 
@@ -347,7 +348,7 @@ Orden final: 17 ✅ → 17-bis ✅ → 18 → 18-a a 18-d → SaaS 2 → SaaS 3 
 - `@DataJpaTest` con Testcontainers cuando haya Docker (hoy las pruebas contra BD usan el MySQL local, base `supply_core_test`).
 - Exportación parte 2: reportes de gasto y proveedores en Excel/PDF, PDF de la orden para el proveedor desde su portal.
 - Correo real: reemplazar `LogEmailClient` por un `EmailClient` SMTP con credenciales en `application-local.yaml`.
-- Revocar los refresh tokens al cambiar o restablecer la contraseña y al desactivar un usuario (hoy el corte llega al vencer el JWT, máximo 15 min). MFA para admins.
+- Seguridad fase 3: probar `backend/sql/permisos.sql` en el ambiente real (dos usuarios MySQL), y la caché de sesión (`app.sesion.cache-segundos`, 15 s) es por instancia: con varias el corte llega al vencer esa memoria. Escaneo de dependencias: solo Dependabot; falta una corrida de OWASP Dependency-Check con clave de la NVD. Si un ADMIN_SISTEMA pierde su teléfono: otro administrador reinicia su MFA (`PATCH /api/usuarios/{id}/mfa/reiniciar`); si es el único, falta una ruta de la consola de plataforma para reiniciarlo.
 - Rate limit en memoria: con varias instancias usar Redis; detrás de un proxy configurar la IP real (`server.forward-headers-strategy`).
 - Archivos subidos en carpeta por empresa (`LocalStorageClient`).
 - Dar a CAJERO acceso a los endpoints de despacho y decidir si puede anular.

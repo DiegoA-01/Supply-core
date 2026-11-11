@@ -7,6 +7,7 @@ spring:
 app:
   sesion:
     limite-por-minuto: 300           # en pruebas se inician muchas sesiones seguidas desde la misma IP
+    mfa-admin-obligatorio: false     # la demo se siembra por la API con los administradores sin segundo factor
   storage:
     ruta: ./almacenamiento-demo      # archivos de la demo, aparte de los de desarrollo
   ia:

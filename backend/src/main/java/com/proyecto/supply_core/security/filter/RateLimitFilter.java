@@ -34,7 +34,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final long VENTANA_MS = 60_000L;
     private static final List<String> RUTAS_LIMITADAS = List.of("/api/auth/login", "/api/auth/refresh",
-            "/api/portal/registro/**", "/api/plataforma/auth/**");
+            "/api/auth/recuperar", "/api/auth/restablecer", "/api/auth/mfa", "/api/portal/registro/**",
+            "/api/plataforma/auth/**");
 
     private final int limitePorMinuto;
     private final HandlerExceptionResolver exceptionResolver;
