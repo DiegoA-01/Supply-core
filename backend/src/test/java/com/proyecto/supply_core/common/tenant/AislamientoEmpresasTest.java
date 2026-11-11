@@ -2008,4 +2008,64 @@ class AislamientoEmpresasTest {
             borrarUsuarioDePrueba(usuario);
         }
     }
+
+    @Test
+    void unCodigoDeIngresoLibreFuncionaEnElLoginYElRegistroYLaConsolaMuestraSuAdministrador() throws Exception {
+        String correo = "dueno-codigo@plataforma.test";
+        Long empresaD = null;
+        var json = new com.fasterxml.jackson.databind.ObjectMapper();
+        String ct = MediaType.APPLICATION_JSON_VALUE;
+        try {
+            String plataforma = entrarALaPlataforma(correo);
+
+            // el código se guarda como se escribió (mayúsculas, tildes), solo sin espacios de más
+            String alta = mvc.perform(post("/api/plataforma/empresas").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(ct).content("{\"razonSocial\":\"Ferretería Don Martín S.A.S.\",\"nit\":\"901888999-2\","
+                                    + "\"codigoPublico\":\"  Ferretería   Don Martín \",\"planCodigo\":\"BASICO\","
+                                    + "\"estadoInicial\":\"ACTIVA\",\"adminNombre\":\"Martín Pérez\","
+                                    + "\"adminCorreo\":\"Admin@D.com\",\"adminPassword\":\"ClaveDeD2026\"}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.empresa.codigoPublico").value("Ferretería Don Martín"))
+                    .andExpect(jsonPath("$.administrador.nombre").value("Martín Pérez"))
+                    .andExpect(jsonPath("$.administrador.correo").value("admin@d.com"))
+                    .andReturn().getResponse().getContentAsString();
+            empresaD = json.readTree(alta).get("empresa").get("id").asLong();
+
+            // la misma empresa con otras mayúsculas ya existe; un código con barra no se acepta
+            mvc.perform(post("/api/plataforma/empresas").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(ct).content("{\"razonSocial\":\"Otra\",\"nit\":\"901888111-3\","
+                                    + "\"codigoPublico\":\"FERRETERÍA DON MARTÍN\",\"planCodigo\":\"BASICO\","
+                                    + "\"adminNombre\":\"X\",\"adminCorreo\":\"x@x.com\",\"adminPassword\":\"ClaveDeD2026\"}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CODIGO_DUPLICADO"));
+            mvc.perform(post("/api/plataforma/empresas").header(HttpHeaders.AUTHORIZATION, plataforma)
+                            .contentType(ct).content("{\"razonSocial\":\"Otra\",\"nit\":\"901888222-4\","
+                                    + "\"codigoPublico\":\"con/barra\",\"planCodigo\":\"BASICO\","
+                                    + "\"adminNombre\":\"X\",\"adminCorreo\":\"y@x.com\",\"adminPassword\":\"ClaveDeD2026\"}"))
+                    .andExpect(status().isBadRequest());
+
+            // el administrador entra escribiendo el código tal cual o con otras mayúsculas
+            for (String escrito : new String[] { "Ferretería Don Martín", "ferretería don martín" }) {
+                mvc.perform(post("/api/auth/login").contentType(ct)
+                                .content("{\"empresa\":\"" + escrito + "\",\"correo\":\"admin@d.com\",\"password\":\"ClaveDeD2026\"}"))
+                        .andExpect(status().isOk());
+            }
+
+            // el registro de proveedores resuelve la empresa aunque el código llegue codificado en la dirección
+            mvc.perform(post("/api/portal/registro/{empresa}", "Ferretería Don Martín").contentType(ct).content("{}"))
+                    .andExpect(status().isBadRequest());
+            mvc.perform(post("/api/portal/registro/{empresa}", "No Existe Esta Empresa").contentType(ct).content("{}"))
+                    .andExpect(status().isNotFound());
+
+            // la consola muestra el administrador de cada empresa, sin mezclarlos
+            mvc.perform(get("/api/plataforma/empresas/" + empresaD).header(HttpHeaders.AUTHORIZATION, plataforma))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.administrador.correo").value("admin@d.com"));
+            mvc.perform(get("/api/plataforma/empresas/" + empresaA).header(HttpHeaders.AUTHORIZATION, plataforma))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.administrador.correo").value("admin@mismo.com"));
+        } finally {
+            if (empresaD != null) {
+                borrarEmpresaDePrueba(empresaD);
+            }
+            borrarDuenoDePrueba(correo);
+        }
+    }
 }

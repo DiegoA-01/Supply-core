@@ -68,12 +68,24 @@ public class EmpresaAltaService {
      * @param estado estado inicial de la suscripción
      * @return empresa creada, con su id
      */
+    /**
+     * Deja el código tal como lo escribió la persona, sin espacios de más: se quitan los de los extremos y varios
+     * seguidos pasan a uno solo, para que {@code "Don  Martín"} y {@code "Don Martín"} no sean dos empresas.
+     * No se cambian mayúsculas ni acentos: así se muestra y así se escribe al ingresar (la búsqueda no las distingue).
+     *
+     * @param codigo código escrito en el alta
+     * @return código normalizado
+     */
+    public static String normalizarCodigo(String codigo) {
+        return codigo.trim().replaceAll("\\s+", " ");
+    }
+
     @Transactional
     public Empresa crearEmpresa(EmpresaCrearRequest req, Plan plan, EstadoSuscripcion estado) {
         Empresa e = new Empresa();
         e.setRazonSocial(req.razonSocial().trim());
         e.setNit(req.nit().trim());
-        e.setCodigoPublico(req.codigoPublico().trim().toLowerCase(Locale.ROOT));
+        e.setCodigoPublico(normalizarCodigo(req.codigoPublico()));
         e.setMonedaBase("COP");
         Empresa guardada = empresaRepository.saveAndFlush(e);
         Suscripcion s = new Suscripcion();

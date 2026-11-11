@@ -34,6 +34,7 @@ import com.proyecto.supply_core.plataforma.repository.PlanRepository;
 import com.proyecto.supply_core.plataforma.repository.SuscripcionRepository;
 import com.proyecto.supply_core.security.context.PlataformaActual;
 import com.proyecto.supply_core.security.repository.RefreshTokenRepository;
+import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
 
 /**
  * Lo que el dueño de la plataforma hace con las empresas clientes: darlas de alta con su administrador, cambiarles el
@@ -61,6 +62,7 @@ public class EmpresaPlataformaService {
     private final AccesoEmpresaService accesoEmpresa;
     private final PlataformaAuditoriaService auditoria;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final UsuarioRepository usuarioRepository;
 
     /**
      * @param empresaRepository       empresas
@@ -72,12 +74,14 @@ public class EmpresaPlataformaService {
      * @param accesoEmpresa           memoria de acceso que se limpia al cambiar algo
      * @param auditoria               auditoría global
      * @param refreshTokenRepository  sesiones renovables que se revocan al suspender
+     * @param usuarioRepository       solo para mostrar quién administra cada empresa (nombre y correo)
      */
     public EmpresaPlataformaService(EmpresaRepository empresaRepository, SuscripcionRepository suscripcionRepository,
             PlanRepository planRepository, ModuloRepository moduloRepository,
             EmpresaModuloRepository empresaModuloRepository, EmpresaAltaService altaService,
             AccesoEmpresaService accesoEmpresa, PlataformaAuditoriaService auditoria,
-            RefreshTokenRepository refreshTokenRepository) {
+            RefreshTokenRepository refreshTokenRepository, UsuarioRepository usuarioRepository) {
+        this.usuarioRepository = usuarioRepository;
         this.empresaRepository = empresaRepository;
         this.suscripcionRepository = suscripcionRepository;
         this.planRepository = planRepository;
@@ -136,9 +140,9 @@ public class EmpresaPlataformaService {
         if (empresaRepository.existsByNitIgnoreCase(nit)) {
             throw new NegocioException("NIT_DUPLICADO", "Ya existe una empresa con el NIT " + nit);
         }
-        if (EmpresaContexto.sinEmpresa(() -> empresaRepository.idPorCodigoPublico(req.codigoPublico().trim()))
+        if (EmpresaContexto.sinEmpresa(() -> empresaRepository.idPorCodigoPublico(EmpresaAltaService.normalizarCodigo(req.codigoPublico())))
                 .isPresent()) {
-            throw new NegocioException("CODIGO_DUPLICADO", "Ya existe una empresa con el código " + req.codigoPublico());
+            throw new NegocioException("CODIGO_DUPLICADO", "Ya existe una empresa con el código " + EmpresaAltaService.normalizarCodigo(req.codigoPublico()));
         }
         Empresa empresa = altaService.crearEmpresa(req, plan, estado);
         try {
@@ -296,6 +300,9 @@ public class EmpresaPlataformaService {
                     return new EmpresaDetalleResponse.ModuloEmpresa(m.getCodigo(), m.getNombre(), enPlan, excepcion,
                             excepcion != null ? excepcion : enPlan);
                 }).toList();
-        return new EmpresaDetalleResponse(EmpresaPlataformaResponse.of(e, s), modulos);
+        EmpresaDetalleResponse.Administrador administrador = usuarioRepository.administradorDe(e.getId()).stream()
+                .findFirst().map(a -> new EmpresaDetalleResponse.Administrador(a.getNombre(), a.getCorreo()))
+                .orElse(null);
+        return new EmpresaDetalleResponse(EmpresaPlataformaResponse.of(e, s), modulos, administrador);
     }
 }

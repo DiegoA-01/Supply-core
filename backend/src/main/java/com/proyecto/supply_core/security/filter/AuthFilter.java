@@ -1,12 +1,14 @@
 package com.proyecto.supply_core.security.filter;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
+import org.springframework.web.util.UriUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
@@ -147,6 +149,12 @@ public class AuthFilter extends OncePerRequestFilter {
         String resto = ruta.substring(PREFIJO_REGISTRO.length());
         String codigo = resto.contains("/") ? resto.substring(0, resto.indexOf('/')) : resto;
         EmpresaContexto.fijarSinEmpresa();
+        try {
+            // el código puede llevar espacios o tildes: en la dirección llega codificado ("Don%20Mart%C3%ADn")
+            codigo = UriUtils.decode(codigo, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            throw new NoEncontradoException("La empresa indicada no existe");
+        }
         return empresaRepository.idPorCodigoPublico(codigo)
                 .orElseThrow(() -> new NoEncontradoException("La empresa indicada no existe"));
     }

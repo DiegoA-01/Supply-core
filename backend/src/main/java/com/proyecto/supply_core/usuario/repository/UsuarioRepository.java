@@ -34,6 +34,18 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     Optional<Usuario> findWithRolesById(Long id);
 
     /**
+     * Administradores de una empresa, el más antiguo primero. La consola de la plataforma trabaja sin empresa en el
+     * contexto, por eso va en SQL nativo con {@code empresa_id} escrito a mano; solo trae nombre y correo.
+     *
+     * @param empresaId empresa
+     * @return usuarios con rol ADMIN_SISTEMA
+     */
+    @Query(value = "SELECT u.nombre_completo AS nombre, u.correo AS correo FROM usuario u "
+            + "JOIN usuario_rol ur ON ur.usuario_id = u.id JOIN rol r ON r.id = ur.rol_id "
+            + "WHERE u.empresa_id = :empresaId AND r.codigo = 'ADMIN_SISTEMA' ORDER BY u.id", nativeQuery = true)
+    List<AdministradorVista> administradorDe(@Param("empresaId") Long empresaId);
+
+    /**
      * Estado de sesión de un usuario: si sigue activo y su versión de sesión (una consulta liviana por clave).
      *
      * @param id id del usuario

@@ -1,7 +1,7 @@
 # Supply-Core — Progreso del backend
 
 > Última actualización: 2026-11-10 · Estado: **pasos 0 a 18, 18-a a 18-d, SaaS fase 2 y SaaS fase 3 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración), consola de plataforma con planes y módulos (V23), seguridad restante de SaaS 3: sesiones que se cortan, recuperación de clave y MFA de administradores (V24), y exportación a Excel y PDF con archivos legibles (sin migración)**.
-> **679 pruebas en verde** (40 de fuga y de extremo a extremo entre empresas contra MySQL real), Javadoc sin advertencias (`doclint=all`), 24 migraciones Flyway, 51 controllers.
+> **687 pruebas en verde** (41 de fuga y de extremo a extremo entre empresas contra MySQL real), Javadoc sin advertencias (`doclint=all`), 24 migraciones Flyway, 51 controllers.
 > Detalle vivo para Claude: `.claude/skills/supply-core/references/estado.md`, `plan-backend.md` y `saas.md`. Reglas no negociables: `CLAUDE.md`.
 
 ---
