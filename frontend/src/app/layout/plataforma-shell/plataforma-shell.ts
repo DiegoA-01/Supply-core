@@ -19,6 +19,13 @@ import { PlataformaSesionService } from '../../core/sesion/plataforma-sesion.ser
         <a class="opcion" routerLink="/plataforma/empresas" routerLinkActive="activa">
           <span class="material-symbols-outlined">apartment</span><span>Empresas</span>
         </a>
+        <a class="opcion" routerLink="/plataforma/planes" routerLinkActive="activa">
+          <span class="material-symbols-outlined">inventory_2</span><span>Planes y módulos</span>
+        </a>
+        <p class="seccion">Operación</p>
+        <a class="opcion" routerLink="/plataforma/auditoria" routerLinkActive="activa">
+          <span class="material-symbols-outlined">shield</span><span>Auditoría global</span>
+        </a>
         <a class="opcion pie" routerLink="/ingreso">
           <span class="material-symbols-outlined">home</span><span>Volver a una empresa</span>
         </a>

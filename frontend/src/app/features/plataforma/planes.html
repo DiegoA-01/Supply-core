@@ -1,0 +1,56 @@
+<div class="pagina">
+  <div class="encabezado">
+    <div><h1>Planes y módulos</h1><p>Lo que incluye cada plan que vendes. Un cambio aquí aplica a todas las empresas con ese plan.</p></div>
+    <div class="acciones"><button type="button" class="boton primario" (click)="nuevo()"><span class="material-symbols-outlined">add</span> Nuevo plan</button></div>
+  </div>
+
+  <div class="rejilla" [class.principal]="!!borrador()">
+    <div class="planes">
+      @for (p of planes() ?? []; track p.id) {
+        <article class="tarjeta plan" [class.inactivo]="!p.activo" [class.destacada]="borrador()?.id === p.id">
+          <div class="separado">
+            <div><h2>{{ p.nombre }}</h2><span class="texto-chico texto-2">{{ p.codigo }}</span></div>
+            <span class="chip" [class.verde]="p.activo">{{ p.activo ? 'Activo' : 'Inactivo' }}</span>
+          </div>
+          <p class="empresas"><strong>{{ p.empresas ?? 0 }}</strong> {{ p.empresas === 1 ? 'empresa' : 'empresas' }} con este plan</p>
+          <ul class="modulos">
+            @for (m of p.modulos ?? []; track m) { <li><span class="material-symbols-outlined">check</span>{{ nombreModulo(m) }}</li> }
+          </ul>
+          <button type="button" class="boton chico" (click)="editar(p)">Editar</button>
+        </article>
+      } @empty {
+        <p class="tarjeta vacio">{{ planes() ? 'Aún no hay planes.' : 'Cargando…' }}</p>
+      }
+    </div>
+
+    @if (borrador(); as b) {
+      <section class="tarjeta">
+        <h2>{{ esNuevo() ? 'Nuevo plan' : 'Editar ' + b.nombre }}</h2>
+        <div class="formulario">
+          <div class="campo"><label for="cod">Código</label>
+            <input id="cod" class="entrada" [disabled]="!esNuevo()" placeholder="PROFESIONAL" [ngModel]="b.codigo" (ngModelChange)="cambiar('codigo', $event.toUpperCase())">
+            <span class="ayuda">Mayúsculas sin espacios. No se cambia después: las empresas lo usan.</span></div>
+          <div class="campo"><label for="nom">Nombre</label>
+            <input id="nom" class="entrada" [ngModel]="b.nombre" (ngModelChange)="cambiar('nombre', $event)"></div>
+          <fieldset class="campo grupo">
+            <legend>Módulos incluidos</legend>
+            @for (m of modulos(); track m.codigo) {
+              <label class="opcion" [class.marcada]="b.modulos.has(m.codigo!)">
+                <input type="checkbox" [checked]="b.modulos.has(m.codigo!)" (change)="alternar(m.codigo)">
+                <span><strong>{{ m.nombre }}</strong>@if (m.descripcion) { <span class="texto-chico texto-2">{{ m.descripcion }}</span> }</span>
+              </label>
+            }
+          </fieldset>
+          @if (!esNuevo()) {
+            <label class="opcion"><input type="checkbox" [checked]="b.activo" (change)="cambiar('activo', !b.activo)">
+              <span><strong>Plan activo</strong><span class="texto-chico texto-2">Inactivo: no se ofrece a empresas nuevas; las que lo tienen lo conservan.</span></span></label>
+          }
+          <div class="fila">
+            <button type="button" class="boton primario" [disabled]="trabajando()" (click)="guardar()">Guardar plan</button>
+            <button type="button" class="boton" (click)="borrador.set(null)">Cancelar</button>
+          </div>
+        </div>
+      </section>
+    }
+  </div>
+</div>

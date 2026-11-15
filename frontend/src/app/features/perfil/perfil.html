@@ -1,0 +1,52 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Mi perfil</p>
+    <div class="encabezado"><div><h1>Mi perfil</h1><p>Tus datos y tu contraseña. Tu nombre, correo y roles los cambia el administrador de tu empresa.</p></div></div>
+  </div>
+
+  <div class="rejilla dos">
+    <section class="tarjeta">
+      <h2>Tus datos</h2>
+      @if (perfil(); as p) {
+        <div class="pares">
+          <div class="par"><span>Nombre</span><span>{{ p.nombreCompleto }}</span></div>
+          <div class="par"><span>Correo</span><span>{{ p.correo }}</span></div>
+          <div class="par"><span>Empresa</span><span>{{ sesion.empresa()?.razonSocial }}</span></div>
+          <div class="par"><span>Último acceso</span><span>{{ p.ultimoAcceso | fecha: 'hora' }}</span></div>
+        </div>
+        <h3>Roles</h3>
+        <div class="roles">@for (r of p.roles ?? []; track r) { <span class="chip naranja">{{ rol(r) }}</span> }</div>
+      } @else {
+        <p class="cargando">Cargando…</p>
+      }
+    </section>
+
+    <section class="tarjeta">
+      <h2>Cambiar contraseña</h2>
+      <form class="formulario" (ngSubmit)="cambiar()">
+        <div class="campo">
+          <label for="actual">Contraseña actual</label>
+          <div class="con-ojo">
+            <input id="actual" name="actual" class="entrada" [type]="verClave() ? 'text' : 'password'" autocomplete="current-password" [ngModel]="actual()" (ngModelChange)="actual.set($event)">
+            <button type="button" class="ojo" (click)="verClave.set(!verClave())" [attr.aria-label]="verClave() ? 'Ocultar contraseñas' : 'Mostrar contraseñas'" [attr.aria-pressed]="verClave()">
+              <span class="material-symbols-outlined">{{ verClave() ? 'visibility_off' : 'visibility' }}</span></button>
+          </div>
+        </div>
+        <div class="campo">
+          <label for="nueva">Contraseña nueva</label>
+          <input id="nueva" name="nueva" class="entrada" [type]="verClave() ? 'text' : 'password'" autocomplete="new-password" [ngModel]="nueva()" (ngModelChange)="nueva.set($event)">
+          <span class="ayuda" [class.ok]="claveValida()">
+            <span class="material-symbols-outlined">{{ claveValida() ? 'check_circle' : 'radio_button_unchecked' }}</span>
+            Entre 8 y 72 caracteres, con al menos una letra y un número.</span>
+        </div>
+        <div class="campo">
+          <label for="confirma">Repite la contraseña nueva</label>
+          <input id="confirma" name="confirma" class="entrada" [type]="verClave() ? 'text' : 'password'" autocomplete="new-password" [ngModel]="confirmacion()" (ngModelChange)="confirmacion.set($event)">
+          @if (confirmacion() && !coinciden()) { <span class="error">No coincide con la contraseña nueva.</span> }
+        </div>
+        <button type="submit" class="boton primario" [disabled]="trabajando()">Cambiar contraseña</button>
+        <p class="texto-chico texto-2">El botón del ojo muestra las tres contraseñas para que revises que estén bien escritas.</p>
+      </form>
+    </section>
+  </div>
+</div>

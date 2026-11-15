@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { Adjudicacion, Analisis, Bodega, Cotizacion, Orden, Pagina, Pesos, Rfq, RfqResumen } from '../api/modelos';
+import { Adjudicacion, Analisis, Bodega, Cotizacion, Orden, Pagina, Pesos, Rfq, RfqDatos, RfqResumen } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
 /** RFQ, análisis con IA, adjudicación y emisión de la orden. */
@@ -19,6 +19,35 @@ export class CotizacionesService {
   /** @param id RFQ */
   rfq(id: number): Observable<Rfq> {
     return this.http.get<Rfq>(api(`/api/rfqs/${id}`));
+  }
+
+  /**
+   * Crea la RFQ en borrador a partir de una solicitud aprobada. Sin proveedores elegidos, el sistema invita a los
+   * habilitados de las categorías de los productos.
+   *
+   * @param solicitudId solicitud APROBADA
+   * @param datos       fecha límite, condiciones, proveedores y especificaciones
+   */
+  crearRfq(solicitudId: number, datos: RfqDatos): Observable<Rfq> {
+    return this.http.post<Rfq>(api('/api/rfqs'), { solicitudId, datos });
+  }
+
+  /**
+   * Abre la RFQ: se envían las invitaciones y la solicitud pasa a EN_RFQ.
+   *
+   * @param id RFQ en borrador
+   */
+  abrirRfq(id: number): Observable<Rfq> {
+    return this.http.post<Rfq>(api(`/api/rfqs/${id}/abrir`), {});
+  }
+
+  /**
+   * Cierra la RFQ antes de la fecha límite para analizar lo recibido.
+   *
+   * @param id RFQ abierta
+   */
+  cerrarRfq(id: number): Observable<Rfq> {
+    return this.http.post<Rfq>(api(`/api/rfqs/${id}/cerrar`), {});
   }
 
   /** @param rfqId RFQ */

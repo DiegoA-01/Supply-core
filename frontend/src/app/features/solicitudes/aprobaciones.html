@@ -3,13 +3,20 @@
     <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Solicitudes</p>
     <div class="encabezado">
       <div>
-        <h1>{{ pestana() === 'pendientes' ? 'Solicitudes por aprobar' : 'Solicitudes' }}</h1>
-        <p>{{ totalPendientes() }} esperan una decisión. Las más viejas van primero.</p>
+        <h1>{{ soloPide() ? 'Mis solicitudes' : pestana() === 'pendientes' ? 'Solicitudes por aprobar' : 'Solicitudes' }}</h1>
+        <p>{{ soloPide() ? 'Lo que has pedido y en qué va.' : totalPendientes() + ' esperan una decisión. Las más viejas van primero.' }}</p>
       </div>
-      <div class="acciones pastillas">
-        <button type="button" class="pastilla" [class.activa]="pestana() === 'pendientes'" (click)="cambiar('pendientes')">Pendientes · {{ totalPendientes() }}</button>
-        <button type="button" class="pastilla" [class.activa]="pestana() === 'APROBADA'" (click)="cambiar('APROBADA')">Aprobadas</button>
-        <button type="button" class="pastilla" [class.activa]="pestana() === 'todas'" (click)="cambiar('todas')">Todas</button>
+      <div class="acciones">
+        @if (!soloPide()) {
+          <div class="pastillas">
+            <button type="button" class="pastilla" [class.activa]="pestana() === 'pendientes'" (click)="cambiar('pendientes')">Pendientes · {{ totalPendientes() }}</button>
+            <button type="button" class="pastilla" [class.activa]="pestana() === 'APROBADA'" (click)="cambiar('APROBADA')">Aprobadas</button>
+            <button type="button" class="pastilla" [class.activa]="pestana() === 'todas'" (click)="cambiar('todas')">Todas</button>
+          </div>
+        }
+        @if (esSolicitante()) {
+          <a class="boton primario" routerLink="/app/solicitudes/nueva"><span class="material-symbols-outlined">add</span> Nueva solicitud</a>
+        }
       </div>
     </div>
   </div>
@@ -21,8 +28,8 @@
           <button type="button" class="item" [class.activo]="seleccionada()?.id === s.id" (click)="abrir(s)">
             <span class="separado">
               <strong>{{ s.consecutivo }}</strong>
-              @if (horas(s); as h) {
-                <span class="chip" [class.rojo]="h >= horasLimite() * 0.8" [class.ambar]="h >= horasLimite() * 0.5 && h < horasLimite() * 0.8">{{ h }} h</span>
+              @if (horas(s) !== null) {
+                <span class="chip" [class.rojo]="horas(s)! >= horasLimite() * 0.8" [class.ambar]="horas(s)! >= horasLimite() * 0.5 && horas(s)! < horasLimite() * 0.8">{{ horas(s) }} h</span>
               } @else {
                 <sc-estado [valor]="s.estado" />
               }
@@ -46,7 +53,7 @@
             <sc-estado [valor]="s.estado" />
           </div>
           <div class="datos">
-            <div><span>Solicitante</span><strong>{{ solicitante() ?? 'Usuario #' + s.usuarioSolicitanteId }}</strong></div>
+            <div><span>Solicitante</span><strong>{{ solicitante() ?? (esMia() ? sesion.usuario()?.nombre + ' (tú)' : 'Usuario #' + s.usuarioSolicitanteId) }}</strong></div>
             <div><span>Centro de costo</span><strong>{{ centro()?.nombre ?? '#' + s.centroCostoId }}</strong></div>
             <div><span>Fecha requerida</span><strong>{{ s.fechaRequerida | fecha }}</strong></div>
           </div>
@@ -116,6 +123,21 @@
             </div>
             <p class="texto-chico texto-2"><span class="material-symbols-outlined pequeno">shield</span>
               Si nadie decide en {{ horasLimite() }} h, la solicitud se escala a la política de mayor monto.</p>
+          </section>
+        }
+
+        @if (puedeEditar() || puedeCancelar() || puedeCrearRfq()) {
+          <section class="tarjeta fila">
+            @if (puedeEditar()) {
+              <a class="boton primario" [routerLink]="['/app/solicitudes', s.id, 'editar']"><span class="material-symbols-outlined">edit</span> Editar y enviar</a>
+            }
+            @if (puedeCrearRfq()) {
+              <a class="boton primario" routerLink="/app/cotizaciones/nueva" [queryParams]="{ solicitud: s.id }">
+                <span class="material-symbols-outlined">request_quote</span> Crear RFQ</a>
+            }
+            @if (puedeCancelar()) {
+              <button type="button" class="boton peligro" (click)="cancelar()">Cancelar solicitud</button>
+            }
           </section>
         }
       </div>

@@ -58,7 +58,27 @@
         } @else {
           <section class="tarjeta">
             <h2>Cruce de tres vías</h2>
-            <p class="texto-2">Aún no hay factura del proveedor para esta orden. Cuando tesorería la registre, el sistema la compara con lo recibido.</p>
+            @if (puedeFacturar()) {
+              <p class="texto-2">Copia los datos tal como vienen en la factura del proveedor. El sistema la compara con lo que de verdad se recibió.</p>
+              <div class="formulario dos">
+                <div class="campo"><label for="fnum">Número de factura</label>
+                  <input id="fnum" class="entrada" maxlength="60" [ngModel]="facturaNueva().numero" (ngModelChange)="cambiarFactura('numero', $event)" placeholder="FV-20418"></div>
+                <div class="campo"><label for="ffecha">Fecha de la factura</label>
+                  <input id="ffecha" type="date" class="entrada" [ngModel]="facturaNueva().fechaFactura" (ngModelChange)="cambiarFactura('fechaFactura', $event)"></div>
+                <div class="campo"><label for="fsub">Subtotal</label>
+                  <input id="fsub" type="number" min="0" step="0.01" class="entrada num" [ngModel]="facturaNueva().subtotal" (ngModelChange)="cambiarFactura('subtotal', +$event)"></div>
+                <div class="campo"><label for="fimp">Impuestos</label>
+                  <input id="fimp" type="number" min="0" step="0.01" class="entrada num" [ngModel]="facturaNueva().impuestos" (ngModelChange)="cambiarFactura('impuestos', +$event)"></div>
+                <div class="campo"><label for="ftot">Total</label>
+                  <input id="ftot" type="number" min="0" step="0.01" class="entrada num" [ngModel]="facturaNueva().total" (ngModelChange)="cambiarFactura('total', +$event)">
+                  <span class="ayuda">El sistema verifica que el total sea subtotal + impuestos.</span></div>
+                <div class="campo"><label for="farch">Archivo (opcional)</label>
+                  <input id="farch" type="file" accept="application/pdf,image/*" (change)="elegirFactura($event)"></div>
+              </div>
+              <button type="button" class="boton primario margen-arriba" [disabled]="trabajando()" (click)="registrarFactura()">Registrar factura</button>
+            } @else {
+              <p class="texto-2">Aún no hay factura del proveedor para esta orden. Cuando tesorería la registre, el sistema la compara con lo recibido.</p>
+            }
           </section>
         }
 

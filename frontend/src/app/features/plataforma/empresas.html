@@ -71,7 +71,15 @@
       <section class="tarjeta">
         <div class="fila titulo"><h2>{{ d.empresa?.razonSocial }}</h2><sc-estado [valor]="d.empresa?.estado" /></div>
         <div class="pares">
-          <div class="par"><span>Plan</span><span>{{ d.empresa?.planNombre ?? d.empresa?.plan }}</span></div>
+          <div class="par"><span>Plan</span>
+            <span class="cambio-plan">
+              <select class="entrada chica" aria-label="Plan de la empresa" [ngModel]="planElegido() ?? d.empresa?.plan" (ngModelChange)="planElegido.set($event)">
+                @for (p of planes(); track p.id) { <option [value]="p.codigo">{{ p.nombre }}</option> }
+              </select>
+              @if (planElegido() && planElegido() !== d.empresa?.plan) {
+                <button type="button" class="boton chico primario" [disabled]="trabajando()" (click)="cambiarPlan()">Cambiar</button>
+              }
+            </span></div>
           <div class="par"><span>Código</span><span>{{ d.empresa?.codigoPublico }}</span></div>
           @if (d.empresa?.motivoEstado) { <div class="par"><span>Motivo del estado</span><span>{{ d.empresa?.motivoEstado }}</span></div> }
         </div>

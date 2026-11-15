@@ -1,6 +1,14 @@
 # Frontend (Angular)
 
-Estado (2026-11-05): `frontend/` creado en la rama `feature/frontend-initial`. Angular 22.2 + Angular Material 22.2 (MIT) + Vitest. Las 10 vistas del mockup conectadas a la API real. Comandos y estructura: `frontend/README.md`.
+Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas del mockup) y ampliado en `feature/frontend-vistas` (sale de la anterior). Angular 22.2 + Angular Material 22.2 (MIT) + Vitest. Comandos y estructura: `frontend/README.md`.
+
+## Vistas fuera del mockup (2026-11-15, sin boceto previo, con el mismo sistema visual)
+- `/app/usuarios`: usuarios y roles (ADMIN_SISTEMA edita; AUDITOR solo ve). Roles con su descripción, centro de costo, restablecer contraseña, activar/desactivar. Los usuarios PROVEEDOR no se crean aquí (nacen en el portal).
+- `/app/solicitudes/nueva` y `/:id/editar`: el SOLICITANTE arma la solicitud (buscador de productos), la guarda en borrador y la envía. El monto lo calcula el backend **al enviar**; `PRESUPUESTO_EXCEDIDO` y `SOLICITUD_DUPLICADA` piden justificación y se reenvía. La bandeja abre en "Mis solicitudes" para quien solo pide, con editar/enviar/cancelar.
+- `/app/perfil`: datos propios y cambio de contraseña (actual + nueva + confirmación, ojo, regla de `core/sesion/clave.ts` igual a `ReglasPassword`).
+- `/app/cotizaciones/nueva`: el COMPRADOR crea la RFQ desde una solicitud aprobada (fecha límite, condiciones, especificaciones, proveedores o invitación automática por categoría), queda en borrador y se abre. El análisis permite abrir o cerrar la RFQ.
+- Detalle de la orden: tesorería (ADMINISTRATIVO) registra la factura (montos tal como vienen impresos + archivo) cuando ya hubo recepción.
+- Consola: `/plataforma/planes` (crear/editar planes y sus módulos), `/plataforma/auditoria` (auditoría global paginada por empresa) y cambio de plan de una empresa en Empresas.
 
 ## Decisiones (2026-11-05)
 - **Una sola app SaaS con tres zonas**: `/app` (empresa, `empresaGuard`), `/portal` (rol PROVEEDOR, `proveedorGuard`), `/plataforma` (dueño con MFA, `plataformaGuard`). Cada pantalla se carga perezosa.
@@ -23,6 +31,6 @@ Estado (2026-11-05): `frontend/` creado en la rama `feature/frontend-initial`. A
 - URL del backend en `environments`; ninguna clave (IA, Maps) en el frontend.
 
 ## Pendiente
-- Pantallas fuera del mockup: crear/editar solicitud (SOLICITANTE), usuarios y roles, auditoría (hoy placeholder), RFQ nueva, registrar factura, perfil y cambio de clave, consola: planes y auditoría global.
+- Pantallas: auditoría de la empresa (placeholder), despachos de caja (CAJERO), movimientos de inventario (ajustes y traslados), catálogos de configuración (sedes, centros de costo, bodegas, categorías, políticas, pesos, presupuestos, contratos, delegaciones), perfil del proveedor en el portal y su registro público.
 - Datos que la API no trae y el mockup muestra: nombre del solicitante en la bandeja (solo ADMIN_SISTEMA/AUDITOR leen `/api/usuarios`), usuarios por empresa en la consola, variación frente al mes anterior.
 - Exportar a Excel los reportes (backend, parte 2). Recuperación de clave (SaaS 3).

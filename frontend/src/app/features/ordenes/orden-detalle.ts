@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
 
-import { Factura, Orden, OrdenLinea, PagosOrden, RegistrarPago, ResumenRecepcion } from '../../core/api/modelos';
+import { Factura, FacturaNueva, Orden, OrdenLinea, PagosOrden, RegistrarPago, ResumenRecepcion } from '../../core/api/modelos';
 import { Estado, EtiquetaPipe } from '../../core/formato/etiquetas';
 import { FechaPipe, NumeroPipe, PesosPipe } from '../../core/formato/formato';
 import { OrdenesService } from '../../core/servicios/ordenes.service';
@@ -45,6 +45,14 @@ export class OrdenDetalle implements OnInit {
   protected readonly puedeAprobar = computed(() => this.sesion.tieneRol(['ADMIN_COMPRAS']) && !this.sesion.soloLectura());
   protected readonly puedePagar = computed(() => this.sesion.tieneRol(['ADMINISTRATIVO']) && !this.sesion.soloLectura());
   protected readonly tolerancia = computed(() => this.sesion.empresa()?.toleranciaFacturaPct);
+  /** Tesorería registra la factura cuando ya entró mercancía y no hay una vigente. */
+  protected readonly puedeFacturar = computed(() => {
+    const e = this.orden()?.estado;
+    return this.sesion.tieneRol(['ADMINISTRATIVO']) && !this.sesion.soloLectura() && !this.factura()
+      && (e === 'RECIBIDA_PARCIAL' || e === 'RECIBIDA_TOTAL' || e === 'CERRADA');
+  });
+  protected readonly facturaNueva = signal<FacturaNueva>({ numero: '', fechaFactura: iso(new Date()), subtotal: 0, impuestos: 0, total: 0 });
+  private readonly archivoFactura = signal<File | null>(null);
 
   ngOnInit(): void {
     this.cargar();
@@ -76,6 +84,43 @@ export class OrdenDetalle implements OnInit {
         this.trabajando.set(false);
         this.mostrarPago.set(false);
         this.avisos.ok('Pago registrado. Adjunta el comprobante para cerrar la evidencia.');
+        this.cargar();
+      },
+      error: e => {
+        this.trabajando.set(false);
+        this.avisos.error(e);
+      },
+    });
+  }
+
+  /** @param campo dato de la factura; @param valor valor tal como viene impreso */
+  protected cambiarFactura<K extends keyof FacturaNueva>(campo: K, valor: FacturaNueva[K]): void {
+    this.facturaNueva.update(f => ({ ...f, [campo]: valor }));
+  }
+
+  /** @param evento cambio del selector de archivos */
+  protected elegirFactura(evento: Event): void {
+    this.archivoFactura.set((evento.target as HTMLInputElement).files?.[0] ?? null);
+  }
+
+  protected registrarFactura(): void {
+    const o = this.orden();
+    const f = this.facturaNueva();
+    if (!o?.id || !f.numero.trim() || !f.fechaFactura || !(f.total > 0)) {
+      this.avisos.ok('Completa número, fecha y montos de la factura.');
+      return;
+    }
+    this.trabajando.set(true);
+    this.servicio.registrarFactura(o.id, { ...f, numero: f.numero.trim() }).subscribe({
+      next: r => {
+        const archivo = this.archivoFactura();
+        if (archivo && r.id) {
+          this.servicio.archivoFactura(r.id, archivo).subscribe({ error: e => this.avisos.error(e) });
+        }
+        this.trabajando.set(false);
+        this.avisos.ok(r.estado === 'CUADRADA'
+          ? 'Factura registrada: cuadra con lo recibido.'
+          : 'Factura registrada, pero no cuadra con lo recibido: queda en revisión para compras.');
         this.cargar();
       },
       error: e => {

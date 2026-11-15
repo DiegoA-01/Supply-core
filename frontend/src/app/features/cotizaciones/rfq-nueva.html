@@ -1,0 +1,105 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / <a routerLink="/app/cotizaciones">Cotizaciones</a> / Nueva RFQ</p>
+    <div class="encabezado">
+      <div><h1>{{ creada() ? creada()!.consecutivo + ' · borrador' : 'Nueva solicitud de cotización' }}</h1>
+        <p>Pide precios a los proveedores habilitados. Mientras esté en borrador nadie la ve.</p></div>
+    </div>
+  </div>
+
+  @if (!elegida()) {
+    <section class="tarjeta sin-relleno">
+      <div class="titulo-tabla"><strong>Elige una solicitud aprobada</strong></div>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Solicitud</th><th>Requerida</th><th class="num">Monto estimado</th><th></th></tr></thead>
+          <tbody>
+            @for (s of aprobadas() ?? []; track s.id) {
+              <tr class="seleccionable" (click)="elegir(s.id!)">
+                <td class="negrita">{{ s.consecutivo }}</td><td>{{ s.fechaRequerida | fecha }}</td>
+                <td class="num">{{ s.montoEstimado | pesos }}</td><td class="num"><span class="material-symbols-outlined">chevron_right</span></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="4" class="vacio">{{ aprobadas() ? 'No hay solicitudes aprobadas esperando cotización.' : 'Cargando…' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  } @else if (elegida(); as s) {
+    <div class="rejilla principal">
+      <div class="columna">
+        <section class="tarjeta sin-relleno">
+          <div class="titulo-tabla separado"><strong>{{ s.consecutivo }} · lo que se va a cotizar</strong>
+            <span class="texto-chico texto-2">Requerida para el {{ s.fechaRequerida | fecha }}</span></div>
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead><tr><th>Producto</th><th class="num">Cantidad</th><th>Especificación para el proveedor (opcional)</th></tr></thead>
+              <tbody>
+                @for (l of s.lineas; track l.id) {
+                  <tr>
+                    <td><strong>{{ l.productoNombre }}</strong><span class="sub">{{ l.productoCodigo }}</span></td>
+                    <td class="num">{{ l.cantidad | numero }} {{ l.unidadCodigo }}</td>
+                    <td><input class="entrada" [disabled]="!!creada()" placeholder="Ej. cobre, 600 V, marca reconocida" [attr.aria-label]="'Especificación de ' + l.productoNombre"
+                               [ngModel]="especificaciones()[l.productoId!] ?? ''" (ngModelChange)="especificar(l.productoId, $event)"></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="tarjeta">
+          <div class="tarjeta-cabecera"><h2>Proveedores invitados</h2>
+            <span class="chip" [class.naranja]="automatico()">{{ automatico() ? 'Automático por categoría' : invitados().size + ' elegidos' }}</span></div>
+          <p class="texto-2">Si no marcas ninguno, el sistema invita a todos los habilitados de las categorías de estos productos y te avisa si alguna categoría no tiene proveedores.</p>
+          <div class="proveedores">
+            @for (p of proveedores(); track p.id) {
+              <label class="proveedor" [class.marcado]="invitados().has(p.id!)">
+                <input type="checkbox" [disabled]="!!creada()" [checked]="invitados().has(p.id!)" (change)="alternar(p.id)">
+                <span><strong>{{ p.razonSocial }}</strong>
+                  <span class="texto-chico texto-2">@for (c of p.categorias ?? []; track c.id; let ultimo = $last) { {{ c.nombre }}{{ ultimo ? '' : ', ' }} } @if (!p.categorias?.length) { Sin categorías }</span></span>
+              </label>
+            } @empty {
+              <p class="texto-2">No hay proveedores habilitados todavía.</p>
+            }
+          </div>
+        </section>
+      </div>
+
+      <div class="columna">
+        <section class="tarjeta">
+          <h2>Condiciones</h2>
+          <div class="formulario">
+            <div class="campo">
+              <label for="limite">Fecha límite para cotizar</label>
+              <input id="limite" type="datetime-local" class="entrada" [min]="ahora" [disabled]="!!creada()" [ngModel]="fechaLimite()" (ngModelChange)="fechaLimite.set($event)">
+              <span class="ayuda">Al llegar la fecha la RFQ se cierra sola; también puedes cerrarla antes.</span>
+            </div>
+            <div class="campo">
+              <label for="cond">Condiciones para los proveedores</label>
+              <textarea id="cond" class="entrada" maxlength="1000" [disabled]="!!creada()" placeholder="Lugar de entrega, forma de pago esperada, garantía…"
+                        [ngModel]="condiciones()" (ngModelChange)="condiciones.set($event)"></textarea>
+            </div>
+          </div>
+
+          @if (creada(); as r) {
+            <div class="pares margen">
+              <div class="par"><span>Invitados</span><span>{{ r.invitados?.length ?? 0 }}</span></div>
+              @for (i of r.invitados ?? []; track i.proveedorId) { <div class="par"><span></span><span class="texto-chico">{{ i.razonSocial }}</span></div> }
+            </div>
+            @for (a of r.alertas ?? []; track a) {
+              <div class="aviso ambar margen"><span class="material-symbols-outlined">warning</span>{{ a }}</div>
+            }
+            <button type="button" class="boton primario bloque margen" [disabled]="trabajando() || !r.invitados?.length" (click)="abrir()">Abrir RFQ y enviar invitaciones</button>
+            @if (!r.invitados?.length) { <p class="texto-chico error">Sin invitados no se puede abrir: habilita proveedores de estas categorías.</p> }
+            <a class="boton bloque margen" [routerLink]="['/app/cotizaciones', r.id]">Dejarla en borrador</a>
+          } @else {
+            <button type="button" class="boton primario bloque margen" [disabled]="trabajando() || s.estado !== 'APROBADA'" (click)="crear()">Crear RFQ en borrador</button>
+            <button type="button" class="boton bloque margen" (click)="elegida.set(null)">Elegir otra solicitud</button>
+          }
+        </section>
+      </div>
+    </div>
+  }
+</div>
