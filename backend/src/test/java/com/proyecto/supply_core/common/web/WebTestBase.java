@@ -16,6 +16,7 @@ import com.proyecto.supply_core.inventario.repository.ProductoRepository;
 import com.proyecto.supply_core.plataforma.service.AccesoEmpresaService;
 import com.proyecto.supply_core.proveedor.repository.ProveedorRepository;
 import com.proyecto.supply_core.security.config.SecurityBeansConfig;
+import com.proyecto.supply_core.security.service.SesionUsuarioService;
 import com.proyecto.supply_core.security.context.PlataformaAutenticada;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.security.interceptor.RolInterceptor;
@@ -68,6 +69,10 @@ public abstract class WebTestBase {
     /** Simulado: no lanza nada, así que toda empresa tiene suscripción y todos los módulos. */
     @MockitoBean
     protected AccesoEmpresaService accesoEmpresaService;
+
+    /** Simulado: no lanza nada, así que todo token vigente sigue valiendo. */
+    @MockitoBean
+    protected SesionUsuarioService sesionUsuarioService;
 
     /**
      * Header {@code Authorization} con un JWT real de un usuario interno.

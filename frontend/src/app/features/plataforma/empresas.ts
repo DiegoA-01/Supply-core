@@ -47,7 +47,8 @@ export class Empresas implements OnInit {
   protected readonly nueva = inject(FormBuilder).nonNullable.group({
     razonSocial: ['', Validators.required],
     nit: ['', Validators.required],
-    codigoPublico: ['', [Validators.required, Validators.pattern(/^[a-z0-9-]{3,40}$/)]],
+    // texto libre (espacios, mayúsculas, tildes); solo se excluye lo que rompe la dirección del registro: / \ ? # %
+    codigoPublico: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(40), Validators.pattern(/^[^/\\?#%\u0000-\u001f]+$/)]],
     planCodigo: ['', Validators.required],
     estadoInicial: ['PRUEBA' as EstadoSuscripcion],
     adminNombre: ['', Validators.required],

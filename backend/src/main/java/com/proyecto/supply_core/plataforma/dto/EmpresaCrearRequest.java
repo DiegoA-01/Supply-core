@@ -14,8 +14,9 @@ import jakarta.validation.constraints.Size;
  *
  * @param razonSocial    nombre legal
  * @param nit            NIT sin puntos, con dígito de verificación opcional; único
- * @param codigoPublico  código con el que la empresa entra y recibe el registro de proveedores (minúsculas, números y
- *                       guiones); único
+ * @param codigoPublico  código con el que la empresa entra y recibe el registro de proveedores: texto libre con
+ *                       espacios, mayúsculas y números; solo se excluyen {@code / \ ? # %} y los caracteres de
+ *                       control, que rompen la dirección del registro; único sin distinguir mayúsculas
  * @param planCodigo     plan que se le asigna
  * @param estadoInicial  PRUEBA o ACTIVA ({@code null} = PRUEBA)
  * @param adminNombre    nombre del administrador de la empresa
@@ -34,7 +35,7 @@ public record EmpresaCrearRequest(
 
         @NotBlank(message = "es obligatorio")
         @Size(min = 3, max = 40, message = "entre 3 y 40 caracteres")
-        @Pattern(regexp = "^[a-z0-9]+(-[a-z0-9]+)*$", message = "solo minúsculas, números y guiones (ej. el-tornillo)")
+        @Pattern(regexp = "^[^/\\\\?#%\\p{Cntrl}]+$", message = "no puede llevar / \\ ? # % ni caracteres de control")
         String codigoPublico,
 
         @NotBlank(message = "es obligatorio")

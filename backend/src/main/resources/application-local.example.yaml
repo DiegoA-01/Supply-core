@@ -2,6 +2,11 @@
 # application-local.yaml está en .gitignore; este ejemplo sí se sube al repositorio.
 DB_USER: root
 DB_PASSWORD: cambia-esto
+# --- Producción: dos usuarios de MySQL (ver backend/sql/permisos.sql) ---
+# DB_USER: supply_app                  # la aplicación: sin UPDATE ni DELETE sobre la auditoría y los históricos
+# DB_PASSWORD: otra-clave-larga
+# FLYWAY_USER: supply_migrator         # solo las migraciones: dueño del esquema
+# FLYWAY_PASSWORD: una-clave-larga
 # JWT_SECRET: una-cadena-aleatoria-de-al-menos-32-caracteres
 # ADMIN_EMAIL: admin@supplycore.local
 # ADMIN_PASSWORD: Clave1234   # solo se usa la primera vez, si no hay ADMIN_SISTEMA

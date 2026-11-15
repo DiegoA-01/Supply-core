@@ -188,5 +188,15 @@ public enum AccionAuditoria {
     /** Se descargó un archivo exportado (Excel o PDF). */
     EXPORTAR_ARCHIVO,
     /** Se envió por correo un archivo exportado. */
-    EXPORTAR_CORREO
+    EXPORTAR_CORREO,
+    /** Se pidió el correo de recuperación de una contraseña olvidada. */
+    PASSWORD_RECUPERAR_PEDIR,
+    /** Se cambió la contraseña con el token de recuperación. */
+    PASSWORD_RECUPERAR_USAR,
+    /** Un administrador de empresa activó su segundo factor (MFA). */
+    MFA_ACTIVAR,
+    /** Un administrador de empresa desactivó o reinició el MFA de un usuario. */
+    MFA_DESACTIVAR,
+    /** Se escribió un código de MFA incorrecto o repetido al iniciar sesión. */
+    MFA_FALLO
 }
