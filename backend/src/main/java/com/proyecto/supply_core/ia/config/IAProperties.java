@@ -20,6 +20,7 @@ import jakarta.validation.constraints.Positive;
  * @param umbralConfianza confianza mínima de un dato crítico para no pedir revisión humana
  * @param claude          datos de Claude
  * @param ollama          datos de Ollama
+ * @param gemini          datos de Gemini
  */
 @Validated
 @ConfigurationProperties(prefix = "app.ia")
@@ -29,7 +30,8 @@ public record IAProperties(
         @DecimalMax(value = "1", message = "debe estar entre 0 y 1")
         @DefaultValue("0.80") BigDecimal umbralConfianza,
         @Valid @DefaultValue Claude claude,
-        @Valid @DefaultValue Ollama ollama) {
+        @Valid @DefaultValue Ollama ollama,
+        @Valid @DefaultValue Gemini gemini) {
 
     /** Proveedores soportados. */
     public enum Proveedor {
@@ -38,7 +40,9 @@ public record IAProperties(
         /** Modelo local servido por Ollama (gratis, corre en el equipo). */
         OLLAMA,
         /** API de Anthropic (de pago). */
-        CLAUDE
+        CLAUDE,
+        /** API de Google AI Studio (Gemini): lee PDF, imágenes, Excel y Word. */
+        GEMINI
     }
 
     /**
@@ -48,6 +52,17 @@ public record IAProperties(
      * @param modelo id del modelo
      */
     public record Claude(String apiKey, @DefaultValue("claude-opus-5-5") String modelo) {
+    }
+
+    /**
+     * Configuración de Gemini (API de Google AI Studio; la suscripción Gemini Plus/Pro de la app no da acceso a la API).
+     *
+     * @param apiKey          clave de la API (secreta; variable {@code GEMINI_API_KEY})
+     * @param modelo          id del modelo
+     * @param timeoutSegundos tiempo máximo de espera por documento
+     */
+    public record Gemini(String apiKey, @DefaultValue("gemini-2.5-flash") String modelo,
+            @Positive(message = "debe ser mayor que cero") @DefaultValue("180") int timeoutSegundos) {
     }
 
     /**

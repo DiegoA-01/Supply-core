@@ -75,6 +75,45 @@ class IAClientesTest {
 
     private static IAProperties props(IAProperties.Proveedor proveedor, String apiKey) {
         return new IAProperties(proveedor, new BigDecimal("0.80"), new IAProperties.Claude(apiKey, "claude-opus-5-5"),
-                new IAProperties.Ollama("http://localhost:11434", "qwen2.5vl:3b", 60));
+                new IAProperties.Ollama("http://localhost:11434", "qwen2.5vl:3b", 60),
+                new IAProperties.Gemini(apiKey, "gemini-2.5-flash", 60));
+    }
+
+    @Test
+    void geminiSeActivaSoloConUnaApiKey() {
+        IAConfig config = new IAConfig();
+
+        assertInstanceOf(SinIAClient.class, config.iaClient(props(IAProperties.Proveedor.GEMINI, null)));
+        assertInstanceOf(SinIAClient.class, config.iaClient(props(IAProperties.Proveedor.GEMINI, " ")));
+        IAClient gemini = config.iaClient(props(IAProperties.Proveedor.GEMINI, "AIza-prueba"));
+        assertInstanceOf(GeminiIAClient.class, gemini);
+        assertEquals("gemini:gemini-2.5-flash", gemini.modelo());
+    }
+
+    @Test
+    void wordSeConvierteATextoConSusTablasEnFilas() throws Exception {
+        byte[] docx;
+        try (org.apache.poi.xwpf.usermodel.XWPFDocument doc = new org.apache.poi.xwpf.usermodel.XWPFDocument();
+                ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            doc.createParagraph().createRun().setText("Cotización de Tech SAS");
+            var tabla = doc.createTable(2, 3);
+            String[][] celdas = { { "Producto", "Cantidad", "Precio" }, { "Lápiz HB", "48", "480" } };
+            for (int f = 0; f < 2; f++) {
+                for (int c = 0; c < 3; c++) {
+                    tabla.getRow(f).getCell(c).setText(celdas[f][c]);
+                }
+            }
+            doc.write(out);
+            docx = out.toByteArray();
+        }
+
+        String texto = LectorArchivos.wordATexto(docx);
+
+        assertTrue(texto.startsWith("Cotización de Tech SAS"));
+        assertTrue(texto.contains("Producto | Cantidad | Precio"));
+        assertTrue(texto.contains("Lápiz HB | 48 | 480"));
+        assertTrue(new ArchivoIA(docx, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "c.docx").esWord());
+        assertFalse(new ArchivoIA(docx, "application/pdf", "c.pdf").esWord());
+        assertThrows(IAException.class, () -> LectorArchivos.wordATexto("no es un docx".getBytes()));
     }
 }

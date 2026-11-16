@@ -72,7 +72,8 @@ class ExtraccionServiceTest {
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
     private final AnalisisRepository analisisRepo = mock(AnalisisRepository.class);
     private final IAProperties props = new IAProperties(IAProperties.Proveedor.OLLAMA, new BigDecimal("0.80"),
-            new IAProperties.Claude(null, "claude-opus-5-5"), new IAProperties.Ollama("http://x", "m", 60));
+            new IAProperties.Claude(null, "claude-opus-5-5"), new IAProperties.Ollama("http://x", "m", 60),
+            new IAProperties.Gemini(null, "gemini-2.5-flash", 60));
     private final ExtraccionService service = new ExtraccionService(procesamientos, campos, cotizaciones, documentos,
             ia, props, eventos, notificaciones, auditoria, analisisRepo);
 
@@ -251,6 +252,114 @@ class ExtraccionServiceTest {
 
         assertEquals(EstadoProcesamiento.COMPLETADO, proc.getEstado());
         assertEquals(new BigDecimal("27417.60"), cot.getTotal());
+    }
+
+    // ------------------------------------------------------------- cruce del total impreso
+
+    private ExtraccionCampo campoDeCabecera(String nombre) {
+        return guardados.stream().filter(c -> c.getCotizacionLineaId() == null && c.getCampo().equals(nombre))
+                .findFirst().orElse(null);
+    }
+
+    @Test
+    void siElTotalImpresoCuadraConLoCalculadoPorJavaQuedaCompletadoYVerificado() {
+        service.guardarResultado(5L, conTotal("$ 27.417,60", "48", "480"));
+
+        assertEquals(EstadoProcesamiento.COMPLETADO, proc.getEstado());
+        ExtraccionCampo total = campoDeCabecera(ExtraccionService.TOTAL_IMPRESO);
+        assertEquals("$ 27.417,60", total.getValorExtraido());
+        assertEquals(new BigDecimal("1.000"), total.getConfianza());
+        assertTrue(total.isCritico());
+        assertTrue(service.obtener(77L).alertas().isEmpty());
+        verify(notificaciones, never()).notificar(anyLong(), any(), anyString());
+    }
+
+    @Test
+    void unaDiferenciaDentroDelUnoPorCientoSeAcepta() {
+        // calculado 27.417,60: el 1 % de 27.600 son 276 y la diferencia es 182,40
+        service.guardarResultado(5L, conTotal("27.600", "48", "480"));
+
+        assertEquals(EstadoProcesamiento.COMPLETADO, proc.getEstado());
+    }
+
+    @Test
+    void siElTotalImpresoNoCuadraPideRevisionConLaAlertaYAvisaAlComprador() {
+        // la IA leyó 480 por unidad con confianza alta, pero el documento imprime un total de 30.000.000
+        service.guardarResultado(5L, conTotal("30.000.000", "48", "480"));
+
+        assertEquals(EstadoProcesamiento.REQUIERE_REVISION, proc.getEstado());
+        assertTrue(proc.getError().startsWith("TOTAL_NO_CUADRA"));
+        assertEquals(new BigDecimal("27417.60"), cot.getTotal()); // el sistema no toma el total de la IA
+        ExtraccionCampo total = campoDeCabecera(ExtraccionService.TOTAL_IMPRESO);
+        assertEquals(new BigDecimal("0.000"), total.getConfianza());
+        assertTrue(total.pendiente(new BigDecimal("0.80")));
+        assertEquals(List.of("TOTAL_NO_CUADRA"), service.obtener(77L).alertas());
+        verify(notificaciones).notificar(eq(30L), eq(EventoNotificacion.EXTRACCION_REQUIERE_REVISION),
+                org.mockito.ArgumentMatchers.contains("TOTAL_NO_CUADRA"));
+    }
+
+    @Test
+    void corregirUnRenglonHastaQueCuadreCompletaSinConfirmarElTotal() {
+        // el documento imprime 28.560 (precio 500); la IA leyó 480 con confianza alta
+        service.guardarResultado(5L, conTotal("28.560", "48", "480"));
+        assertEquals(EstadoProcesamiento.REQUIERE_REVISION, proc.getEstado());
+        ExtraccionCampo precio = guardados.stream().filter(c -> c.getCampo().equals("precioUnitario")).findFirst()
+                .orElseThrow();
+        precio.setId(1L);
+        when(campos.findByIdAndProcesamiento_Id(1L, 5L)).thenReturn(Optional.of(precio));
+
+        var r = service.confirmar(77L, 1L, "500");
+
+        assertEquals(new BigDecimal("28560.00"), cot.getTotal());
+        assertEquals(EstadoProcesamiento.COMPLETADO, r.estado());
+        assertEquals(new BigDecimal("1.000"), campoDeCabecera(ExtraccionService.TOTAL_IMPRESO).getConfianza());
+        assertTrue(r.alertas().isEmpty());
+    }
+
+    @Test
+    void siSeCorrigeOtroDatoPeroLaDiferenciaSigueLaAlertaSigueConLasCifrasNuevas() {
+        service.guardarResultado(5L, conTotal("30.000.000", "48", "480"));
+        ExtraccionCampo precio = guardados.stream().filter(c -> c.getCampo().equals("precioUnitario")).findFirst()
+                .orElseThrow();
+        precio.setId(1L);
+        when(campos.findByIdAndProcesamiento_Id(1L, 5L)).thenReturn(Optional.of(precio));
+
+        var r = service.confirmar(77L, 1L, "490");
+
+        assertEquals(EstadoProcesamiento.REQUIERE_REVISION, r.estado());
+        assertEquals(List.of("TOTAL_NO_CUADRA"), r.alertas());
+        assertTrue(r.error().startsWith("TOTAL_NO_CUADRA"));
+        assertTrue(r.error().contains("27988.80")); // 48 × 490 con IVA 19 %: ya refleja el precio corregido
+    }
+
+    @Test
+    void laPersonaPuedeConfirmarElTotalImpresoCuandoElDocumentoDelProveedorNoCuadra() {
+        service.guardarResultado(5L, conTotal("30.000.000", "48", "480"));
+        ExtraccionCampo total = campoDeCabecera(ExtraccionService.TOTAL_IMPRESO);
+        total.setId(2L);
+        when(campos.findByIdAndProcesamiento_Id(2L, 5L)).thenReturn(Optional.of(total));
+
+        assertThrows(ParametroInvalidoException.class, () -> service.confirmar(77L, 2L, "mucho"));
+        var r = service.confirmar(77L, 2L, "30.000.000");
+
+        assertEquals(EstadoProcesamiento.COMPLETADO, r.estado()); // decisión de una persona, con su usuario y hora
+        assertEquals("30.000.000", total.getValorConfirmado());
+        assertEquals(30L, total.getConfirmadoPorUsuarioId());
+        assertEquals(new BigDecimal("27417.60"), cot.getTotal()); // el total de la cotización sigue siendo el de Java
+    }
+
+    @Test
+    void sinTotalImpresoNoHayNadaQueCruzar() {
+        service.guardarResultado(5L, leido("48", "und", "1", "480", "0", "19", 0.99, 0.99, 0.99));
+
+        assertNull(campoDeCabecera(ExtraccionService.TOTAL_IMPRESO));
+        assertEquals(EstadoProcesamiento.COMPLETADO, proc.getEstado());
+    }
+
+    private static ExtraccionIA conTotal(String total, String cantidad, String precio) {
+        return new ExtraccionIA("COP", "30 días", "12", "", "Pago a 30 días", 0.9, List.of(
+                new ExtraccionIA.LineaExtraida(500L, "Lápiz HB", cantidad, "und", "1", precio, "0", "19", 0.99, 0.99,
+                        0.99)), total);
     }
 
     private static ExtraccionIA leido(String cant, String unidad, String factor, String precio, String desc, String iva,

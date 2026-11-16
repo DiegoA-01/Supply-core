@@ -11,4 +11,4 @@ app:
   storage:
     ruta: ./almacenamiento-demo      # archivos de la demo, aparte de los de desarrollo
   ia:
-    proveedor: ninguno               # la demo usa cotizaciones por formulario
+    proveedor: ${IA_PROVEEDOR:ninguno}   # por defecto cotizaciones por formulario; IA_PROVEEDOR=gemini lee archivos con IA

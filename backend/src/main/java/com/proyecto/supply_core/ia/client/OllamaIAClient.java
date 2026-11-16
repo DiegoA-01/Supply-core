@@ -86,6 +86,8 @@ public class OllamaIAClient implements IAClient {
         String texto;
         if (archivo.esExcel()) {
             texto = "Contenido de la hoja de cálculo de la cotización:\n" + LectorArchivos.excelATexto(archivo.contenido());
+        } else if (archivo.esWord()) {
+            texto = "Contenido del documento de Word de la cotización:\n" + LectorArchivos.wordATexto(archivo.contenido());
         } else if (archivo.esPdf()) {
             String textoPdf = LectorArchivos.pdfATexto(archivo.contenido());
             if (textoPdf.isBlank()) { // PDF escaneado: se envían las páginas como imagen
@@ -182,9 +184,9 @@ public class OllamaIAClient implements IAClient {
         return Map.of("type", "object",
                 "properties", Map.of("moneda", texto, "plazoEntregaDias", texto, "garantiaMeses", texto,
                         "validezHasta", texto, "condiciones", texto, "confianzaCabecera", numero,
-                        "lineas", Map.of("type", "array", "items", linea)),
+                        "lineas", Map.of("type", "array", "items", linea), "totalImpreso", texto),
                 "required", List.of("moneda", "plazoEntregaDias", "garantiaMeses", "validezHasta", "condiciones",
-                        "confianzaCabecera", "lineas"));
+                        "confianzaCabecera", "lineas", "totalImpreso"));
     }
 
     /**

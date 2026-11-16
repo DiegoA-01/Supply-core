@@ -78,6 +78,8 @@ public class ExtraccionService {
     static final Set<String> CRITICOS = Set.of("cantidad", "factorConversion", "precioUnitario");
     /** Nombre del campo que marca un renglón del documento que no se pudo convertir en línea. */
     static final String RENGLON_NO_LEIDO = "renglonNoLeido";
+    /** Dato de cabecera con el total impreso en el documento, para cruzarlo con el calculado por el sistema. */
+    public static final String TOTAL_IMPRESO = "totalImpreso";
 
     private final ProcesamientoIaRepository procesamientoRepository;
     private final ExtraccionCampoRepository campoRepository;
@@ -214,6 +216,11 @@ public class ExtraccionService {
         }
         CalculadoraCotizacion.recalcular(c);
         cotizacionRepository.saveAndFlush(c); // ids de las líneas para enlazar los campos
+        // cruce de totales: el total impreso (copiado por la IA) contra el que calcula Java con las líneas
+        CruceTotal.Resultado cruce = CruceTotal.evaluar(c.getTotal(), leido.totalImpreso());
+        if (cruce.hayTotal()) {
+            campos.add(campo(p, null, TOTAL_IMPRESO, leido.totalImpreso(), confianza(cruce.cuadra() ? 1 : 0), true));
+        }
 
         for (LineaCreada creada : creadas) {
             CotizacionLinea linea = creada.linea();
@@ -237,6 +244,7 @@ public class ExtraccionService {
         p.setEstado(dudas ? EstadoProcesamiento.REQUIERE_REVISION : EstadoProcesamiento.COMPLETADO);
         if (dudas) {
             p.setError(c.getLineas().isEmpty() ? "La IA no encontró precios válidos en el documento"
+                    : !cruce.cuadra() ? cruce.mensaje()
                     : "Hay datos críticos con baja confianza: confírmelos antes de publicar el análisis");
             avisarRevision(c, p.getError());
         }
@@ -301,11 +309,14 @@ public class ExtraccionService {
         campo.setConfirmadoPorUsuarioId(SesionActual.usuario().id());
         campo.setConfirmadoEn(LocalDateTime.now());
         CalculadoraCotizacion.recalcular(c);
-        boolean pendientes = campoRepository.findByProcesamiento_IdOrderByIdAsc(p.getId()).stream()
-                .anyMatch(cp -> cp.pendiente(props.umbralConfianza()));
+        List<ExtraccionCampo> todos = campoRepository.findByProcesamiento_IdOrderByIdAsc(p.getId());
+        CruceTotal.Resultado cruce = reevaluarTotal(c, todos);
+        boolean pendientes = todos.stream().anyMatch(cp -> cp.pendiente(props.umbralConfianza()));
         if (!pendientes && !c.getLineas().isEmpty()) {
             p.setEstado(EstadoProcesamiento.COMPLETADO);
             p.setError(null);
+        } else if (cruce != null && !cruce.cuadra()) {
+            p.setError(cruce.mensaje()); // los montos cambiaron: la alerta muestra las cifras de ahora
         }
         auditoriaService.exito(AccionAuditoria.EXTRACCION_CONFIRMAR, EntidadAuditada.COTIZACION, cotizacionId,
                 campo.getCampo() + ": leído=" + campo.getValorExtraido() + ", confirmado=" + texto);
@@ -436,6 +447,7 @@ public class ExtraccionService {
                     }
                     c.setMoneda(valor.toUpperCase());
                 }
+                case TOTAL_IMPRESO -> NumeroTexto.leer(valor).filter(v -> v.signum() > 0).orElseThrow(() -> invalido(campo));
                 default -> { /* renglón no leído: la confirmación solo deja constancia de la revisión */ }
             }
             return;
@@ -454,6 +466,29 @@ public class ExtraccionService {
             case "unidad" -> linea.setUnidadOfertada(unidad(valor));
             default -> throw invalido(campo);
         }
+    }
+
+    /**
+     * Vuelve a cruzar el total impreso con el calculado después de corregir un dato. Si ya cuadra, el sistema da el dato
+     * por verificado (confianza 1); si aún no, sigue pendiente. Si una persona ya confirmó el total impreso, es su
+     * decisión y no se toca.
+     *
+     * @param c     cotización con los montos recalculados
+     * @param todos datos leídos del procesamiento
+     * @return resultado del cruce, o {@code null} si el documento no trajo total impreso
+     */
+    private static CruceTotal.Resultado reevaluarTotal(Cotizacion c, List<ExtraccionCampo> todos) {
+        for (ExtraccionCampo cp : todos) {
+            if (cp.getCotizacionLineaId() == null && TOTAL_IMPRESO.equals(cp.getCampo())) {
+                String impreso = cp.getValorConfirmado() != null ? cp.getValorConfirmado() : cp.getValorExtraido();
+                CruceTotal.Resultado r = CruceTotal.evaluar(c.getTotal(), impreso);
+                if (cp.getValorConfirmado() == null) {
+                    cp.setConfianza(confianza(r.cuadra() ? 1 : 0));
+                }
+                return r;
+            }
+        }
+        return null;
     }
 
     /**

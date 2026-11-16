@@ -109,6 +109,9 @@ public class ClaudeIAClient implements IAClient {
         } else if (archivo.esExcel()) {
             bloques.add(texto("Contenido de la hoja de cálculo de la cotización:\n"
                     + LectorArchivos.excelATexto(archivo.contenido())));
+        } else if (archivo.esWord()) {
+            bloques.add(texto("Contenido del documento de Word de la cotización:\n"
+                    + LectorArchivos.wordATexto(archivo.contenido())));
         } else {
             throw new IAException("Tipo de archivo no soportado por la IA: " + archivo.tipoMime());
         }
