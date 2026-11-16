@@ -20,6 +20,9 @@ public enum TipoArchivo {
     /** Excel 97-2003 (OLE2). */
     XLS("application/vnd.ms-excel", Set.of("xls"),
             new byte[] { (byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0, (byte) 0xA1, (byte) 0xB1, 0x1A, (byte) 0xE1 }),
+    /** Word moderno (ZIP): empieza por {@code PK\3\4}. */
+    DOCX("application/vnd.openxmlformats-officedocument.wordprocessingml.document", Set.of("docx"),
+            new byte[] { 0x50, 0x4B, 0x03, 0x04 }),
     /** Imagen PNG. */
     PNG("image/png", Set.of("png"), new byte[] { (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }),
     /** Imagen JPEG. */
@@ -102,7 +105,7 @@ public enum TipoArchivo {
     /**
      * Texto con las extensiones aceptadas, para mensajes de error.
      *
-     * @return p. ej. {@code jpeg, jpg, pdf, png, webp, xls, xlsx}
+     * @return p. ej. {@code docx, jpeg, jpg, pdf, png, webp, xls, xlsx}
      */
     public static String extensionesAceptadas() {
         return String.join(", ", Arrays.stream(values()).flatMap(t -> t.extensiones.stream()).sorted().toList());

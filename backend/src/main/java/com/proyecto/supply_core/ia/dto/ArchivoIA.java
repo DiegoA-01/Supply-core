@@ -28,6 +28,15 @@ public record ArchivoIA(byte[] contenido, String tipoMime, String nombre) {
     }
 
     /**
+     * Indica si es un documento de Word.
+     *
+     * @return {@code true} para Word moderno (docx)
+     */
+    public boolean esWord() {
+        return tipoMime != null && tipoMime.contains("wordprocessingml");
+    }
+
+    /**
      * Indica si es una hoja de cálculo.
      *
      * @return {@code true} para Excel (xlsx o xls)

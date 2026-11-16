@@ -21,10 +21,32 @@ import com.proyecto.supply_core.ia.enums.EstadoProcesamiento;
  * @param finalizadoEn    fecha de fin
  * @param umbralConfianza confianza mínima de un dato crítico
  * @param campos          datos leídos
+ * @param alertas         alertas abiertas que el comprador debe resolver (p. ej. {@code TOTAL_NO_CUADRA})
  */
 public record ProcesamientoResponse(Long id, Long cotizacionId, EstadoProcesamiento estado, String modelo, int intentos,
         String error, LocalDateTime creadoEn, LocalDateTime finalizadoEn, BigDecimal umbralConfianza,
-        List<Campo> campos) {
+        List<Campo> campos, List<String> alertas) {
+
+    /**
+     * Respuesta sin alertas.
+     *
+     * @param id              id del procesamiento
+     * @param cotizacionId    cotización
+     * @param estado          estado
+     * @param modelo          IA que la leyó
+     * @param intentos        intentos realizados
+     * @param error           mensaje si falló o si falta revisión
+     * @param creadoEn        fecha de creación
+     * @param finalizadoEn    fecha de fin
+     * @param umbralConfianza confianza mínima de un dato crítico
+     * @param campos          datos leídos
+     */
+    public ProcesamientoResponse(Long id, Long cotizacionId, EstadoProcesamiento estado, String modelo, int intentos,
+            String error, LocalDateTime creadoEn, LocalDateTime finalizadoEn, BigDecimal umbralConfianza,
+            List<Campo> campos) {
+        this(id, cotizacionId, estado, modelo, intentos, error, creadoEn, finalizadoEn, umbralConfianza, campos,
+                List.of());
+    }
 
     /**
      * Convierte la entidad.
@@ -37,7 +59,9 @@ public record ProcesamientoResponse(Long id, Long cotizacionId, EstadoProcesamie
     public static ProcesamientoResponse of(ProcesamientoIa p, List<ExtraccionCampo> campos, BigDecimal umbral) {
         return new ProcesamientoResponse(p.getId(), p.getCotizacionId(), p.getEstado(), p.getModelo(), p.getIntentos(),
                 p.getError(), p.getCreadoEn(), p.getFinalizadoEn(), umbral,
-                campos.stream().map(c -> Campo.of(c, umbral)).toList());
+                campos.stream().map(c -> Campo.of(c, umbral)).toList(),
+                campos.stream().filter(c -> c.getCotizacionLineaId() == null && "totalImpreso".equals(c.getCampo())
+                        && c.pendiente(umbral)).map(c -> "TOTAL_NO_CUADRA").toList());
     }
 
     /**

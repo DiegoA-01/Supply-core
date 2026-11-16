@@ -15,6 +15,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
  * @param condiciones       condiciones comerciales resumidas o vacío
  * @param confianzaCabecera confianza 0–1 en los datos de cabecera
  * @param lineas            renglones cotizados
+ * @param totalImpreso      total final impreso en el documento (con impuestos), tal cual aparece, o vacío
  */
 public record ExtraccionIA(
         @JsonPropertyDescription("Código ISO de la moneda (COP, USD) o cadena vacía si no aparece")
@@ -30,7 +31,26 @@ public record ExtraccionIA(
         @JsonPropertyDescription("Confianza de 0 a 1 en los datos de cabecera")
         double confianzaCabecera,
         @JsonPropertyDescription("Un elemento por cada producto cotizado en el documento")
-        List<LineaExtraida> lineas) {
+        List<LineaExtraida> lineas,
+        @JsonPropertyDescription("Total final a pagar impreso en el documento (con impuestos), copiado tal como aparece, "
+                + "por ejemplo '$ 5.236.000'. No lo calcules sumando: si el documento no trae un total, cadena vacía")
+        String totalImpreso) {
+
+    /**
+     * Lectura sin total impreso (compatibilidad con quien no lo informa).
+     *
+     * @param moneda            moneda
+     * @param plazoEntregaDias  plazo de entrega
+     * @param garantiaMeses     garantía
+     * @param validezHasta      validez
+     * @param condiciones       condiciones
+     * @param confianzaCabecera confianza de la cabecera
+     * @param lineas            renglones
+     */
+    public ExtraccionIA(String moneda, String plazoEntregaDias, String garantiaMeses, String validezHasta,
+            String condiciones, double confianzaCabecera, List<LineaExtraida> lineas) {
+        this(moneda, plazoEntregaDias, garantiaMeses, validezHasta, condiciones, confianzaCabecera, lineas, "");
+    }
 
     /**
      * Renglón cotizado.

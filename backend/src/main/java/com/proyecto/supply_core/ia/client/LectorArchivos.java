@@ -19,9 +19,15 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.apache.poi.xwpf.usermodel.IBodyElement;
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFTable;
+import org.apache.poi.xwpf.usermodel.XWPFTableCell;
+import org.apache.poi.xwpf.usermodel.XWPFTableRow;
 
 /**
- * Convierte archivos a lo que cada IA puede leer: Excel a texto tabulado (ninguna IA lo lee directo),
+ * Convierte archivos a lo que cada IA puede leer: Excel y Word a texto (ninguna IA los lee igual de bien directo),
  * PDF a texto (si es digital) o a imágenes por página (si es escaneado, para modelos locales).
  */
 public final class LectorArchivos {
@@ -30,6 +36,8 @@ public final class LectorArchivos {
     static final int MAX_PAGINAS_IMAGEN = 3;
     /** Máximo de filas por hoja que se envían a la IA. */
     private static final int MAX_FILAS = 500;
+    /** Máximo de caracteres que se leen de un documento de Word. */
+    private static final int MAX_CARACTERES_WORD = 200_000;
 
     /** Clase de utilidades: no se instancia. */
     private LectorArchivos() {
@@ -64,6 +72,44 @@ public final class LectorArchivos {
             }
         } catch (IOException | RuntimeException e) {
             throw new IAException("No se pudo leer el archivo de Excel: " + e.getMessage(), e);
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Word (docx) a texto: un párrafo por línea y cada fila de una tabla en una línea con las celdas separadas por
+     * " | ", en el orden en que aparecen en el documento.
+     *
+     * @param contenido bytes del archivo
+     * @return texto del documento
+     * @throws IAException si el archivo no se puede leer
+     */
+    public static String wordATexto(byte[] contenido) {
+        StringBuilder sb = new StringBuilder();
+        try (XWPFDocument documento = new XWPFDocument(new ByteArrayInputStream(contenido))) {
+            for (IBodyElement elemento : documento.getBodyElements()) {
+                if (sb.length() > MAX_CARACTERES_WORD) {
+                    break;
+                }
+                if (elemento instanceof XWPFParagraph parrafo) {
+                    String texto = parrafo.getText().trim();
+                    if (!texto.isEmpty()) {
+                        sb.append(texto).append('\n');
+                    }
+                } else if (elemento instanceof XWPFTable tabla) {
+                    for (XWPFTableRow fila : tabla.getRows()) {
+                        List<String> celdas = new ArrayList<>();
+                        for (XWPFTableCell celda : fila.getTableCells()) {
+                            celdas.add(celda.getText().replace('\n', ' ').trim());
+                        }
+                        if (celdas.stream().anyMatch(c -> !c.isEmpty())) {
+                            sb.append(String.join(" | ", celdas)).append('\n');
+                        }
+                    }
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            throw new IAException("No se pudo leer el documento de Word: " + e.getMessage(), e);
         }
         return sb.toString();
     }
