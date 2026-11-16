@@ -1,4 +1,6 @@
 .buscar { width: 280px; }
+.cambio-plan { display: flex; align-items: center; gap: 8px; }
+.entrada.chica { min-height: 36px; padding: 6px 10px; width: auto; }
 .titulo { justify-content: space-between; margin-bottom: 8px; h2 { margin: 0; } }
 h3 { margin-top: 18px; }
 .modulo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-top: 1px solid #f0f0f0;

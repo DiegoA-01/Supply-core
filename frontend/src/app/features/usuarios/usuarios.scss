@@ -1,0 +1,14 @@
+.filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; }
+.filtros .campo { min-width: 160px; }
+.filtros .crece { flex: 1; min-width: 220px; }
+.roles { display: flex; flex-wrap: wrap; gap: 4px; }
+// Con el formulario abierto la tabla se angosta: se ocultan las columnas secundarias.
+.compacta .oculto-movil { display: none; }
+.fin { justify-content: flex-end; flex-wrap: nowrap; }
+.margen { margin-top: 14px; }
+
+.grupo-roles { border: 0; padding: 0; margin: 0; gap: 6px; }
+.grupo-roles legend { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+.rol-opcion { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--sc-borde); border-radius: 10px; cursor: pointer;
+  input { margin-top: 3px; accent-color: var(--sc-primario); } span { display: flex; flex-direction: column; } }
+.rol-opcion:has(input:checked) { border-color: #f0b9a4; background: #fff8f5; }

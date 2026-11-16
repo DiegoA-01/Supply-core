@@ -115,6 +115,9 @@
     <strong>{{ sesion.usuario()?.nombre }}</strong>
     <span>{{ sesion.usuario()?.correo }}</span>
   </div>
+  <a mat-menu-item routerLink="/app/perfil">
+    <span class="material-symbols-outlined">person</span> Mi perfil y contraseña
+  </a>
   <button mat-menu-item type="button" (click)="sesion.salir()">
     <span class="material-symbols-outlined">logout</span> Cerrar sesión
   </button>

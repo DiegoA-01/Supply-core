@@ -74,7 +74,15 @@
           <div class="par"><span>Razón social</span><span>{{ d.empresa?.razonSocial }}</span></div>
           <div class="par"><span>NIT</span><span>{{ d.empresa?.nit }}</span></div>
           <div class="par"><span>Código de ingreso</span><span>{{ d.empresa?.codigoPublico }}</span></div>
-          <div class="par"><span>Plan</span><span>{{ d.empresa?.planNombre ?? d.empresa?.plan }}</span></div>
+          <div class="par"><span>Plan</span>
+            <span class="cambio-plan">
+              <select class="entrada chica" aria-label="Plan de la empresa" [ngModel]="planElegido() ?? d.empresa?.plan" (ngModelChange)="planElegido.set($event)">
+                @for (p of planes(); track p.id) { <option [value]="p.codigo">{{ p.nombre }}</option> }
+              </select>
+              @if (planElegido() && planElegido() !== d.empresa?.plan) {
+                <button type="button" class="boton chico primario" [disabled]="trabajando()" (click)="cambiarPlan()">Cambiar</button>
+              }
+            </span></div>
           <div class="par"><span>Cliente desde</span><span>{{ d.empresa?.creadoEn | fecha }}</span></div>
           @if (d.administrador; as a) {
             <div class="par"><span>Administrador</span><span>{{ a.nombre }}</span></div>

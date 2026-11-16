@@ -72,6 +72,25 @@ export class AnalisisRfq implements OnInit {
     return r.criterios?.find(c => c.codigo === codigo)?.ponderado;
   }
 
+  /** @param accion abrir (envía las invitaciones) o cerrar antes de la fecha límite */
+  protected cambiarRfq(accion: 'abrir' | 'cerrar'): void {
+    if (accion === 'cerrar' && !window.confirm('¿Cerrar la RFQ ahora? Los proveedores ya no podrán cotizar.')) {
+      return;
+    }
+    this.trabajando.set(true);
+    (accion === 'abrir' ? this.servicio.abrirRfq(this.id()) : this.servicio.cerrarRfq(this.id())).subscribe({
+      next: r => {
+        this.trabajando.set(false);
+        this.rfq.set(r);
+        this.avisos.ok(accion === 'abrir' ? `Invitaciones enviadas a ${r.invitados?.length ?? 0} proveedores.` : 'RFQ cerrada: ya puedes calcular el análisis.');
+      },
+      error: e => {
+        this.trabajando.set(false);
+        this.avisos.error(e);
+      },
+    });
+  }
+
   protected generar(): void {
     this.ejecutar(this.servicio.generarAnalisis(this.id()), 'Análisis calculado.');
   }

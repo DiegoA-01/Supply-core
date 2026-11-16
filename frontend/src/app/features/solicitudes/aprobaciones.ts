@@ -43,16 +43,46 @@ export class Aprobaciones implements OnInit {
 
   protected readonly centro = computed(() => this.centros().get(this.seleccionada()?.centroCostoId ?? -1));
   protected readonly politica = computed(() => this.politicas().get(this.seleccionada()?.politicaAprobacionId ?? -1));
-  protected readonly puedeDecidir = computed(() => this.seleccionada()?.estado === 'PENDIENTE_APROBACION' && !this.sesion.soloLectura());
   protected readonly horasLimite = computed(() => this.sesion.empresa()?.slaAprobacionHoras ?? 24);
+  protected readonly esSolicitante = computed(() => this.sesion.tieneRol(['SOLICITANTE']) && !this.sesion.soloLectura());
+  /** Solo pide, no aprueba: la página abre en sus solicitudes. */
+  protected readonly soloPide = computed(() => this.esSolicitante() && !this.sesion.tieneRol(['APROBADOR', 'ADMIN_COMPRAS', 'COMPRADOR', 'AUDITOR']));
+  /** La solicitud abierta es del usuario de la sesión. */
+  protected readonly esMia = computed(() => this.seleccionada()?.usuarioSolicitanteId === this.sesion.usuario()?.id);
+  protected readonly puedeDecidir = computed(() => this.seleccionada()?.estado === 'PENDIENTE_APROBACION' && !this.esMia() && !this.sesion.soloLectura());
+  protected readonly puedeEditar = computed(() => this.esMia() && this.esSolicitante()
+    && (this.seleccionada()?.estado === 'BORRADOR' || this.seleccionada()?.estado === 'DEVUELTA'));
+  protected readonly puedeCancelar = computed(() => {
+    const e = this.seleccionada()?.estado;
+    const abierta = e === 'BORRADOR' || e === 'DEVUELTA' || e === 'PENDIENTE_APROBACION' || e === 'APROBADA';
+    return abierta && !this.sesion.soloLectura() && ((this.esMia() && this.esSolicitante()) || this.sesion.tieneRol(['ADMIN_COMPRAS']));
+  });
+  protected readonly puedeCrearRfq = computed(() => this.seleccionada()?.estado === 'APROBADA'
+    && this.sesion.tieneRol(['COMPRADOR']) && this.sesion.tieneModulo('RFQ_COTIZACIONES') && !this.sesion.soloLectura());
 
   ngOnInit(): void {
     this.compras.centros().subscribe({ next: l => this.centros.set(new Map(l.map(c => [c.id!, c]))), error: () => undefined });
     this.compras.politicas().subscribe({ next: l => this.politicas.set(new Map(l.map(p => [p.id!, p]))), error: () => undefined });
-    if (this.texto()) {
+    if (this.texto() || this.soloPide()) {
       this.pestana.set('todas');
     }
     this.cargar();
+  }
+
+  /** Cancela la solicitud abierta (el solicitante las suyas; compras cualquiera abierta). */
+  protected cancelar(): void {
+    const s = this.seleccionada();
+    if (!s?.id || !window.confirm(`¿Cancelar ${s.consecutivo}? No se puede deshacer.`)) {
+      return;
+    }
+    this.compras.cancelar(s.id).subscribe({
+      next: r => {
+        this.seleccionada.set(r);
+        this.avisos.ok(`${r.consecutivo} cancelada.`);
+        this.cargar();
+      },
+      error: e => this.avisos.error(e),
+    });
   }
 
   /** @param p pestaña */

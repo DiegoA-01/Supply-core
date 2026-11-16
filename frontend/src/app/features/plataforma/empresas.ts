@@ -28,6 +28,8 @@ export class Empresas implements OnInit {
   protected readonly creando = signal(false);
   protected readonly trabajando = signal(false);
   protected readonly busqueda = signal('');
+  /** Plan elegido en el selector, antes de confirmar el cambio. */
+  protected readonly planElegido = signal<string | null>(null);
   /** Muestra la contraseña inicial del administrador para revisarla antes de crear la empresa. */
   protected readonly verClave = signal(false);
 
@@ -62,6 +64,7 @@ export class Empresas implements OnInit {
   /** @param e empresa de la tabla */
   protected abrir(e: EmpresaPlataforma): void {
     this.cambios.set({});
+    this.planElegido.set(null);
     this.servicio.empresa(e.id!).subscribe({ next: d => this.detalle.set(d), error: err => this.avisos.error(err) });
   }
 
@@ -116,6 +119,29 @@ export class Empresas implements OnInit {
       });
     };
     siguiente(0);
+  }
+
+  /** Cambia el plan de la empresa abierta: sus módulos pasan a ser los del plan nuevo (más sus excepciones). */
+  protected cambiarPlan(): void {
+    const id = this.detalle()?.empresa?.id;
+    const plan = this.planElegido();
+    if (!id || !plan) {
+      return;
+    }
+    this.trabajando.set(true);
+    this.servicio.cambiarPlan(id, plan).subscribe({
+      next: d => {
+        this.trabajando.set(false);
+        this.detalle.set(d);
+        this.planElegido.set(null);
+        this.avisos.ok(`${d.empresa?.razonSocial} pasó al plan ${d.empresa?.planNombre ?? plan}.`);
+        this.cargar();
+      },
+      error: err => {
+        this.trabajando.set(false);
+        this.avisos.error(err);
+      },
+    });
   }
 
   /** @param estado nuevo estado de la suscripción */

@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  CentroCosto, DecisionSolicitud, Pagina, Politica, Presupuesto, Solicitud, SolicitudResumen, Usuario,
+  CentroCosto, DecisionSolicitud, Pagina, Politica, Presupuesto, Solicitud, SolicitudNueva, SolicitudResumen, Usuario,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
@@ -43,6 +43,41 @@ export class ComprasService {
    */
   decidir(id: number, decision: DecisionSolicitud, observaciones: string): Observable<Solicitud> {
     return this.http.post<Solicitud>(api(`/api/solicitudes/${id}/decision`), { decision, observaciones });
+  }
+
+  /**
+   * Crea la solicitud en borrador; el centro de costo sale del usuario de la sesión.
+   *
+   * @param datos motivo, fecha requerida y líneas
+   */
+  crear(datos: SolicitudNueva): Observable<Solicitud> {
+    return this.http.post<Solicitud>(api('/api/solicitudes'), datos);
+  }
+
+  /**
+   * Edita una solicitud propia en borrador o devuelta.
+   *
+   * @param id    solicitud
+   * @param datos motivo, fecha requerida y líneas
+   */
+  actualizar(id: number, datos: SolicitudNueva): Observable<Solicitud> {
+    return this.http.put<Solicitud>(api(`/api/solicitudes/${id}`), datos);
+  }
+
+  /**
+   * Envía a aprobación. Si excede el presupuesto responde 409 PRESUPUESTO_EXCEDIDO: con justificación se envía
+   * como excepción.
+   *
+   * @param id                     solicitud
+   * @param justificacionExcepcion solo si excede el presupuesto
+   */
+  enviar(id: number, justificacionExcepcion?: string): Observable<Solicitud> {
+    return this.http.post<Solicitud>(api(`/api/solicitudes/${id}/enviar`), { justificacionExcepcion: justificacionExcepcion || undefined });
+  }
+
+  /** @param id solicitud abierta que ya no se necesita */
+  cancelar(id: number): Observable<Solicitud> {
+    return this.http.post<Solicitud>(api(`/api/solicitudes/${id}/cancelar`), {});
   }
 
   /** Centros de costo de la empresa. */

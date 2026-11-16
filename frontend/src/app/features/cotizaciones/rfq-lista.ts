@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { RfqResumen } from '../../core/api/modelos';
@@ -6,6 +6,7 @@ import { Estado } from '../../core/formato/etiquetas';
 import { FechaPipe } from '../../core/formato/formato';
 import { CotizacionesService } from '../../core/servicios/cotizaciones.service';
 import { Avisos } from '../../core/ui/avisos';
+import { SesionService } from '../../core/sesion/sesion.service';
 
 /** Lista de RFQ: desde aquí se abre el análisis de cada una. */
 @Component({
@@ -17,9 +18,14 @@ import { Avisos } from '../../core/ui/avisos';
         <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Cotizaciones</p>
         <div class="encabezado">
           <div><h1>Cotizaciones con IA</h1><p>Elige una RFQ para ver el ranking que calculó el sistema y la explicación de la IA.</p></div>
-          <div class="acciones pastillas">
-            @for (e of estados; track e.valor) {
-              <button type="button" class="pastilla" [class.activa]="estado() === e.valor" (click)="filtrar(e.valor)">{{ e.texto }}</button>
+          <div class="acciones">
+            <div class="pastillas">
+              @for (e of estados; track e.valor) {
+                <button type="button" class="pastilla" [class.activa]="estado() === e.valor" (click)="filtrar(e.valor)">{{ e.texto }}</button>
+              }
+            </div>
+            @if (esComprador()) {
+              <a class="boton primario" routerLink="/app/cotizaciones/nueva"><span class="material-symbols-outlined">add</span> Nueva RFQ</a>
             }
           </div>
         </div>
@@ -51,12 +57,17 @@ import { Avisos } from '../../core/ui/avisos';
 export class RfqLista implements OnInit {
   private readonly servicio = inject(CotizacionesService);
   private readonly avisos = inject(Avisos);
+  private readonly sesion = inject(SesionService);
+
+  /** Crea RFQ quien tiene el rol COMPRADOR. */
+  protected readonly esComprador = computed(() => this.sesion.tieneRol(['COMPRADOR']) && !this.sesion.soloLectura());
 
   /** Texto que llega desde el buscador del encabezado. */
   readonly texto = input<string>();
 
   protected readonly estados = [
     { valor: 'CERRADA', texto: 'Por analizar' },
+    { valor: 'BORRADOR', texto: 'Borradores' },
     { valor: 'ABIERTA', texto: 'Abiertas' },
     { valor: 'ADJUDICADA', texto: 'Adjudicadas' },
     { valor: null, texto: 'Todas' },

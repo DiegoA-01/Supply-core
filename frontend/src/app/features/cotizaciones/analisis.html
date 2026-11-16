@@ -12,6 +12,11 @@
             <span class="chip" [class.verde]="publicado()"><span class="material-symbols-outlined">auto_awesome</span>{{ publicado() ? 'Análisis publicado' : 'Análisis en borrador' }}</span>
           }
           <sc-estado [valor]="r.estado" />
+          @if (esComprador() && r.estado === 'BORRADOR') {
+            <button type="button" class="boton primario chico" [disabled]="trabajando()" (click)="cambiarRfq('abrir')">Abrir y enviar invitaciones</button>
+          } @else if (esComprador() && r.estado === 'ABIERTA') {
+            <button type="button" class="boton chico" [disabled]="trabajando()" (click)="cambiarRfq('cerrar')">Cerrar ahora</button>
+          }
         </div>
       </div>
     </div>

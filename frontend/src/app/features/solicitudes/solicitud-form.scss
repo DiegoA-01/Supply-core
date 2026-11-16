@@ -1,0 +1,21 @@
+.buscador-productos { position: relative; display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+  > .material-symbols-outlined { position: absolute; left: 12px; color: var(--sc-texto-2); }
+  .entrada { padding-left: 40px; } }
+.resultados {
+  position: absolute; z-index: 5; top: calc(100% + 4px); left: 0; right: 0; margin: 0; padding: 6px; list-style: none;
+  background: #fff; border: 1px solid var(--sc-borde); border-radius: 12px; box-shadow: 0 12px 28px rgb(0 0 0 / 10%); max-height: 320px; overflow-y: auto;
+  button { width: 100%; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 0; border-radius: 8px; background: none; font: inherit; text-align: left; cursor: pointer; }
+  button:hover, button:focus-visible { background: var(--sc-primario-suave); }
+}
+.cantidad { display: inline-flex; align-items: center; gap: 6px; input { width: 110px; } }
+.monto { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 8px; }
+.margen { margin-top: 12px; }
+.corto { max-width: 240px; }
+
+@media (max-width: 720px) {
+  .lineas thead { display: none; }
+  .lineas tr { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; padding: 12px; border-bottom: 1px solid var(--sc-borde); }
+  .lineas td { padding: 0; border: 0; text-align: left; }
+  .lineas td:first-child { grid-column: 1 / -1; }
+  .corto { max-width: none; }
+}

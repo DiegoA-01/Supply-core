@@ -1,0 +1,10 @@
+.planes { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; align-content: start; }
+.plan { display: flex; flex-direction: column; gap: 10px; h2 { margin: 0; } .boton { align-self: flex-start; margin-top: auto; } }
+.plan.inactivo { opacity: .65; }
+.empresas { margin: 0; color: var(--sc-texto-2); strong { color: var(--sc-texto); font-size: 20px; } }
+.modulos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px;
+  li { display: flex; gap: 6px; align-items: center; } .material-symbols-outlined { font-size: 16px; color: var(--sc-verde); } }
+.grupo { border: 0; padding: 0; margin: 0; gap: 6px; legend { font-size: 14px; font-weight: 500; margin-bottom: 6px; } }
+.opcion { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--sc-borde); border-radius: 10px; cursor: pointer;
+  input { margin-top: 3px; accent-color: var(--sc-primario); } > span { display: flex; flex-direction: column; } }
+.opcion.marcada { border-color: #f0b9a4; background: #fff8f5; }

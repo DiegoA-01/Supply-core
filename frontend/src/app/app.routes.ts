@@ -23,6 +23,20 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'inicio' },
       { path: 'inicio', title: 'Inicio · Supply-Core', loadComponent: () => import('./features/inicio/inicio').then(m => m.Inicio) },
       {
+        path: 'solicitudes/nueva',
+        title: 'Nueva solicitud · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['SOLICITANTE'], modulo: 'COMPRAS' },
+        loadComponent: () => import('./features/solicitudes/solicitud-form').then(m => m.SolicitudForm),
+      },
+      {
+        path: 'solicitudes/:id/editar',
+        title: 'Editar solicitud · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['SOLICITANTE'], modulo: 'COMPRAS' },
+        loadComponent: () => import('./features/solicitudes/solicitud-form').then(m => m.SolicitudForm),
+      },
+      {
         path: 'solicitudes',
         title: 'Solicitudes · Supply-Core',
         canActivate: [permisoGuard],
@@ -35,6 +49,13 @@ export const routes: Routes = [
         canActivate: [permisoGuard],
         data: { roles: ROLES_RFQ, modulo: 'RFQ_COTIZACIONES' },
         loadComponent: () => import('./features/cotizaciones/rfq-lista').then(m => m.RfqLista),
+      },
+      {
+        path: 'cotizaciones/nueva',
+        title: 'Nueva RFQ · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['COMPRADOR'], modulo: 'RFQ_COTIZACIONES' },
+        loadComponent: () => import('./features/cotizaciones/rfq-nueva').then(m => m.RfqNueva),
       },
       {
         path: 'cotizaciones/:rfqId',
@@ -103,9 +124,10 @@ export const routes: Routes = [
         path: 'usuarios',
         title: 'Usuarios y roles · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['ADMIN_SISTEMA', 'AUDITOR'], titulo: 'Usuarios y roles' },
-        loadComponent: () => import('./features/pendiente/pendiente').then(m => m.Pendiente),
+        data: { roles: ['ADMIN_SISTEMA', 'AUDITOR'] },
+        loadComponent: () => import('./features/usuarios/usuarios').then(m => m.Usuarios),
       },
+      { path: 'perfil', title: 'Mi perfil · Supply-Core', loadComponent: () => import('./features/perfil/perfil').then(m => m.Perfil) },
     ],
   },
   {
@@ -131,6 +153,8 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'empresas' },
       { path: 'empresas', title: 'Empresas · Plataforma', loadComponent: () => import('./features/plataforma/empresas').then(m => m.Empresas) },
+      { path: 'planes', title: 'Planes y módulos · Plataforma', loadComponent: () => import('./features/plataforma/planes').then(m => m.Planes) },
+      { path: 'auditoria', title: 'Auditoría global · Plataforma', loadComponent: () => import('./features/plataforma/auditoria-global').then(m => m.AuditoriaGlobal) },
     ],
   },
   { path: '**', redirectTo: 'ingreso' },

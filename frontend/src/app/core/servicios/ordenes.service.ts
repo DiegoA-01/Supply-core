@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  Factura, LineaRecepcion, Orden, OrdenResumen, Pagina, Pago, PagosOrden, Recepcion, RegistrarPago, RegistrarRecepcion,
+  Factura, FacturaNueva, LineaRecepcion, Orden, OrdenResumen, Pagina, Pago, PagosOrden, Recepcion, RegistrarPago, RegistrarRecepcion,
   ResumenRecepcion,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
@@ -28,6 +28,28 @@ export class OrdenesService {
   /** @param ordenId orden */
   facturas(ordenId: number): Observable<Factura[]> {
     return this.http.get<Factura[]>(api(`/api/ordenes/${ordenId}/facturas`));
+  }
+
+  /**
+   * Registra la factura del proveedor; el backend la cruza con lo recibido y la deja CUADRADA o EN_REVISION.
+   *
+   * @param ordenId orden con recepciones
+   * @param factura número, fecha y montos tal como vienen impresos en la factura
+   */
+  registrarFactura(ordenId: number, factura: FacturaNueva): Observable<Factura> {
+    return this.http.post<Factura>(api(`/api/ordenes/${ordenId}/facturas`), factura);
+  }
+
+  /**
+   * Adjunta el archivo de la factura (PDF o imagen).
+   *
+   * @param facturaId factura registrada
+   * @param archivo   archivo
+   */
+  archivoFactura(facturaId: number, archivo: File): Observable<Factura> {
+    const datos = new FormData();
+    datos.append('archivo', archivo);
+    return this.http.post<Factura>(api(`/api/facturas/${facturaId}/archivo`), datos);
   }
 
   /** Facturas por estado (p. ej. EN_REVISION para la bandeja de compras). */

@@ -26,6 +26,9 @@ export interface ErrorApi {
 export type LoginResponse = S['LoginResponse'];
 export type UsuarioSesion = S['UsuarioSesionResponse'];
 export type Usuario = S['UsuarioResponse'];
+export type UsuarioNuevo = S['UsuarioRequest'];
+export type UsuarioCambios = S['UsuarioUpdateRequest'];
+export type Rol = S['RolResponse'];
 export type Empresa = S['EmpresaResponse'];
 export type ModulosEmpresa = S['ModulosEmpresaResponse'];
 export type Notificacion = S['NotificacionResponse'];
@@ -39,6 +42,8 @@ export type SolicitudResumen = S['SolicitudResumenResponse'];
 export type Solicitud = S['SolicitudResponse'];
 export type Presupuesto = S['PresupuestoResponse'];
 export type Politica = S['PoliticaAprobacionResponse'];
+export type SolicitudNueva = S['SolicitudRequest'];
+export type RfqDatos = S['RfqDatosRequest'];
 export type DecisionSolicitud = NonNullable<S['DecisionRequest']['decision']>;
 export type RfqResumen = S['RfqResumenResponse'];
 export type Rfq = S['RfqResponse'];
@@ -53,6 +58,7 @@ export type OrdenResumen = S['OrdenResumenResponse'];
 export type Orden = S['OrdenResponse'];
 export type OrdenLinea = S['OrdenLinea'];
 export type Factura = S['FacturaResponse'];
+export type FacturaNueva = S['RegistrarFacturaRequest'];
 export type PagosOrden = S['PagosOrdenResponse'];
 export type Pago = S['PagoResponse'];
 export type RegistrarPago = S['RegistrarPagoRequest'];
@@ -82,6 +88,10 @@ export type EmpresaCrear = S['EmpresaCrearRequest'];
 export type DesafioMfa = S['DesafioMfaResponse'];
 export type SesionPlataforma = S['SesionPlataformaResponse'];
 export type Plan = S['Respuesta'];
+export type PlanNuevo = S['Crear'];
+export type PlanCambios = S['Editar'];
+export type ModuloPlataforma = S['ModuloRespuesta'];
+export type AuditoriaPlataforma = S['AuditoriaPlataformaResponse'];
 export type EstadoSuscripcion = NonNullable<S['ModulosEmpresaResponse']['estado']>;
 
 // Portal del proveedor
