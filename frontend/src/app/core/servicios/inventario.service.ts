@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  CargaMasiva, Categoria, InventarioResumen, Pagina, Producto, ProductoNuevo, Solicitud, SugerenciaReorden, UnidadMedida,
+  CargaMasiva, Categoria, CorreoExportacion, InventarioResumen, Pagina, Producto, ProductoNuevo, Solicitud, SugerenciaReorden, UnidadMedida,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
@@ -77,6 +77,11 @@ export class InventarioService {
   /** Plantilla de Excel para la carga masiva. */
   plantilla(): Observable<Blob> {
     return this.http.get(api('/api/productos/carga-masiva/plantilla'), { responseType: 'blob' });
+  }
+
+  /** Envía las existencias en Excel al correo del usuario de la sesión. */
+  stockPorCorreo(): Observable<CorreoExportacion> {
+    return this.http.post<CorreoExportacion>(api('/api/exportaciones/inventario/stock/correo'), {}, { params: parametros({ formato: 'xlsx' }) });
   }
 
   /** Existencias en Excel. */

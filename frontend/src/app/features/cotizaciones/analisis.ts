@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
 
+import { Extraccion } from './extraccion';
 import { Adjudicacion, Analisis, Bodega, Cotizacion, Pesos, ResultadoAnalisis, Rfq } from '../../core/api/modelos';
 import { Estado, EtiquetaPipe, etiqueta } from '../../core/formato/etiquetas';
 import { FechaPipe, NumeroPipe, PesosPipe, PuntajePipe } from '../../core/formato/formato';
@@ -18,7 +19,7 @@ import { SesionService } from '../../core/sesion/sesion.service';
  */
 @Component({
   selector: 'sc-analisis',
-  imports: [FormsModule, RouterLink, Estado, EtiquetaPipe, PesosPipe, PuntajePipe, NumeroPipe, FechaPipe],
+  imports: [FormsModule, RouterLink, Extraccion, Estado, EtiquetaPipe, PesosPipe, PuntajePipe, NumeroPipe, FechaPipe],
   templateUrl: './analisis.html',
   styleUrl: './analisis.scss',
 })
@@ -45,6 +46,9 @@ export class AnalisisRfq implements OnInit {
   protected readonly orden = signal({ bodegaDestinoId: 0, lugarEntrega: '', fechaEntregaEsperada: '' });
 
   protected readonly esComprador = computed(() => this.sesion.tieneRol(['COMPRADOR']) && !this.sesion.soloLectura());
+  protected readonly leidasPorIa = computed(() => this.cotizaciones().filter(c => c.origen === 'ARCHIVO'));
+  protected readonly puedeVerLectura = computed(() => this.sesion.tieneRol(['COMPRADOR', 'ADMIN_COMPRAS', 'AUDITOR']));
+  protected readonly puedeEditarLectura = computed(() => this.sesion.tieneRol(['COMPRADOR', 'ADMIN_COMPRAS']) && !this.sesion.soloLectura());
   protected readonly resultados = computed(() => [...(this.analisis()?.resultados ?? [])].sort((a, b) => (a.posicion ?? 99) - (b.posicion ?? 99)));
   protected readonly recomendada = computed(() => this.resultados()[0]?.cotizacionId ?? null);
   protected readonly criterios = computed(() => this.resultados()[0]?.criterios ?? []);
@@ -155,7 +159,8 @@ export class AnalisisRfq implements OnInit {
     return Number(this.rfqId());
   }
 
-  private cargar(): void {
+  /** Vuelve a leer RFQ, cotizaciones, análisis y adjudicación (tras corregir una lectura con IA). */
+  protected cargar(): void {
     const id = this.id();
     forkJoin({
       rfq: this.servicio.rfq(id),

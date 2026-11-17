@@ -52,6 +52,11 @@ export type ResultadoAnalisis = S['Resultado'];
 export type Cotizacion = S['CotizacionResponse'];
 export type Adjudicacion = S['AdjudicacionResponse'];
 export type Pesos = S['PesosResponse'];
+export type Procesamiento = S['ProcesamientoResponse'];
+export type CampoLeido = S['Campo'];
+export type LineaDigitada = S['LineaCotizacionRequest'];
+export type LineaCotizacion = S['CotizacionLinea'];
+export type CorreoExportacion = S['CorreoExportacionResponse'];
 
 // Órdenes, facturas, pagos y recepción
 export type OrdenResumen = S['OrdenResumenResponse'];

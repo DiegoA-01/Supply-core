@@ -42,6 +42,7 @@ export class OrdenDetalle implements OnInit {
   /** Factura vigente (la última no anulada). */
   protected readonly factura = computed(() => this.facturas().find(f => f.estado !== 'ANULADA') ?? null);
   protected readonly enRevision = computed(() => this.factura()?.estado === 'EN_REVISION');
+  protected readonly puedeRecruzar = computed(() => this.sesion.tieneRol(['ADMINISTRATIVO']) && !this.sesion.soloLectura());
   protected readonly puedeAprobar = computed(() => this.sesion.tieneRol(['ADMIN_COMPRAS']) && !this.sesion.soloLectura());
   protected readonly puedePagar = computed(() => this.sesion.tieneRol(['ADMINISTRATIVO']) && !this.sesion.soloLectura());
   protected readonly tolerancia = computed(() => this.sesion.empresa()?.toleranciaFacturaPct);
@@ -143,6 +144,37 @@ export class OrdenDetalle implements OnInit {
     this.servicio.pdf(o.id).subscribe({
       next: b => descargar(b, `${o.consecutivo}-v${o.version}.pdf`),
       error: e => this.avisos.error(e),
+    });
+  }
+
+  protected enviarPorCorreo(): void {
+    const o = this.orden();
+    if (!o?.id) {
+      return;
+    }
+    this.servicio.pdfPorCorreo(o.id).subscribe({
+      next: r => this.avisos.ok(`Enviamos ${r.archivo ?? 'el PDF'} a ${r.para}.`),
+      error: e => this.avisos.error(e),
+    });
+  }
+
+  /** Vuelve a cruzar la factura contra lo recibido hasta hoy. */
+  protected recruzar(): void {
+    const f = this.factura();
+    if (!f?.id) {
+      return;
+    }
+    this.trabajando.set(true);
+    this.servicio.recruzarFactura(f.id).subscribe({
+      next: () => {
+        this.trabajando.set(false);
+        this.avisos.ok('Factura cruzada de nuevo con lo recibido.');
+        this.cargar();
+      },
+      error: e => {
+        this.trabajando.set(false);
+        this.avisos.error(e);
+      },
     });
   }
 

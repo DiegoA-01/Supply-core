@@ -8,6 +8,7 @@
       </div>
       <div class="acciones">
         <button type="button" class="boton" (click)="exportar()"><span class="material-symbols-outlined">download</span> Exportar Excel</button>
+        <button type="button" class="boton" (click)="exportarPorCorreo()"><span class="material-symbols-outlined">mail</span> Enviarme el Excel</button>
         @if (esAdminCompras()) {
           <button type="button" class="boton" (click)="abrir('carga')"><span class="material-symbols-outlined">upload</span> Carga masiva (Excel)</button>
           <button type="button" class="boton primario" (click)="abrir('nuevo')"><span class="material-symbols-outlined">add</span> Nuevo producto</button>

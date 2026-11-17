@@ -1,0 +1,10 @@
+h3 { display: flex; align-items: center; gap: 8px; margin: 0; }
+.titulo { justify-content: space-between; margin-bottom: 8px; }
+.filtro { justify-content: space-between; margin: 12px 0 8px; }
+.check { display: flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; }
+.par-total { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; margin: 8px 0; border-radius: 10px; background: #f6f6f6;
+  strong { white-space: nowrap; } }
+.pendiente { background: #fff7ed; }
+.margen-arriba { margin-top: 16px; }
+.digitar { margin-top: 16px; padding-top: 12px; border-top: 1px solid #f0f0f0; }
+.entrada.chica { min-width: 90px; }

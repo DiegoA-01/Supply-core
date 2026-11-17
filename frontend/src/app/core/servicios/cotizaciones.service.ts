@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { Adjudicacion, Analisis, Bodega, Cotizacion, Orden, Pagina, Pesos, Rfq, RfqDatos, RfqResumen } from '../api/modelos';
+import { Adjudicacion, Analisis, Bodega, Cotizacion, LineaDigitada, Orden, Pagina, Pesos, Procesamiento, Rfq, RfqDatos, RfqResumen } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
 /** RFQ, análisis con IA, adjudicación y emisión de la orden. */
@@ -89,6 +89,41 @@ export class CotizacionesService {
    */
   adjudicar(rfqId: number, cotizacionId: number, justificacion: string): Observable<Adjudicacion> {
     return this.http.post<Adjudicacion>(api(`/api/rfqs/${rfqId}/adjudicacion`), { cotizacionId, justificacion });
+  }
+
+  /**
+   * Estado de la lectura con IA de una cotización y los datos leídos con su confianza.
+   *
+   * @param cotizacionId cotización recibida como archivo
+   */
+  extraccion(cotizacionId: number): Observable<Procesamiento> {
+    return this.http.get<Procesamiento>(api(`/api/cotizaciones/${cotizacionId}/extraccion`));
+  }
+
+  /**
+   * Confirma o corrige un dato leído por la IA.
+   *
+   * @param cotizacionId cotización
+   * @param campoId      dato leído
+   * @param valor        valor correcto, como texto
+   */
+  confirmarCampo(cotizacionId: number, campoId: number, valor: string): Observable<Procesamiento> {
+    return this.http.patch<Procesamiento>(api(`/api/cotizaciones/${cotizacionId}/extraccion/campos/${campoId}`), { valor });
+  }
+
+  /**
+   * Reemplaza lo leído por la IA con los precios digitados a mano.
+   *
+   * @param cotizacionId cotización
+   * @param lineas       una por línea de la RFQ
+   */
+  digitarLineas(cotizacionId: number, lineas: LineaDigitada[]): Observable<Procesamiento> {
+    return this.http.put<Procesamiento>(api(`/api/cotizaciones/${cotizacionId}/extraccion/lineas`), { lineas });
+  }
+
+  /** @param cotizacionId cotización cuyo archivo se vuelve a leer con la IA */
+  reintentarExtraccion(cotizacionId: number): Observable<Procesamiento> {
+    return this.http.post<Procesamiento>(api(`/api/cotizaciones/${cotizacionId}/extraccion/reintentar`), {});
   }
 
   /** Pesos vigentes de los criterios. */

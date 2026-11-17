@@ -14,6 +14,8 @@
             <button type="button" class="pastilla" [class.activa]="pestana() === 'todas'" (click)="cambiar('todas')">Todas</button>
           </div>
         }
+        <button type="button" class="boton" (click)="exportarExcel()"><span class="material-symbols-outlined">download</span> Excel</button>
+        <button type="button" class="boton" (click)="exportarPorCorreo()"><span class="material-symbols-outlined">mail</span> Enviarme el Excel</button>
         @if (esSolicitante()) {
           <a class="boton primario" routerLink="/app/solicitudes/nueva"><span class="material-symbols-outlined">add</span> Nueva solicitud</a>
         }

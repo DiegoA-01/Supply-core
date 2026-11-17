@@ -1,6 +1,6 @@
 # Supply-Core — Progreso del backend
 
-> Última actualización: 2026-11-10 · Estado: **pasos 0 a 18, 18-a a 18-d, SaaS fase 2 y SaaS fase 3 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración), consola de plataforma con planes y módulos (V23), seguridad restante de SaaS 3: sesiones que se cortan, recuperación de clave y MFA de administradores (V24), y exportación a Excel y PDF con archivos legibles (sin migración)**.
+> Última actualización: 2026-11-17 · Estado: **pasos 0 a 18, 18-a a 18-d, SaaS fase 2 y SaaS fase 3 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración), consola de plataforma con planes y módulos (V23), seguridad restante de SaaS 3: sesiones que se cortan, recuperación de clave y MFA de administradores (V24), exportación a Excel y PDF con archivos legibles, y cruce de totales de la IA con Gemini como proveedor de lectura (sin migración)**.
 > **714 pruebas en verde** (1 omitida: la prueba en vivo contra Gemini) (41 de fuga y de extremo a extremo entre empresas contra MySQL real), Javadoc sin advertencias (`doclint=all`), 24 migraciones Flyway, 51 controllers.
 > Detalle vivo para Claude: `.claude/skills/supply-core/references/estado.md`, `plan-backend.md` y `saas.md`. Reglas no negociables: `CLAUDE.md`.
 
@@ -16,7 +16,7 @@ Además: usuarios y roles, proveedores, inventario con kardex, documentos, notif
 
 **Giro a SaaS multiempresa (decidido el 2026-10-23).** El software pasa de «una empresa» a vender el uso a varias empresas (ferretería, eléctricos…), cada una con sus datos aislados, sus usuarios y sus roles; el dueño del software activa a cada empresa y sus módulos. Ya está hecho el aislamiento por empresa y la seguridad de sesión; falta la consola del dueño (fase 2), planes y módulos, el cobro de la suscripción y la operación (fases 3 a 5).
 
-**Estamos en:** paso 19, cierre del backend. SaaS fase 3 (2026-11-10, V24): el JWT lleva una versión de sesión que sube al cambiar la clave o desactivar al usuario (sus sesiones se cortan en la siguiente petición y se revocan sus refresh tokens), recuperación de contraseña con token de un solo uso por correo, MFA TOTP obligatorio para ADMIN_SISTEMA y voluntario para los demás, cabeceras de seguridad, Dependabot y el script de dos usuarios MySQL. La fase 2, consola de plataforma, planes, módulos y `@RequiereModulo`, quedó hecha el 2026-10-28 con la migración V23.
+**Estamos en:** paso 19, cierre del backend. SaaS fase 3 (2026-11-10, V24): el JWT lleva una versión de sesión que sube al cambiar la clave o desactivar al usuario (sus sesiones se cortan en la siguiente petición y se revocan sus refresh tokens), recuperación de contraseña con token de un solo uso por correo, MFA TOTP obligatorio para ADMIN_SISTEMA y voluntario para los demás, cabeceras de seguridad, Dependabot y el script de dos usuarios MySQL. La fase 2, consola de plataforma, planes, módulos y `@RequiereModulo`, quedó hecha el 2026-10-28 con la migración V23. Del paso 19 ya están hechos el cruce de totales de la IA y Gemini (2026-11-16); lo que falta está en la sección 5, que sirve para retomar tras una compactación.
 
 **Falta del backend:**
 
@@ -32,7 +32,7 @@ Además: usuarios y roles, proveedores, inventario con kardex, documentos, notif
 1. **Frontend en Angular** (`frontend/`): pantallas por rol que consumen esta API (login con código de empresa, bandejas de aprobación, RFQ, recepción, facturas, portal del proveedor, inventario, reportes, consola de plataforma). Boceto de las pantallas ya mostrado en la sesión del 2026-10-23 (panel de la empresa con módulos bloqueados según el plan, y consola del dueño con empresas y módulos).
 2. **SaaS 4**: cobro de la suscripción con pasarela (Wompi, Mercado Pago o Stripe) en sandbox, estados de mora, límites por plan, métricas de uso.
 3. **SaaS 5**: Docker Compose, CI/CD, entornos, logs con `empresa_id`, onboarding de una empresa en minutos.
-4. **Integración y prueba con IA real** (Ollama o Claude) con cotizaciones reales.
+4. **Prueba con IA real con cotizaciones de verdad**: Gemini ya se probó en vivo con un PDF de ejemplo (2026-11-16); falta con documentos reales (Gemini, Ollama o Claude).
 5. **Fases futuras**: factura electrónica DIAN (mediante proveedor tecnológico), multimoneda con tasa congelada en el análisis, recepción móvil sin conexión (PWA), exportar la compra validada a la contabilidad (CSV, luego API), importar ventas del POS por CSV.
 
 **Cómo termina:** el proyecto está completo cuando una compra recorre todo el ciclo desde la interfaz —desde que alguien la pide hasta que la mercancía entra al inventario, la factura se cruza, el pago queda registrado y el proveedor queda evaluado—, para varias empresas a la vez sin que una vea a la otra, cada paso queda auditado, las pruebas pasan y la sustentación se apoya en la guía `docs/Supply-Core-por-dentro.pdf` y en `docs/Supply-Core-SaaS-Plan-v1.1.pdf`.
@@ -354,7 +354,7 @@ Orden final: 17 ✅ → 17-bis ✅ → 18 → 18-a a 18-d → SaaS 2 → SaaS 3 
 - Dar a CAJERO acceso a los endpoints de despacho y decidir si puede anular.
 - Segregación de funciones en la recepción (quien emitió la orden no recibe), si se quiere.
 - Validar la existencia de `proveedorId` al crear usuarios PROVEEDOR desde el admin.
-- IA real sin probar: instalar Ollama (`ollama pull qwen2.5vl:3b`) o poner `ANTHROPIC_API_KEY` y probar con una cotización real. Leer también las facturas con IA (idea 17-bis, no hecha).
+- IA real: Gemini probado en vivo con un PDF de ejemplo (`GEMINI_API_KEY`, `IA_PROVEEDOR=gemini`); falta probar con cotizaciones reales y, si se quiere, Ollama (`ollama pull qwen2.5vl:3b`) o `ANTHROPIC_API_KEY`. Leer también las facturas con IA (idea 17-bis, no hecha).
 - Orden: decidir si la evidencia de despacho es obligatoria y si se expone `GET /api/ordenes/{id}/versiones` (`findByConsecutivoOrderByVersionAsc` ya lo usan los pagos y las facturas).
 - Pagos: si una orden con pagos se cancela o el proveedor la rechaza, el saldo a favor solo queda visible en el resumen; no hay devolución (fuera de alcance).
 - Factura: una sola vigente por orden; considerar facturación por entregas si algún cliente la pide.
@@ -380,3 +380,33 @@ cd backend
 - **Mockup de la aplicación** (2026-10-27): lienzo de 10 pantallas publicado como Artifact (10 pantallas: ingreso, inicio, solicitudes con aprobación, comparador con IA, orden con cruce de tres vías, recepción con calidad, inventario con reorden, estado de cuenta de reportes, consola del dueño y portal del proveedor). Es solo diseño: usa los colores base `#0F766E` (verde azulado), `#0B1F2E` (azul noche) y `#F59E0B` (ámbar). Las pantallas del presupuesto, contratos, delegación y consola con módulos que hizo el backend después no están dibujadas todavía.
 - **Logo: Cajabot** (2026-10-28): mascota elegida por el usuario (una caja con cara, antena y herramienta). Archivos en `branding/`: `cajabot-icono.svg` y `.png`, `cajabot-icono-oscuro.svg`, `cajabot-logo-vertical.svg` y `.png`, `cajabot-logo-horizontal.svg`. Pendiente: convertir el nombre a curvas o fijar la tipografía final, probar el favicon a 16 px y exportar PNG de 512, 192 y 32, y poner el logo en el mockup. Los archivos `supply-core-*.svg` (tuerca con tornillo) son un boceto descartado y se pueden borrar.
 - **Frontend Angular:** empezado el 2026-11-05 con las 10 vistas del mockup (Angular 22 + Material, conectado a la API real). El equipo decidió adelantarlo a SaaS 3 y al paso 19. Hay una skill de diseño de interfaces (`design-taste-frontend`) disponible para esa etapa.
+
+---
+
+## 5. Sesión del 2026-11-10 al 2026-11-17: qué se hizo y qué sigue (para retomar tras una compactación)
+
+### Qué se hizo, en orden
+1. **SaaS fase 3** (commit `08cea53`, V24). Versión de sesión en el JWT (`sv`): cambiar la clave o desactivar al usuario corta su sesión en la siguiente petición (`SesionUsuarioService`, memoria de 15 s). Recuperación de clave con token de un solo uso (`/api/auth/recuperar` y `/restablecer`). MFA TOTP de usuarios de empresa: obligatorio para `ADMIN_SISTEMA`, voluntario para los demás (`/api/auth/mfa`, `/mfa/configurar`, `/mfa/activar`, `PATCH /api/usuarios/{id}/mfa/reiniciar`). Cabeceras seguras, Dependabot y `backend/sql/permisos.sql` (dos usuarios MySQL; **sin probar en un servidor real**).
+2. **Frontend en la rama.** Se trajo `develop` (frontend inicial de Martin, Angular 22) a `feature/modulo1`, y luego `feature/frontend-vistas` de Martin (usuarios, solicitudes, perfil, RFQ nueva, factura, planes y auditoría de la consola). Pull Requests #3, #4, #5 y #6 ya mezclados en `develop`.
+3. **App en local.** Backend con perfil `demo` (base `supply_core_demo`, puerto 8080) y frontend `npm start` (4200). Se crearon el administrador de la empresa `demo` y el dueño de la plataforma con las claves que el usuario puso en `application-local.yaml` (nunca en el repositorio). Ayudas locales sin versionar: `.claude/launch.json`, `.claude/run-backend.cmd`, `.claude/run-frontend.cmd`.
+4. **Código de ingreso libre** (commit `0b5d0f2`, PR #4). El código público de la empresa acepta espacios, mayúsculas, tildes y números (3 a 40 caracteres; sin `/ \ ? # %`); la lista de empresas de la consola muestra solo el nombre y el detalle muestra todo, incluido el administrador (nombre y correo).
+5. **Cruce de totales de la IA y Gemini** (commit `6d7481b`, PR #6). La IA copia el total impreso (`totalImpreso`) y `CruceTotal` lo compara en Java con el calculado; más de 1 % de diferencia deja la cotización en `REQUIERE_REVISION` con la alerta `TOTAL_NO_CUADRA`. `GeminiIAClient` (`app.ia.proveedor=gemini`, clave en `GEMINI_API_KEY`, modelo `gemini-2.5-flash`) lee PDF e imágenes con visión y Excel y Word convertidos a texto en Java; el Word (docx) también se acepta al subir archivos. Probado contra la API real con un PDF de ejemplo.
+6. **Herramientas.** `graphify` actualizado (5140 nodos, con `manifest.json`: la próxima vez es incremental), `codebase-memory-mcp` indexado, mockup rediseñado en el Artifact (paleta negro, blanco, gris y naranja `#D93A0B`, panel izquierdo de vidrio con forma de burbuja 3D, hover de agua en los botones principales).
+
+### Estado del repositorio
+- `develop` = `origin/develop` (`19e0d74`); `feature/modulo1` = `6d7481b`; `main` sigue en el commit inicial (nada de esto está en `main`).
+- 714 pruebas del backend en verde (1 omitida: la prueba en vivo contra Gemini, solo con `GEMINI_PRUEBA_VIVA=1`), 41 de fuga entre empresas, doclint sin advertencias; 15 pruebas del frontend.
+- Cómo correr en local: `cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=demo` (con `IA_PROVEEDOR=gemini` para leer archivos con IA) y `cd frontend && npm start`. Login de empresa en `http://localhost:4200/ingreso` con código `demo`; consola del dueño en `/plataforma/ingreso` (pide MFA).
+
+### Qué falta (en este orden)
+1. **Paso 19, cierre del backend:** prueba de punta a punta con dos empresas a la vez; revisión de seguridad; Swagger completo; correo real por SMTP (hoy `LogEmailClient`); `@Value` a `@ConfigurationProperties` y perfiles `dev` y `prod` (en `prod`, `JWT_SECRET` obligatorio); carpeta de archivos por empresa en `LocalStorageClient`; aplicar y probar `permisos.sql`; corrida de OWASP Dependency-Check (clave de la NVD); ruta de la consola para reiniciar el MFA de un administrador único; cambiar la clave local de MySQL.
+2. **IA con cotizaciones reales:** probar Gemini (y Ollama o Claude) con documentos de la ferretería, no solo con el PDF de ejemplo. Con clave del nivel gratuito Google puede usar lo enviado para mejorar sus productos: para datos reales, activar facturación. La suscripción Gemini Plus de la app no da acceso a la API.
+3. **Frontend:** mostrar en el análisis la alerta `TOTAL_NO_CUADRA` y el dato `totalImpreso` (ya vienen en `ProcesamientoResponse.alertas` y `campos`); pantalla para editar el código de ingreso de una empresa; lo demás está en `references/frontend.md` › Pendiente. Regenerar los tipos con `npm run api:tipos` después de cada cambio de DTO.
+4. **Documento de exposición:** regenerar el PDF con la numeración 0–19 y el diagrama ER partido en tres (ver el plan de mejoras, punto 7).
+5. **SaaS 4 y 5:** cobro de la suscripción en sandbox, Docker Compose, CI/CD.
+6. **Cuando el backend y el frontend estén cerrados:** mezclar `develop` en `main`.
+
+### Trampas conocidas de este entorno
+- La hora del PC debe estar sincronizada: el MFA (TOTP) tolera solo unos 30 s, y cinco fallos bloquean la cuenta 15 minutos mostrando "Credenciales inválidas" (el mensaje no distingue el bloqueo a propósito).
+- En Windows: usar `py` (no `python`); los heredocs con apóstrofes rompen el shell, mejor escribir el script a un archivo; `docs/` está bloqueado para lectura y escritura.
+- El perfil `demo` tiene el MFA de administrador apagado y toma el proveedor de IA de `IA_PROVEEDOR`; el perfil `test` apaga los jobs y la memoria de sesión.

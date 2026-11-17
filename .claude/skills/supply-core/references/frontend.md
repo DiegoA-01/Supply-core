@@ -10,6 +10,12 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 - Detalle de la orden: tesorería (ADMINISTRATIVO) registra la factura (montos tal como vienen impresos + archivo) cuando ya hubo recepción.
 - Consola: `/plataforma/planes` (crear/editar planes y sus módulos), `/plataforma/auditoria` (auditoría global paginada por empresa) y cambio de plan de una empresa en Empresas.
 
+## Lectura con IA y exportaciones (2026-11-17, fase 1 de `PLAN_FRONTEND.md`)
+- `features/cotizaciones/extraccion.*` (`<sc-extraccion>`): dentro del análisis, una tarjeta por cotización recibida como archivo (`origen = ARCHIVO`). Muestra el estado y el modelo, las alertas (`TOTAL_NO_CUADRA` con su explicación y el total impreso copiado por la IA), los datos leídos con su confianza (por defecto solo los pendientes), confirmar o corregir cada dato, "Leer de nuevo con IA" y "Digitar a mano". Mientras la IA lee consulta cada 3 segundos. Al cambiar algo avisa al análisis para que se recargue. Ven la lectura COMPRADOR, ADMIN_COMPRAS y AUDITOR; editan los dos primeros. La pantalla nunca calcula montos.
+- Exportaciones: solicitudes (Excel y envío al correo, con los filtros de la lista), existencias (envío al correo) y orden de compra (envío al correo del PDF). El correo siempre va al usuario de la sesión.
+- Factura: botón "Cruzar de nuevo con lo recibido" (ADMINISTRATIVO, factura CUADRADA o EN_REVISION).
+- Tipos regenerados contra el backend actual (`alertas` ya viene en `ProcesamientoResponse`).
+
 ## Decisiones (2026-11-05)
 - **Una sola app SaaS con tres zonas**: `/app` (empresa, `empresaGuard`), `/portal` (rol PROVEEDOR, `proveedorGuard`), `/plataforma` (dueño con MFA, `plataformaGuard`). Cada pantalla se carga perezosa.
 - **Librería**: Angular Material solo para comportamiento (menús, avisos, tooltips); el aspecto sale de tokens CSS en `styles.scss` tomados del mockup (primario `#d93a0b`). PrimeNG descartado: v22 exige licencia comercial con clave.
@@ -31,6 +37,7 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 - URL del backend en `environments`; ninguna clave (IA, Maps) en el frontend.
 
 ## Pendiente
+- Plan completo y por fases: `PLAN_FRONTEND.md` (fases 0 y 1 hechas; el kardex se exporta en la fase 3, donde se elige el producto).
 - Pantallas: auditoría de la empresa (placeholder), despachos de caja (CAJERO), movimientos de inventario (ajustes y traslados), catálogos de configuración (sedes, centros de costo, bodegas, categorías, políticas, pesos, presupuestos, contratos, delegaciones), perfil del proveedor en el portal y su registro público.
 - Datos que la API no trae y el mockup muestra: nombre del solicitante en la bandeja (solo ADMIN_SISTEMA/AUDITOR leen `/api/usuarios`), usuarios por empresa en la consola, variación frente al mes anterior.
 - Exportar a Excel los reportes (backend, parte 2). Recuperación de clave (SaaS 3).

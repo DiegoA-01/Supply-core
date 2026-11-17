@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  CentroCosto, DecisionSolicitud, Pagina, Politica, Presupuesto, Solicitud, SolicitudNueva, SolicitudResumen, Usuario,
+  CentroCosto, CorreoExportacion, DecisionSolicitud, Pagina, Politica, Presupuesto, Solicitud, SolicitudNueva, SolicitudResumen, Usuario,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
@@ -98,6 +98,18 @@ export class ComprasService {
   /** Políticas de aprobación de la empresa (quién aprueba según el monto). */
   politicas(): Observable<Politica[]> {
     return this.http.get<Politica[]>(api('/api/politicas-aprobacion'));
+  }
+
+  /** @param filtros los mismos de la lista; Excel con las solicitudes que el usuario puede ver */
+  exportarSolicitudes(filtros: { estado?: string | null; texto?: string | null }): Observable<Blob> {
+    return this.http.get(api('/api/exportaciones/solicitudes'),
+      { params: parametros({ formato: 'xlsx', estado: filtros.estado, texto: filtros.texto }), responseType: 'blob' });
+  }
+
+  /** @param filtros los mismos de la lista; envía el Excel al correo del usuario de la sesión */
+  solicitudesPorCorreo(filtros: { estado?: string | null; texto?: string | null }): Observable<CorreoExportacion> {
+    return this.http.post<CorreoExportacion>(api('/api/exportaciones/solicitudes/correo'), {},
+      { params: parametros({ formato: 'xlsx', estado: filtros.estado, texto: filtros.texto }) });
   }
 
   /** @param id usuario (solo ADMIN_SISTEMA y AUDITOR pueden leerlo) */

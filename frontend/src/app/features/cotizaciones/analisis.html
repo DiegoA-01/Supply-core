@@ -31,6 +31,13 @@
       </div>
     }
 
+    @if (leidasPorIa().length && puedeVerLectura()) {
+      <h2 class="titulo-seccion"><span class="material-symbols-outlined">document_scanner</span> Archivos leídos por IA</h2>
+      @for (c of leidasPorIa(); track c.id) {
+        <sc-extraccion [cotizacion]="c" [puedeEditar]="puedeEditarLectura()" (cambio)="cargar()" />
+      }
+    }
+
     @if (sinAnalisis()) {
       <section class="tarjeta vacio-analisis">
         <span class="material-symbols-outlined grande">auto_awesome</span>
