@@ -97,6 +97,13 @@ export class Inventario implements OnInit {
     }
   }
 
+  protected exportarPorCorreo(): void {
+    this.servicio.stockPorCorreo().subscribe({
+      next: r => this.avisos.ok(`Enviamos ${r.archivo ?? 'el Excel'} a ${r.para}.`),
+      error: e => this.avisos.error(e),
+    });
+  }
+
   protected exportar(): void {
     this.servicio.exportarStock().subscribe({ next: b => descargar(b, 'inventario-stock.xlsx'), error: e => this.avisos.error(e) });
   }

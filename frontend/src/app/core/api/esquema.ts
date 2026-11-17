@@ -3340,6 +3340,7 @@ export interface components {
             finalizadoEn?: string;
             umbralConfianza?: number;
             campos?: components["schemas"]["Campo"][];
+            alertas?: string[];
         };
         CentroCostoUpdateRequest: {
             codigo: string;
@@ -3982,8 +3983,8 @@ export interface components {
             /** Format: date */
             vigenteHasta: string;
             precios: components["schemas"]["PrecioRequest"][];
-            vigenciaEnOrden?: boolean;
             productosSinRepetir?: boolean;
+            vigenciaEnOrden?: boolean;
         };
         PrecioRequest: {
             /** Format: int64 */

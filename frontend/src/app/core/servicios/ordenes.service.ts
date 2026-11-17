@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  Factura, FacturaNueva, LineaRecepcion, Orden, OrdenResumen, Pagina, Pago, PagosOrden, Recepcion, RegistrarPago, RegistrarRecepcion,
+  CorreoExportacion, Factura, FacturaNueva, LineaRecepcion, Orden, OrdenResumen, Pagina, Pago, PagosOrden, Recepcion, RegistrarPago, RegistrarRecepcion,
   ResumenRecepcion,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
@@ -134,5 +134,19 @@ export class OrdenesService {
   /** PDF de la orden (descarga). */
   pdf(ordenId: number): Observable<Blob> {
     return this.http.get(api(`/api/exportaciones/ordenes/${ordenId}`), { params: parametros({ formato: 'pdf' }), responseType: 'blob' });
+  }
+
+  /** Envía el PDF de la orden al correo del usuario de la sesión. */
+  pdfPorCorreo(ordenId: number): Observable<CorreoExportacion> {
+    return this.http.post<CorreoExportacion>(api(`/api/exportaciones/ordenes/${ordenId}/correo`), {}, { params: parametros({ formato: 'pdf' }) });
+  }
+
+  /**
+   * Vuelve a cruzar la factura con lo recibido hoy (útil si llegó una recepción después de registrarla).
+   *
+   * @param id factura CUADRADA o EN_REVISION
+   */
+  recruzarFactura(id: number): Observable<Factura> {
+    return this.http.post<Factura>(api(`/api/facturas/${id}/recruzar`), {});
   }
 }

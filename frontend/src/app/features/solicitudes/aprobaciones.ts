@@ -7,7 +7,7 @@ import { CentroCosto, DecisionSolicitud, Politica, Presupuesto, Solicitud, Solic
 import { Estado } from '../../core/formato/etiquetas';
 import { FechaPipe, NumeroPipe, PesosPipe, horasDesde } from '../../core/formato/formato';
 import { ComprasService } from '../../core/servicios/compras.service';
-import { Avisos } from '../../core/ui/avisos';
+import { Avisos, descargar } from '../../core/ui/avisos';
 import { SesionService } from '../../core/sesion/sesion.service';
 
 type Pestana = 'pendientes' | 'APROBADA' | 'todas';
@@ -136,6 +136,26 @@ export class Aprobaciones implements OnInit {
         this.enviando.set(false);
         this.avisos.error(e);
       },
+    });
+  }
+
+  /** Estado y texto que está usando la lista, para exportar lo mismo que se ve. */
+  private filtrosActuales(): { estado: string | null; texto: string | undefined } {
+    const p = this.pestana();
+    return { estado: p === 'pendientes' ? 'PENDIENTE_APROBACION' : p === 'todas' ? null : p, texto: this.texto() };
+  }
+
+  protected exportarExcel(): void {
+    this.compras.exportarSolicitudes(this.filtrosActuales()).subscribe({
+      next: b => descargar(b, 'solicitudes.xlsx'),
+      error: e => this.avisos.error(e),
+    });
+  }
+
+  protected exportarPorCorreo(): void {
+    this.compras.solicitudesPorCorreo(this.filtrosActuales()).subscribe({
+      next: r => this.avisos.ok(`Enviamos ${r.archivo ?? 'el Excel'} a ${r.para}.`),
+      error: e => this.avisos.error(e),
     });
   }
 

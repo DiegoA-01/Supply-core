@@ -11,6 +11,7 @@
           <sc-estado [valor]="o.estado" />
           @if (factura(); as f) { <span class="chip" [class.ambar]="f.estado === 'EN_REVISION'" [class.verde]="f.estado !== 'EN_REVISION'">Factura {{ f.estado | etiqueta | lowercase }}</span> }
           <button type="button" class="boton chico" (click)="descargarPdf()"><span class="material-symbols-outlined">download</span> PDF</button>
+          <button type="button" class="boton chico" (click)="enviarPorCorreo()"><span class="material-symbols-outlined">mail</span> Enviar por correo</button>
           @if (sesion.tieneModulo('RECEPCION') && (o.estado === 'DESPACHADA' || o.estado === 'RECIBIDA_PARCIAL')) {
             <a class="boton chico" [routerLink]="['/app/recepcion', o.id]">Ver recepción</a>
           }
@@ -32,6 +33,12 @@
               <div class="via destacada"><span class="texto-chico texto-2">3 · Factura {{ f.numero }}</span><strong>{{ f.total | pesos }}</strong><span class="texto-chico texto-2">Lo que cobra el proveedor</span></div>
             </div>
 
+            @if (puedeRecruzar() && (f.estado === 'CUADRADA' || f.estado === 'EN_REVISION')) {
+              <div class="fila margen-arriba">
+                <button type="button" class="boton chico" [disabled]="trabajando()" (click)="recruzar()">
+                  <span class="material-symbols-outlined">sync</span> Cruzar de nuevo con lo recibido</button>
+              </div>
+            }
             @if (enRevision()) {
               <div class="aviso ambar">
                 <span class="material-symbols-outlined">warning</span>
