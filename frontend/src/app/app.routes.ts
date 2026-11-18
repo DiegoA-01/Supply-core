@@ -10,6 +10,12 @@ import { empresaGuard, invitadoGuard, permisoGuard, plataformaGuard, proveedorGu
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'ingreso' },
   {
+    path: 'registro/:empresa',
+    canActivate: [invitadoGuard],
+    title: 'Registro de proveedor · Supply-Core',
+    loadComponent: () => import('./features/portal/registro-proveedor').then(m => m.RegistroProveedor),
+  },
+  {
     path: 'ingreso',
     canActivate: [invitadoGuard],
     title: 'Ingresar · Supply-Core',
@@ -243,6 +249,7 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'cotizaciones' },
       { path: 'cotizaciones', title: 'Cotizaciones · Portal', loadComponent: () => import('./features/portal/portal-rfqs').then(m => m.PortalRfqs) },
       { path: 'cotizaciones/:rfqId', title: 'Cotizar · Portal', loadComponent: () => import('./features/portal/portal-cotizar').then(m => m.PortalCotizar) },
+      { path: 'perfil', title: 'Mi perfil · Portal', loadComponent: () => import('./features/portal/portal-perfil').then(m => m.PortalPerfil) },
       { path: 'ordenes', title: 'Órdenes · Portal', loadComponent: () => import('./features/portal/portal-ordenes').then(m => m.PortalOrdenes) },
     ],
   },

@@ -197,6 +197,18 @@ class ProveedorControllerTest extends WebTestBase {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void elProveedorListaLasCategoriasParaEditarSuPerfilYSoloEl() throws Exception {
+        when(proveedorService.categoriasDisponibles()).thenReturn(List.of(new CategoriaResponse(1L, "Tecnología", true)));
+
+        mvc.perform(get("/api/portal/proveedor/categorias").header(HttpHeaders.AUTHORIZATION, bearerProveedor(40L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].nombre").value("Tecnología"));
+        mvc.perform(get("/api/portal/proveedor/categorias").header(HttpHeaders.AUTHORIZATION, bearer("ADMIN_COMPRAS")))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/portal/proveedor/categorias")).andExpect(status().isUnauthorized());
+    }
+
     // ------------------------------------------------------------- paso 9: perfil y evaluaciones
 
     @Test

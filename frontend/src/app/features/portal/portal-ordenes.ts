@@ -2,8 +2,8 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { catchError, forkJoin, of } from 'rxjs';
 
-import { Factura, Orden, OrdenResumen, PagosOrden } from '../../core/api/modelos';
-import { Estado } from '../../core/formato/etiquetas';
+import { Factura, Orden, OrdenResumen, PagosOrden, ResumenRecepcion } from '../../core/api/modelos';
+import { Estado, EtiquetaPipe } from '../../core/formato/etiquetas';
 import { FechaPipe, NumeroPipe, PesosPipe } from '../../core/formato/formato';
 import { PortalService } from '../../core/servicios/portal.service';
 import { Avisos } from '../../core/ui/avisos';
@@ -11,7 +11,7 @@ import { Avisos } from '../../core/ui/avisos';
 /** Portal · órdenes del proveedor (UC-12): aceptar, preparar y despachar; y lo que le han pagado. */
 @Component({
   selector: 'sc-portal-ordenes',
-  imports: [FormsModule, Estado, PesosPipe, NumeroPipe, FechaPipe],
+  imports: [FormsModule, Estado, EtiquetaPipe, PesosPipe, NumeroPipe, FechaPipe],
   template: `
     <div class="pagina">
       <div class="encabezado"><div><h1>Órdenes y pagos</h1><p>Confirma, prepara y despacha tus órdenes. Los pagos los registra el cliente.</p></div></div>
@@ -54,6 +54,31 @@ import { Avisos } from '../../core/ui/avisos';
               }
             </div>
 
+            @if (entregas(); as r) {
+              @if (r.recepciones?.length) {
+                <h3>Lo que el cliente ya recibió</h3>
+                <div class="tabla-contenedor">
+                  <table class="tabla">
+                    <thead><tr><th>Producto</th><th class="num">Pedido</th><th class="num">Aceptado</th><th class="num">Rechazado</th><th class="num">Falta</th></tr></thead>
+                    <tbody>
+                      @for (a of r.lineas ?? []; track a.ordenLineaId) {
+                        <tr><td>{{ a.productoNombre }}</td><td class="num">{{ a.pedido | numero }}</td><td class="num">{{ a.aceptado | numero }}</td>
+                          <td class="num">{{ a.rechazado | numero }}</td><td class="num">{{ a.faltante | numero }}</td></tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+                @for (rec of r.recepciones; track rec.id) {
+                  @for (l of rec.lineas ?? []; track l.id) {
+                    @if ((l.cantidadRechazada ?? 0) > 0) {
+                      <p class="texto-chico rechazo">{{ rec.recibidoEn | fecha }} · se rechazaron {{ l.cantidadRechazada | numero }} de {{ l.productoNombre }}
+                        ({{ l.motivoRechazo | etiqueta }}){{ l.observacionCalidad ? ': ' + l.observacionCalidad : '' }}</p>
+                    }
+                  }
+                }
+              }
+            }
+
             @switch (o.estado) {
               @case ('EMITIDA') {
                 <div class="campo margen"><label for="obs">Motivo (solo si la rechazas)</label>
@@ -80,6 +105,8 @@ import { Avisos } from '../../core/ui/avisos';
   styles: `
     .linea { padding: 8px 0; border-bottom: 1px solid #f3f3f3; font-size: 14px; }
     .margen { margin-top: 14px; }
+    h3 { margin: 16px 0 6px; }
+    .rechazo { margin: 4px 0; color: var(--sc-rojo); }
     h2 { margin: 0; }
   `,
 })
@@ -91,6 +118,7 @@ export class PortalOrdenes implements OnInit {
   protected readonly orden = signal<Orden | null>(null);
   protected readonly pagos = signal<PagosOrden | null>(null);
   protected readonly facturas = signal<Factura[]>([]);
+  protected readonly entregas = signal<ResumenRecepcion | null>(null);
   protected readonly observacion = signal('');
   protected readonly trabajando = signal(false);
 
@@ -105,11 +133,13 @@ export class PortalOrdenes implements OnInit {
       orden: this.portal.orden(o.id!),
       pagos: this.portal.pagos(o.id!).pipe(catchError(() => of(null))),
       facturas: this.portal.facturas(o.id!).pipe(catchError(() => of([] as Factura[]))),
+      entregas: this.portal.recepciones(o.id!).pipe(catchError(() => of(null))),
     }).subscribe({
       next: r => {
         this.orden.set(r.orden);
         this.pagos.set(r.pagos);
         this.facturas.set(r.facturas);
+        this.entregas.set(r.entregas);
       },
       error: e => this.avisos.error(e),
     });

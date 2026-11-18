@@ -898,6 +898,14 @@ class AislamientoEmpresasTest {
     }
 
     @Test
+    void lasCategoriasQueVeUnProveedorSonSoloLasDeSuEmpresa() throws Exception {
+        mvc.perform(get("/api/portal/proveedor/categorias").header(HttpHeaders.AUTHORIZATION, tokenProveedor(empresaA, usuarioA, proveedorA)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == " + categoriaB + ")]").isEmpty())
+                .andExpect(jsonPath("$[?(@.id == " + categoriaA + ")]").isNotEmpty());
+    }
+
+    @Test
     void elEstadoDeCuentaDeUnProveedorDeOtraEmpresaEsNoEncontrado() throws Exception {
         mvc.perform(get("/api/reportes/proveedores/" + proveedorB + "/estado-cuenta")
                         .header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "AUDITOR")))
