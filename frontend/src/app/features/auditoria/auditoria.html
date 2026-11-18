@@ -1,0 +1,90 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Auditoría</p>
+    <div class="encabezado"><div><h1>Auditoría</h1>
+      <p>Quién hizo qué, cuándo y desde dónde. Incluye los intentos fallidos. No se puede editar ni borrar.</p></div></div>
+  </div>
+
+  <section class="tarjeta">
+    <div class="rapidos" role="group" aria-label="Período rápido">
+      <button type="button" class="pastilla" (click)="rapido(0)">Hoy</button>
+      <button type="button" class="pastilla" (click)="rapido(6)">Últimos 7 días</button>
+      <button type="button" class="pastilla" (click)="rapido(29)">Últimos 30 días</button>
+    </div>
+    <div class="filtros">
+      <div class="campo"><label for="au">Usuario</label>
+        <select id="au" class="entrada" [ngModel]="usuarioId()" (ngModelChange)="usuarioId.set($event)">
+          <option [ngValue]="null">Todos</option>
+          @for (u of lista(); track u.id) { <option [ngValue]="u.id">{{ u.nombreCompleto }}</option> }
+        </select></div>
+      <div class="campo"><label for="aa">Qué se hizo</label>
+        <select id="aa" class="entrada" [ngModel]="accion()" (ngModelChange)="accion.set($event)">
+          <option [ngValue]="null">Cualquier acción</option>
+          @for (c of listaAcciones; track c) { <option [value]="c">{{ textoDe(c) }}</option> }
+        </select></div>
+      <div class="campo"><label for="ae">Sobre qué</label>
+        <select id="ae" class="entrada" [ngModel]="entidad()" (ngModelChange)="entidad.set($event)">
+          <option [ngValue]="null">Cualquier cosa</option>
+          @for (c of listaEntidades; track c) { <option [value]="c">{{ entidades[c] }}</option> }
+        </select></div>
+      <div class="campo"><label for="ai">Número del registro</label>
+        <input id="ai" type="number" min="1" class="entrada num" placeholder="Ej. 118" [ngModel]="entidadId()" (ngModelChange)="entidadId.set($event)"></div>
+      <div class="campo"><label for="ar">Resultado</label>
+        <select id="ar" class="entrada" [ngModel]="resultado()" (ngModelChange)="resultado.set($event)">
+          <option [ngValue]="null">Todos</option><option value="EXITO">Exitoso</option><option value="FALLO">Fallido</option>
+        </select></div>
+      <div class="campo"><label for="ad">Desde</label><input id="ad" type="date" class="entrada" [ngModel]="desde()" (ngModelChange)="desde.set($event)"></div>
+      <div class="campo"><label for="ah">Hasta</label><input id="ah" type="date" class="entrada" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)"></div>
+    </div>
+    <div class="fila">
+      <button type="button" class="boton primario" (click)="buscar(0)">Buscar</button>
+      @if (hayFiltros()) { <button type="button" class="boton" (click)="limpiar()">Limpiar</button> }
+    </div>
+  </section>
+
+  <section class="tarjeta sin-relleno">
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead><tr><th>Fecha</th><th>Usuario</th><th>Qué hizo</th><th class="oculto-movil">Sobre</th><th>Resultado</th><th class="oculto-movil">Dirección IP</th><th></th></tr></thead>
+        <tbody>
+          @for (a of pagina()?.contenido ?? []; track a.id) {
+            <tr class="seleccionable" [class.seleccionada]="abierto() === a.id" [class.fallo]="a.resultado === 'FALLO'" (click)="alternar(a.id)">
+              <td class="nowrap">{{ a.creadoEn | fecha: 'hora' }}</td>
+              <td><strong>{{ a.usuarioNombre ?? 'Sin usuario' }}</strong>@if (a.usuarioCorreo) { <div class="texto-chico texto-2">{{ a.usuarioCorreo }}</div> }</td>
+              <td>{{ textoAccion(a) }}</td>
+              <td class="oculto-movil">{{ textoEntidad(a) }}@if (a.entidadId) { · <span class="texto-2">#{{ a.entidadId }}</span> }</td>
+              <td><span class="chip" [class.verde]="a.resultado === 'EXITO'" [class.rojo]="a.resultado === 'FALLO'">{{ a.resultado === 'EXITO' ? 'Exitoso' : 'Fallido' }}</span></td>
+              <td class="oculto-movil nowrap texto-2">{{ a.ip ?? '—' }}</td>
+              <td class="num"><span class="material-symbols-outlined flecha">{{ abierto() === a.id ? 'expand_less' : 'expand_more' }}</span></td>
+            </tr>
+            @if (abierto() === a.id) {
+              <tr class="detalle">
+                <td colspan="7">
+                  <div class="pares">
+                    <div class="par"><span>Código de la acción</span><span><code>{{ a.accion }}</code></span></div>
+                    <div class="par"><span>Registro afectado</span><span>{{ textoEntidad(a) }}@if (a.entidadId) { #{{ a.entidadId }} }
+                      @if (enlace(a); as e) { · <a [routerLink]="e">Abrir</a> }</span></div>
+                    <div class="par"><span>Dirección IP</span><span>{{ a.ip ?? '—' }}</span></div>
+                    <div class="par"><span>Detalle</span><span class="detalle-texto">{{ a.detalle || 'Sin detalle' }}</span></div>
+                  </div>
+                </td>
+              </tr>
+            }
+          } @empty {
+            <tr><td colspan="7" class="vacio">{{ pagina() ? 'No hay registros con ese filtro.' : 'Cargando…' }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  @if (pagina(); as p) {
+    @if ((p.totalPaginas ?? 0) > 1) {
+      <div class="fila paginacion">
+        <button type="button" class="boton chico" [disabled]="numeroPagina() === 0" (click)="buscar(numeroPagina() - 1)">Anterior</button>
+        <span class="texto-chico texto-2">Página {{ numeroPagina() + 1 }} de {{ p.totalPaginas }} · {{ p.totalElementos }} registros</span>
+        <button type="button" class="boton chico" [disabled]="numeroPagina() + 1 >= (p.totalPaginas ?? 0)" (click)="buscar(numeroPagina() + 1)">Siguiente</button>
+      </div>
+    }
+  }
+</div>
