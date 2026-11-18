@@ -18,10 +18,12 @@ import com.proyecto.supply_core.empresa.entity.Empresa;
  * @param toleranciaFacturaMonto tolerancia del cruce de la factura en monto fijo
  * @param slaAprobacionHoras horas para decidir una solicitud pendiente antes de escalarla (0 = sin SLA)
  * @param creadoEn           fecha de creación
+ * @param codigoPublico      código con el que entran los usuarios y los proveedores de la empresa
  */
 public record EmpresaResponse(Long id, String razonSocial, String nit, String direccionPrincipal,
         String monedaBase, BigDecimal topeAnticipoPct, BigDecimal toleranciaFacturaPct,
-        BigDecimal toleranciaFacturaMonto, int slaAprobacionHoras, LocalDateTime creadoEn) {
+        BigDecimal toleranciaFacturaMonto, int slaAprobacionHoras, LocalDateTime creadoEn,
+        String codigoPublico) {
 
     /**
      * Convierte la entidad en DTO.
@@ -32,6 +34,6 @@ public record EmpresaResponse(Long id, String razonSocial, String nit, String di
     public static EmpresaResponse of(Empresa e) {
         return new EmpresaResponse(e.getId(), e.getRazonSocial(), e.getNit(), e.getDireccionPrincipal(),
                 e.getMonedaBase(), e.getTopeAnticipoPct(), e.getToleranciaFacturaPct(), e.getToleranciaFacturaMonto(),
-                e.getSlaAprobacionHoras(), e.getCreadoEn());
+                e.getSlaAprobacionHoras(), e.getCreadoEn(), e.getCodigoPublico());
     }
 }

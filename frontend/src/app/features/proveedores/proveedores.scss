@@ -8,3 +8,21 @@
 .peligro-fondo { background: #fff3f0; }
 .paginacion { justify-content: center; margin-top: 10px; }
 .sub { display: block; font-size: 12px; color: var(--sc-texto-2); }
+
+:host { display: block; container-type: inline-size; }
+
+// Lista y ficha lado a lado; si el espacio no alcanza (zoom alto o ventana angosta) la ficha pasa debajo
+.vista { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr); gap: 16px; align-items: start; }
+@container (max-width: 860px) { .vista { grid-template-columns: minmax(0, 1fr); } }
+
+.contacto { overflow-wrap: anywhere; }
+.estado-celda { white-space: nowrap; }
+.estado-celda .sub { margin-top: 4px; }
+.titulo h2 { overflow-wrap: anywhere; min-width: 0; }
+.pares .par { flex-wrap: wrap; }
+.pares .par span:last-child { min-width: 0; overflow-wrap: anywhere; }
+
+.acceso { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; margin: 12px 0; border-radius: 12px; background: var(--sc-primario-suave);
+  p { margin: 0; } }
+.acceso-fila { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; font-size: 14px; }
+.acceso-valor { display: inline-flex; align-items: center; gap: 8px; min-width: 0; font-weight: 600; code { overflow-wrap: anywhere; } }

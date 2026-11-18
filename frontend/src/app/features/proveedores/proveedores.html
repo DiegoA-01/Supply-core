@@ -11,22 +11,20 @@
     </div>
   </div>
 
-  <div class="rejilla principal">
+  <div class="vista">
     <section class="tarjeta sin-relleno">
       <div class="tabla-contenedor">
         <table class="tabla">
-          <thead><tr><th>Proveedor</th><th class="oculto-movil">Contacto</th><th>Estado</th><th class="num">Score</th><th class="oculto-movil">Registro</th></tr></thead>
+          <thead><tr><th>Proveedor</th><th>Contacto</th><th>Estado</th></tr></thead>
           <tbody>
             @for (p of lista() ?? []; track p.id) {
               <tr class="seleccionable" [class.seleccionada]="detalle()?.id === p.id" (click)="abrir(p)">
                 <td><strong>{{ p.razonSocial }}</strong><span class="sub">NIT {{ p.nit }}</span></td>
-                <td class="oculto-movil">{{ p.correoContacto }}<span class="sub">{{ p.telefono }}</span></td>
-                <td><sc-estado [valor]="p.estado" /></td>
-                <td class="num">{{ p.scoreActual | puntaje }}</td>
-                <td class="oculto-movil">{{ p.creadoEn | fecha }}</td>
+                <td class="contacto">{{ p.correoContacto }}<span class="sub">{{ p.telefono }}</span></td>
+                <td class="estado-celda"><sc-estado [valor]="p.estado" /><span class="sub">Score {{ p.scoreActual | puntaje }}</span></td>
               </tr>
             } @empty {
-              <tr><td colspan="5" class="vacio">{{ lista() ? 'No hay proveedores con este filtro.' : 'Cargando…' }}</td></tr>
+              <tr><td colspan="3" class="vacio">{{ lista() ? 'No hay proveedores con este filtro.' : 'Cargando…' }}</td></tr>
             }
           </tbody>
         </table>
@@ -54,6 +52,14 @@
             </div>
           </form>
         } @else {
+          <div class="acceso">
+            <strong>Cómo entra al portal</strong>
+            <div class="acceso-fila"><span>Código de empresa</span>
+              <span class="acceso-valor"><code>{{ codigoEmpresa() ?? '—' }}</code>
+                @if (codigoEmpresa()) { <button type="button" class="boton chico" (click)="copiar(codigoEmpresa()!)">Copiar</button> }</span></div>
+            <div class="acceso-fila"><span>Usuario</span><span class="acceso-valor"><code>{{ d.correoContacto ?? '—' }}</code></span></div>
+            <p class="texto-chico texto-2">Entra en la pantalla de ingreso con este código, su correo y la clave que eligió al registrarse.</p>
+          </div>
           <div class="pares">
             <div class="par"><span>NIT</span><span>{{ d.nit }}</span></div>
             <div class="par"><span>Correo</span><span>{{ d.correoContacto ?? '—' }}</span></div>

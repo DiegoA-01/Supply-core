@@ -3285,6 +3285,7 @@ export interface components {
             slaAprobacionHoras?: number;
             /** Format: date-time */
             creadoEn?: string;
+            codigoPublico?: string;
         };
         DespachoRequest: {
             /** Format: int64 */

@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 
@@ -10,7 +10,7 @@ import { SesionService } from '../../core/sesion/sesion.service';
 /** Vista 1 · Ingreso por empresa (UC-01). Internos y proveedores entran por aquí; el rol decide a dónde van. */
 @Component({
   selector: 'sc-ingreso',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [FormsModule, ReactiveFormsModule, RouterLink],
   templateUrl: './ingreso.html',
   styleUrl: './ingreso.scss',
 })
