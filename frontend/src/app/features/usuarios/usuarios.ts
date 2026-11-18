@@ -167,6 +167,20 @@ export class Usuarios implements OnInit {
     });
   }
 
+  /** @param u usuario con MFA activo; el administrador reinicia su segundo factor (cierra sus sesiones) */
+  protected reiniciarMfa(u: Usuario): void {
+    if (!u.id || !window.confirm(`¿Reiniciar el segundo factor de ${u.nombreCompleto}? Tendrá que vincular su app de nuevo al ingresar y se cierran sus sesiones.`)) {
+      return;
+    }
+    this.servicio.reiniciarMfa(u.id).subscribe({
+      next: () => {
+        this.avisos.ok(`Segundo factor de ${u.nombreCompleto} reiniciado.`);
+        this.cargar();
+      },
+      error: e => this.avisos.error(e),
+    });
+  }
+
   /** @param u usuario; activa o desactiva su acceso (su historial se conserva) */
   protected cambiarEstado(u: Usuario): void {
     if (!u.id) {

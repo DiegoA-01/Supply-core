@@ -16,6 +16,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/ingreso/ingreso').then(m => m.Ingreso),
   },
   {
+    path: 'recuperar',
+    canActivate: [invitadoGuard],
+    title: 'Recuperar contraseña · Supply-Core',
+    loadComponent: () => import('./features/ingreso/recuperar').then(m => m.Recuperar),
+  },
+  {
     path: 'app',
     canActivate: [empresaGuard],
     loadComponent: () => import('./layout/shell/shell').then(m => m.Shell),
@@ -119,6 +125,13 @@ export const routes: Routes = [
         canActivate: [permisoGuard],
         data: { roles: ['AUDITOR', 'ADMIN_SISTEMA'], modulo: 'AUDITORIA', titulo: 'Auditoría' },
         loadComponent: () => import('./features/pendiente/pendiente').then(m => m.Pendiente),
+      },
+      {
+        path: 'configuracion/notificaciones',
+        title: 'Avisos y correos · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['ADMIN_SISTEMA'] },
+        loadComponent: () => import('./features/configuracion/notificaciones-config').then(m => m.NotificacionesConfig),
       },
       {
         path: 'usuarios',

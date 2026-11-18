@@ -48,7 +48,7 @@ class UsuarioControllerTest extends WebTestBase {
     private UsuarioService usuarioService;
 
     private final UsuarioResponse ana = new UsuarioResponse(5L, "Ana", "ana@x.com", true, Set.of("COMPRADOR"),
-            null, null, null, null);
+            null, null, null, null, false);
 
     @BeforeEach
     void rolesExistentes() {

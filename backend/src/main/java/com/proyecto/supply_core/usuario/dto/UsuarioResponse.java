@@ -17,6 +17,7 @@ import com.proyecto.supply_core.usuario.entity.Usuario;
  * @param proveedorId    proveedor o {@code null}
  * @param ultimoAcceso   último login exitoso
  * @param creadoEn       fecha de creación
+ * @param mfaActivo      si ya vinculó su app de autenticación (el login le pide el código)
  */
 public record UsuarioResponse(
         Long id,
@@ -27,7 +28,8 @@ public record UsuarioResponse(
         Long centroCostoId,
         Long proveedorId,
         LocalDateTime ultimoAcceso,
-        LocalDateTime creadoEn) {
+        LocalDateTime creadoEn,
+        boolean mfaActivo) {
 
     /**
      * Convierte la entidad en DTO.
@@ -38,6 +40,6 @@ public record UsuarioResponse(
     public static UsuarioResponse of(Usuario u) {
         return new UsuarioResponse(u.getId(), u.getNombreCompleto(), u.getCorreo(), u.isActivo(),
                 u.codigosRoles(), u.getCentroCostoId(), u.getProveedorId(), u.getUltimoAcceso(),
-                u.getCreadoEn());
+                u.getCreadoEn(), u.isMfaActivo());
     }
 }

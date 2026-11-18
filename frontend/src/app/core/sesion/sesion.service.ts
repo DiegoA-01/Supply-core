@@ -3,7 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, catchError, finalize, firstValueFrom, forkJoin, of, shareReplay, tap, throwError } from 'rxjs';
 
-import { Empresa, LoginResponse, ModulosEmpresa, UsuarioSesion } from '../api/modelos';
+import { ConfiguracionMfa, Empresa, LoginResponse, MensajeApi, ModulosEmpresa, UsuarioSesion } from '../api/modelos';
 import { api } from '../http/api';
 
 const CLAVE_REFRESH = 'sc.refresh';
@@ -41,7 +41,8 @@ export class SesionService {
   }
 
   /**
-   * Inicia sesión con el código de la empresa.
+   * Inicia sesión con el código de la empresa. Si el usuario tiene MFA (o es administrador y debe configurarlo), la
+   * respuesta trae {@code desafioMfa} y todavía no hay sesión: falta {@link #confirmarMfa}.
    *
    * @param empresa  código público de la empresa
    * @param correo   correo del usuario
@@ -50,9 +51,52 @@ export class SesionService {
   ingresar(empresa: string, correo: string, password: string): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(api('/api/auth/login'), { empresa: empresa.trim(), correo: correo.trim(), password })
       .pipe(tap(r => {
-        this.guardar(r);
+        if (r.token) {
+          this.guardar(r);
+        }
         this.escribir(localStorage, CLAVE_EMPRESA, empresa.trim());
       }));
+  }
+
+  /**
+   * Segundo paso del ingreso: el código de 6 dígitos de la app autenticadora.
+   *
+   * @param desafio desafío recibido en {@link #ingresar}
+   * @param codigo  código de 6 dígitos
+   */
+  confirmarMfa(desafio: string, codigo: string): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(api('/api/auth/mfa'), { desafio, codigo: codigo.trim() }).pipe(tap(r => this.guardar(r)));
+  }
+
+  /** Pide el secreto para vincular la app autenticadora del usuario de la sesión (MFA voluntario). */
+  configurarMfa(): Observable<ConfiguracionMfa> {
+    return this.http.post<ConfiguracionMfa>(api('/api/auth/mfa/configurar'), {});
+  }
+
+  /** @param codigo código de 6 dígitos con el que se confirma que la app quedó vinculada */
+  activarMfa(codigo: string): Observable<void> {
+    return this.http.post<void>(api('/api/auth/mfa/activar'), { codigo: codigo.trim() });
+  }
+
+  /**
+   * Pide el código de recuperación por correo. El aviso es el mismo exista o no la cuenta.
+   *
+   * @param empresa código de la empresa
+   * @param correo  correo de la cuenta
+   */
+  recuperar(empresa: string, correo: string): Observable<MensajeApi> {
+    return this.http.post<MensajeApi>(api('/api/auth/recuperar'), { empresa: empresa.trim(), correo: correo.trim() });
+  }
+
+  /**
+   * Cambia la contraseña con el código recibido por correo (sirve una sola vez y cierra las sesiones abiertas).
+   *
+   * @param empresa       código de la empresa
+   * @param token         código recibido por correo
+   * @param passwordNueva contraseña nueva
+   */
+  restablecer(empresa: string, token: string, passwordNueva: string): Observable<MensajeApi> {
+    return this.http.post<MensajeApi>(api('/api/auth/restablecer'), { empresa: empresa.trim(), token: token.trim(), passwordNueva });
   }
 
   /** Último código de empresa usado en este navegador, para no escribirlo cada vez. */

@@ -29,6 +29,8 @@
 .formulario-ingreso .formulario { margin-top: 24px; max-width: 440px; }
 .formulario-ingreso > p, .formulario-ingreso h2 { max-width: 440px; }
 .sin-margen { margin: 0; }
+.clave-mfa { display: block; margin: 6px 0; font-size: 15px; word-break: break-all; }
+.codigo { font-size: 22px; letter-spacing: .3em; text-align: center; }
 .centrado { text-align: center; }
 .enlace { justify-self: start; padding: 0; border: 0; background: none; color: var(--sc-primario); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
 

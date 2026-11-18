@@ -2849,6 +2849,7 @@ export interface components {
             ultimoAcceso?: string;
             /** Format: date-time */
             creadoEn?: string;
+            mfaActivo?: boolean;
         };
         RestablecerPasswordRequest: {
             passwordNueva: string;

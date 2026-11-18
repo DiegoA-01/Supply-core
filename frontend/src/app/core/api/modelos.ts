@@ -57,6 +57,9 @@ export type CampoLeido = S['Campo'];
 export type LineaDigitada = S['LineaCotizacionRequest'];
 export type LineaCotizacion = S['CotizacionLinea'];
 export type CorreoExportacion = S['CorreoExportacionResponse'];
+export type ConfiguracionMfa = S['ConfiguracionMfaResponse'];
+export type MensajeApi = S['MensajeResponse'];
+export type ConfigNotificacion = S['ConfigNotificacionResponse'];
 
 // Órdenes, facturas, pagos y recepción
 export type OrdenResumen = S['OrdenResumenResponse'];

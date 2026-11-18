@@ -26,7 +26,7 @@ Rutas sin uso: `/api/cotizaciones/{id}/extraccion`, `.../extraccion/campos/{camp
 4. Exportaciones sin uso: kardex (descarga y correo), solicitudes (descarga y correo), stock por correo, orden por correo. Botón en cada pantalla de origen.
 5. Factura: botón "recruzar" (`/api/facturas/{id}/recruzar`) y ver el resultado del cruce de tres vías.
 
-## Fase 2. Cuenta y seguridad (SaaS 3 en la interfaz)
+## Fase 2. Cuenta y seguridad (SaaS 3 en la interfaz) — hecha el 2026-11-18, salvo el punto 7 (editar el código de ingreso): el backend no tiene esa ruta, hay que crearla primero (PATCH de plataforma con validación, duplicado, auditoría y aviso de que los usuarios deberán usar el código nuevo)
 Rutas sin uso: `/api/auth/recuperar`, `/restablecer`, `/mfa`, `/mfa/configurar`, `/mfa/activar`, `/me`, `PATCH /api/usuarios/{id}/mfa/reiniciar`.
 1. "Olvidé mi contraseña": pedir el correo, mensaje igual exista o no la cuenta, pantalla de restablecer con el token de la dirección.
 2. Segundo paso del ingreso de empresa cuando el usuario tiene MFA (desafío y código).

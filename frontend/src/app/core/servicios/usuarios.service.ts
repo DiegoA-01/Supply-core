@@ -37,6 +37,11 @@ export class UsuariosService {
     return this.http.patch<Usuario>(api(`/api/usuarios/${id}/${activo ? 'activar' : 'desactivar'}`), {});
   }
 
+  /** @param id usuario; el administrador borra su vínculo con la app autenticadora (la vuelve a configurar al ingresar) */
+  reiniciarMfa(id: number): Observable<void> {
+    return this.http.patch<void>(api(`/api/usuarios/${id}/mfa/reiniciar`), {});
+  }
+
   /** @param id usuario; @param passwordNueva contraseña que el administrador le entrega */
   restablecerPassword(id: number, passwordNueva: string): Observable<void> {
     return this.http.put<void>(api(`/api/usuarios/${id}/password`), { passwordNueva });
