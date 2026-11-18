@@ -100,9 +100,10 @@ def main():
 
     # 4. Usuarios por rol
     cuentas = [
-        ('Jefe de compras', 'jefe.compras@ferreteriademo.local', ['ADMIN_COMPRAS']),
+        # Flujo de la ferretería: el bodeguero pide lo que falta, el jefe de compras lo aprueba y lanza la RFQ
+        ('Jefe de compras', 'jefe.compras@ferreteriademo.local', ['ADMIN_COMPRAS', 'COMPRADOR']),
         ('Jefe de bodega', 'jefe.bodega@ferreteriademo.local', ['ALMACENISTA', 'AUDITOR']),
-        ('Bodeguero', 'bodeguero@ferreteriademo.local', ['ALMACENISTA']),
+        ('Bodeguero', 'bodeguero@ferreteriademo.local', ['ALMACENISTA', 'SOLICITANTE']),
         ('Solicitante', 'solicitante@ferreteriademo.local', ['SOLICITANTE']),
         ('Aprobador', 'aprobador@ferreteriademo.local', ['APROBADOR']),
         ('Comprador', 'comprador@ferreteriademo.local', ['COMPRADOR']),
@@ -147,10 +148,11 @@ def main():
             exigir('salida de ' + codigo, llamar('POST', '/api/inventario/movimientos', {
                 'productoId': p['id'], 'tipo': 'SALIDA_CONSUMO', 'bodegaOrigenId': bodega['id'], 'cantidad': sale}, tok_bodega))
 
-    # 6. Políticas de aprobación (quién aprueba cada solicitud y cada adjudicación)
-    for tipo in ('SOLICITUD', 'ADJUDICACION'):
+    # 6. Políticas de aprobación: las solicitudes las aprueba el jefe de compras; las adjudicaciones, el aprobador
+    #    (nadie aprueba lo suyo: el backend lo impide por segregación de funciones)
+    for tipo, rol in (('SOLICITUD', 'ADMIN_COMPRAS'), ('ADJUDICACION', 'APROBADOR')):
         exigir('política ' + tipo, llamar('POST', '/api/politicas-aprobacion', {
-            'tipo': tipo, 'rolAprobador': 'APROBADOR', 'montoDesde': 0}, tok_compras))
+            'tipo': tipo, 'rolAprobador': rol, 'montoDesde': 0}, tok_compras))
 
     # 7. Un proveedor: se autorregistra y el jefe de compras lo habilita
     prov_correo, prov_clave = 'proveedor@electrosur.local', clave()
