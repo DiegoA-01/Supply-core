@@ -1,6 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 
 import { Categoria, Evaluacion, Pagina, Proveedor } from '../../core/api/modelos';
 import { Estado } from '../../core/formato/etiquetas';
@@ -28,6 +28,7 @@ export class Proveedores implements OnInit {
   private readonly inventario = inject(InventarioService);
   private readonly avisos = inject(Avisos);
   private readonly sesion = inject(SesionService);
+  private readonly ruta = inject(ActivatedRoute, { optional: true });
 
   protected readonly estados = [
     { valor: null, texto: 'Todos' },
@@ -61,6 +62,11 @@ export class Proveedores implements OnInit {
 
   ngOnInit(): void {
     this.inventario.categorias().subscribe({ next: l => this.categorias.set(l), error: () => undefined });
+    // Llegar desde un aviso (?estado=PENDIENTE) abre la lista ya filtrada
+    const pedido = this.ruta?.snapshot.queryParamMap.get('estado');
+    if (pedido && this.estados.some(e => e.valor === pedido)) {
+      this.estado.set(pedido);
+    }
     this.cargar();
   }
 

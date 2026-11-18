@@ -40,10 +40,6 @@
     </nav>
 
     <div class="pie">
-      <a class="opcion" routerLink="/plataforma/ingreso">
-        <span class="material-symbols-outlined">shield_person</span>
-        <span class="texto">Ver como dueño</span>
-      </a>
       <button type="button" class="opcion salir" (click)="sesion.salir()">
         <span class="material-symbols-outlined">logout</span>
         <span class="texto">Cerrar sesión</span>
@@ -64,10 +60,10 @@
                placeholder="Buscar solicitudes, órdenes, RFQ…" aria-label="Buscar por consecutivo">
       </form>
 
-      <button type="button" class="icono-boton campana" [matMenuTriggerFor]="menuNotificaciones" (menuOpened)="abrirNotificaciones()"
-              [attr.aria-label]="'Notificaciones: ' + notificaciones.noLeidas() + ' sin leer'">
+      <button type="button" class="icono-boton campana" #campana="matMenuTrigger" [matMenuTriggerFor]="menuNotificaciones" (menuOpened)="abrirNotificaciones()"
+              [attr.aria-label]="'Notificaciones: ' + totalAvisos() + ' por atender'">
         <span class="material-symbols-outlined">notifications</span>
-        @if (notificaciones.noLeidas() > 0) { <span class="punto"></span> }
+        @if (totalAvisos() > 0) { <span class="insignia">{{ totalAvisos() > 9 ? '9+' : totalAvisos() }}</span> }
       </button>
 
       <button type="button" class="usuario" [matMenuTriggerFor]="menuUsuario" aria-label="Menú de tu cuenta">
@@ -94,6 +90,30 @@
 </div>
 
 <mat-menu #menuNotificaciones="matMenu" xPosition="before" class="menu-notificaciones">
+  @if (pendientes().length) {
+    <div class="decidir" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
+      <strong class="decidir-titulo">Por decidir</strong>
+      @for (p of pendientes(); track p.id) {
+        <div class="decision">
+          <a class="decision-enlace" routerLink="/app/proveedores" [queryParams]="{ estado: 'PENDIENTE' }" (click)="campana.closeMenu()"><b>{{ p.razonSocial }}</b> quiere ser tu proveedor <small>NIT {{ p.nit }} · Ver ficha</small></a>
+          @if (rechazando() === p.id) {
+            <input class="entrada motivo" type="text" placeholder="Motivo del rechazo" aria-label="Motivo del rechazo"
+                   [value]="motivo()" (input)="motivo.set($any($event.target).value)">
+            <div class="fila-acciones">
+              <button type="button" class="boton chico" (click)="rechazando.set(null)">Cancelar</button>
+              <button type="button" class="boton chico" [disabled]="motivo().trim().length < 5" (click)="rechazarProveedor(p.id!)">Confirmar rechazo</button>
+            </div>
+          } @else {
+            <div class="fila-acciones">
+              <button type="button" class="boton chico" (click)="pedirMotivo(p.id!)">Rechazar</button>
+              <button type="button" class="boton chico primario" (click)="aceptarProveedor(p.id!)">Aceptar</button>
+            </div>
+          }
+        </div>
+      }
+      @if (errorDecision()) { <p class="decision-error">{{ errorDecision() }}</p> }
+    </div>
+  }
   <div class="notif-cabecera" (click)="$event.stopPropagation()">
     <strong>Notificaciones</strong>
     @if (notificaciones.noLeidas() > 0) {
@@ -101,12 +121,12 @@
     }
   </div>
   @for (n of recientes(); track n.id) {
-    <div class="notif" [class.nueva]="!n.leida">
+    <a class="notif" [class.nueva]="!n.leida" [class.sin-enlace]="!rutaDe(n)" [routerLink]="rutaDe(n) ?? null" [queryParams]="paramsDe(n)" (click)="campana.closeMenu()">
       <span>{{ n.mensaje }}</span>
-      <small>{{ n.creadoEn | fecha: 'hora' }}</small>
-    </div>
+      <small>{{ n.creadoEn | fecha: 'hora' }}@if (rutaDe(n)) { · Ver }</small>
+    </a>
   } @empty {
-    <p class="notif vacia">No tienes notificaciones.</p>
+    @if (!pendientes().length) { <p class="notif vacia">No tienes notificaciones.</p> }
   }
 </mat-menu>
 

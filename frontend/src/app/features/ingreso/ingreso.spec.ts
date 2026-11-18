@@ -69,6 +69,19 @@ describe('Ingreso con segundo factor', () => {
     expect(TestBed.inject(SesionService).autenticado()).toBe(true);
   });
 
+  it('al enviar el formulario del código (Enter o botón) se llama al servidor y el navegador no recarga la página', () => {
+    escribirYEnviar();
+    backend.expectOne('/api/auth/login').flush({ desafioMfa: 'desafio-jwt', mfaConfigurado: true });
+    fixture.detectChanges();
+    fixture.componentInstance['codigo'].set('123456');
+
+    const envio = new Event('submit', { cancelable: true });
+    (fixture.nativeElement as HTMLElement).querySelector('form.formulario')!.dispatchEvent(envio);
+
+    expect(envio.defaultPrevented).toBe(true);
+    backend.expectOne('/api/auth/mfa');
+  });
+
   it('un código que no son 6 dígitos no sale al servidor', () => {
     escribirYEnviar();
     backend.expectOne('/api/auth/login').flush({ desafioMfa: 'desafio-jwt', mfaConfigurado: true });

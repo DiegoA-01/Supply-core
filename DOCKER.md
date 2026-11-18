@@ -23,6 +23,20 @@ Cuando los tres servicios aparezcan como `healthy`, abrir `http://localhost:8088
 
 El dueño de la plataforma solo se crea si todavía no existe uno; cambiar `PLATAFORMA_ADMIN_PASSWORD` después no cambia la clave de una cuenta ya creada.
 
+### Datos de demostración (empresa lista para recorrer el flujo)
+
+Con el stack arriba y un `.env` válido, `scripts/sembrar_demo.py` crea por la API pública (Python 3, sin dependencias) una empresa de ejemplo:
+
+```powershell
+py scripts/sembrar_demo.py
+```
+
+- Empresa `Ferreteria Demo` (plan EMPRESARIAL, activa), con su administrador, sede, centro de costo, bodega, 8 productos con existencias y salidas (para el tablero de rotación) y políticas de aprobación.
+- Usuarios por rol: jefe de compras, jefe de bodega, bodeguero, solicitante, aprobador, comprador, tesorería y auditor, más un proveedor ya habilitado.
+- Todas las claves son aleatorias y se escriben en `credenciales-docker.local.txt` (ignorado por git, nunca se sube). Ese archivo también trae la llave de la app autenticadora del dueño del software y del administrador de la empresa, que tienen segundo factor obligatorio.
+- El script se niega a correr dos veces. Para empezar de cero: `docker compose down -v`, `docker compose up -d`, borrar `credenciales-docker.local.txt` y repetir. **`down -v` borra toda la base.**
+- Es solo para ambientes de prueba: no se usa en producción.
+
 ## Cómo está armado
 
 | Servicio | Imagen | Qué hace | Puerto |
