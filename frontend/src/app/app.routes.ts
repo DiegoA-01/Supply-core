@@ -178,8 +178,8 @@ export const routes: Routes = [
         path: 'auditoria',
         title: 'Auditoría · Supply-Core',
         canActivate: [permisoGuard],
-        data: { roles: ['AUDITOR', 'ADMIN_SISTEMA'], modulo: 'AUDITORIA', titulo: 'Auditoría' },
-        loadComponent: () => import('./features/pendiente/pendiente').then(m => m.Pendiente),
+        data: { roles: ['AUDITOR', 'ADMIN_SISTEMA'], modulo: 'AUDITORIA' },
+        loadComponent: () => import('./features/auditoria/auditoria').then(m => m.Auditoria),
       },
       {
         path: 'configuracion/notificaciones',

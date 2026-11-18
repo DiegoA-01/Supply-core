@@ -87,6 +87,7 @@ export type PrecioContratoNuevo = S['PrecioRequest'];
 export type Evaluacion = S['EvaluacionResponse'];
 export type ProveedorCambios = S['ActualizarProveedorRequest'];
 export type PesoCriterio = S['Peso'];
+export type RegistroAuditoria = S['AuditoriaResponse'];
 export type RegistroProveedor = S['RegistroProveedorRequest'];
 export type RegistroProveedorRespuesta = S['RegistroProveedorResponse'];
 export type Movimiento = S['MovimientoResponse'];

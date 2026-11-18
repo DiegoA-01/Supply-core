@@ -61,6 +61,11 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 - `/portal/perfil`: su ficha (estado de la habilitación, score, categorías), editar contacto y categorías, y las calificaciones que recibió. La razón social y el NIT los cambia la empresa. Backend nuevo: `GET /api/portal/proveedor/categorias` (el proveedor no puede leer `/api/categorias`, que es solo para usuarios internos); con prueba de fuga entre empresas.
 - `/portal/ordenes`: además de aceptar, rechazar, preparar y despachar, ahora muestra lo que el cliente ya recibió (pedido, aceptado, rechazado, faltante) y los rechazos con su motivo.
 
+## Auditoría de la empresa (2026-11-18, fase 8 de `PLAN_FRONTEND.md`)
+- `/app/auditoria` (AUDITOR y ADMIN_SISTEMA; módulo AUDITORIA): quién hizo qué, cuándo y desde qué IP, incluidos los intentos fallidos; solo lectura. Filtros por usuario, acción, entidad, número del registro, resultado y fechas (más Hoy, 7 y 30 días), 25 por página, y detalle desplegable con el código de la acción, la IP y el contexto; enlace a la orden o la RFQ cuando el registro es de una de ellas.
+- `features/auditoria/textos.ts` traduce las 96 acciones y las 28 entidades del backend (`AccionAuditoria` y `EntidadAuditada`); un código nuevo se muestra tal cual hasta que se agregue su texto. Hay que sumar el texto cuando el backend agregue una acción.
+- Se eliminó el marcador `features/pendiente` (ya no lo usaba ninguna ruta).
+
 ## Decisiones (2026-11-05)
 - **Una sola app SaaS con tres zonas**: `/app` (empresa, `empresaGuard`), `/portal` (rol PROVEEDOR, `proveedorGuard`), `/plataforma` (dueño con MFA, `plataformaGuard`). Cada pantalla se carga perezosa.
 - **Librería**: Angular Material solo para comportamiento (menús, avisos, tooltips); el aspecto sale de tokens CSS en `styles.scss` tomados del mockup (primario `#d93a0b`). PrimeNG descartado: v22 exige licencia comercial con clave.

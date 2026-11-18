@@ -83,7 +83,7 @@ Sin uso: `/api/portal/proveedor/evaluaciones`. Verificar: registro público y su
 4. Órdenes del portal: aceptar, rechazar con motivo, preparar, despachar, ver recepciones.
 5. Facturas y pagos del proveedor sobre sus órdenes (verificar).
 
-## Fase 8. Auditoría de la empresa
+## Fase 8. Auditoría de la empresa — hecha el 2026-11-18 (rama `feature/fase-8-auditoria`)
 Rutas sin uso: `/api/auditoria`, `/api/auditoria/{id}`.
 1. Reemplazar el marcador de `/app/auditoria` por la lista con filtros (usuario, acción, fecha) y el detalle del cambio.
 2. Solo ADMIN_SISTEMA y AUDITOR.
