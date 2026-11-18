@@ -1,0 +1,36 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Avisos y correos</p>
+    <div class="encabezado"><div><h1>Avisos y correos</h1>
+      <p>Elige qué eventos generan un correo y cuáles aparecen en la campana. Vale para toda la empresa y se guarda al instante.</p></div></div>
+  </div>
+
+  <section class="tarjeta sin-relleno">
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead><tr><th>Evento</th><th class="centro">Correo</th><th class="centro">Campana</th></tr></thead>
+        <tbody>
+          @for (f of filas(); track f.evento) {
+            <tr>
+              <td>{{ f.nombre }}</td>
+              <td class="centro">
+                @if (f.correo; as c) {
+                  <button type="button" class="interruptor" role="switch" [class.encendido]="c.activo" [attr.aria-checked]="c.activo"
+                          [attr.aria-label]="'Correo: ' + f.nombre" [disabled]="guardando() !== null" (click)="alternar(c)"><span></span></button>
+                } @else { — }
+              </td>
+              <td class="centro">
+                @if (f.campana; as c) {
+                  <button type="button" class="interruptor" role="switch" [class.encendido]="c.activo" [attr.aria-checked]="c.activo"
+                          [attr.aria-label]="'Campana: ' + f.nombre" [disabled]="guardando() !== null" (click)="alternar(c)"><span></span></button>
+                } @else { — }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="3" class="vacio">{{ lista() ? 'No hay eventos configurables.' : 'Cargando…' }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

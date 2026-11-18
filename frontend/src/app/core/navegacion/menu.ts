@@ -5,6 +5,8 @@ export interface OpcionMenu {
   ruta: string;
   roles?: string[];
   modulo?: string;
+  /** {@code true} si solo se marca activa en su ruta exacta (porque otras opciones cuelgan de ella). */
+  exacta?: boolean;
   /** Clave del contador que se muestra a la derecha. */
   contador?: 'solicitudes' | 'bajoMinimo';
 }
@@ -18,6 +20,8 @@ export interface SeccionMenu {
 export const ROLES_ORDENES = ['COMPRADOR', 'ADMIN_COMPRAS', 'ALMACENISTA', 'ADMINISTRATIVO', 'APROBADOR', 'AUDITOR'];
 /** Roles que ven RFQ y análisis (mismos que {@code GET /api/rfqs}). */
 export const ROLES_RFQ = ['COMPRADOR', 'ADMIN_COMPRAS', 'APROBADOR', 'AUDITOR'];
+/** Roles que ven la rotación de productos (mismos que {@code GET /api/reportes/rotacion}). */
+export const ROLES_ROTACION = ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO', 'AUDITOR', 'ALMACENISTA'];
 /** Roles que leen reportes de gasto y proveedores. */
 export const ROLES_REPORTES = ['AUDITOR', 'ADMIN_COMPRAS', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO'];
 /** Roles que leen proveedores. */
@@ -40,7 +44,9 @@ export const MENU: SeccionMenu[] = [
   {
     titulo: 'Inventario',
     opciones: [
-      { texto: 'Productos y stock', icono: 'inventory_2', ruta: '/app/inventario', modulo: 'INVENTARIO', contador: 'bajoMinimo' },
+      { texto: 'Productos y stock', icono: 'inventory_2', ruta: '/app/inventario', modulo: 'INVENTARIO', contador: 'bajoMinimo', exacta: true },
+      { texto: 'Rotación de productos', icono: 'trending_up', ruta: '/app/inventario/rotacion', roles: ROLES_ROTACION, modulo: 'REPORTES' },
+      { texto: 'Movimientos de stock', icono: 'swap_horiz', ruta: '/app/inventario/movimientos', modulo: 'INVENTARIO' },
       { texto: 'Proveedores', icono: 'group', ruta: '/app/proveedores', roles: ROLES_PROVEEDORES, modulo: 'PROVEEDORES' },
     ],
   },
@@ -50,6 +56,7 @@ export const MENU: SeccionMenu[] = [
       { texto: 'Reportes', icono: 'bar_chart', ruta: '/app/reportes', roles: ROLES_REPORTES, modulo: 'REPORTES' },
       { texto: 'Auditoría', icono: 'shield', ruta: '/app/auditoria', roles: ['AUDITOR', 'ADMIN_SISTEMA'], modulo: 'AUDITORIA' },
       { texto: 'Usuarios y roles', icono: 'apartment', ruta: '/app/usuarios', roles: ['ADMIN_SISTEMA', 'AUDITOR'] },
+      { texto: 'Avisos y correos', icono: 'notifications', ruta: '/app/configuracion/notificaciones', roles: ['ADMIN_SISTEMA'] },
     ],
   },
 ];

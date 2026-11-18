@@ -9,7 +9,8 @@ import { SesionService } from '../sesion/sesion.service';
 const REINTENTO = new HttpContextToken<boolean>(() => false);
 
 /** Rutas que no llevan token: ingreso, renovación y autorregistro de proveedores. */
-const PUBLICAS = ['/api/auth/login', '/api/auth/refresh', '/api/plataforma/auth/', '/api/portal/registro/'];
+const PUBLICAS = ['/api/auth/login', '/api/auth/refresh', '/api/auth/recuperar', '/api/auth/restablecer', '/api/plataforma/auth/',
+  '/api/portal/registro/'];
 
 /**
  * Agrega {@code Authorization: Bearer} a las llamadas al backend: el token del dueño en {@code /api/plataforma} y el
@@ -18,7 +19,7 @@ const PUBLICAS = ['/api/auth/login', '/api/auth/refresh', '/api/plataforma/auth/
  */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const ruta = req.url.slice(req.url.indexOf('/api/'));
-  if (!req.url.includes('/api/') || PUBLICAS.some(p => ruta.startsWith(p))) {
+  if (!req.url.includes('/api/') || PUBLICAS.some(p => ruta.startsWith(p)) || ruta.split('?')[0] === '/api/auth/mfa') {
     return next(req);
   }
 

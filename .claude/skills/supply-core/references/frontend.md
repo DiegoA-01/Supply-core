@@ -16,6 +16,24 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 - Factura: botón "Cruzar de nuevo con lo recibido" (ADMINISTRATIVO, factura CUADRADA o EN_REVISION).
 - Tipos regenerados contra el backend actual (`alertas` ya viene en `ProcesamientoResponse`).
 
+## Cuenta y seguridad (2026-11-18, fase 2 de `PLAN_FRONTEND.md`)
+- Ingreso de empresa en dos pasos: si el login trae `desafioMfa` no hay sesión todavía; se pide el código de 6 dígitos (y la clave para vincular la app si es la primera vez) y se canjea en `/api/auth/mfa` (ruta pública en el interceptor; `/mfa/configurar` y `/mfa/activar` sí llevan token). Sin librería de QR: se muestra la clave y un enlace `otpauth://` para el celular.
+- `/recuperar`: recuperación de clave en dos pasos (código de empresa y correo; luego el código que llega por correo y la contraseña nueva). El backend manda un código, no un enlace. Mismo aviso exista o no la cuenta.
+- Perfil: configurar y activar el segundo factor. Usuarios: chip MFA y botón para reiniciarlo (ADMIN_SISTEMA). `UsuarioResponse` ahora trae `mfaActivo`.
+- `/app/configuracion/notificaciones` (ADMIN_SISTEMA): interruptores de correo y campana por evento.
+- Falta: editar el código de ingreso de una empresa (no existe la ruta en el backend; ver `PLAN_FRONTEND.md`).
+
+## Movimientos de stock (2026-11-18, fase 3 de `PLAN_FRONTEND.md`)
+- `/app/inventario/movimientos` (todos los roles internos con el módulo INVENTARIO; menú "Movimientos de stock" y botón en Productos y stock). Dos pestañas: **Existencias por bodega** (`GET /api/inventario/stock`, filtro por bodega en el servidor y por texto en pantalla) y **Kardex** (`GET /api/inventario/movimientos` con producto, bodega, tipo y fechas, 25 por página, exportar a Excel o al correo; el kardex exige elegir producto).
+- Registrar movimiento (solo ALMACENISTA, no en mora): salida por consumo, ajuste que suma, ajuste que resta y traslado. La pantalla pide solo las bodegas que aplican a cada tipo y el motivo (obligatorio en ajustes, mínimo 5 caracteres); el backend vuelve a validar y avisa si el producto quedó bajo su mínimo. Las entradas por compra, devoluciones y despachos nunca se registran aquí.
+- Buscador de producto: escribe 2 letras y elige de la lista (consulta al backend, 15 resultados), sin cargar todo el catálogo.
+- Reorden sugerida y carga masiva ya estaban completas (revisar, luego aplicar todo o nada, errores por fila, plantilla).
+
+## Rotación de productos (2026-11-18, pedido del dueño del negocio)
+- Backend: `GET /api/reportes/rotacion?desde&hasta&categoriaId` (`RotacionService`, `RotacionController`). La base suma los movimientos; Java calcula. **Salida** = consumo interno + despachos − despachos anulados (no cuentan ajustes ni traslados). **Compra** = entradas por recepción − devoluciones. Por producto: salidas, comprado, consumo diario, días que alcanza el stock (stock × días ÷ salidas), fecha estimada de agotamiento, última salida y días sin salir, valor del stock y clase: ALTA (alcanza 30 días o menos), MEDIA, BAJA (más de 90), SIN_MOVIMIENTO (hay stock y no salió nada: dinero parado), AGOTADO (se movía y hoy no hay), SIN_ACTIVIDAD. "Por agotarse" = alcanza 15 días o menos. Período por defecto 90 días, máximo 366. Ven el reporte ADMIN_SISTEMA, ADMIN_COMPRAS, COMPRADOR, APROBADOR, ADMINISTRATIVO, AUDITOR y ALMACENISTA (módulo REPORTES). Prueba de fuga entre empresas en `AislamientoEmpresasTest`.
+- Frontend: `/app/inventario/rotacion` (menú "Rotación de productos"). Tablero con períodos rápidos (30 días a 12 meses u otras fechas) y categoría; KPIs (por agotarse, agotados, sin movimiento, dinero parado); barra de distribución por tipo de rotación; los que más y menos salen (barras); "se acaban pronto" con fecha estimada; "no rotan" con el dinero parado; tabla completa con búsqueda, filtro por tipo y orden por columna. La pantalla solo ordena, filtra, cuenta y dibuja.
+- Pendiente de esta pantalla: filtro por bodega y exportar a Excel (el backend aún no lo ofrece).
+
 ## Decisiones (2026-11-05)
 - **Una sola app SaaS con tres zonas**: `/app` (empresa, `empresaGuard`), `/portal` (rol PROVEEDOR, `proveedorGuard`), `/plataforma` (dueño con MFA, `plataformaGuard`). Cada pantalla se carga perezosa.
 - **Librería**: Angular Material solo para comportamiento (menús, avisos, tooltips); el aspecto sale de tokens CSS en `styles.scss` tomados del mockup (primario `#d93a0b`). PrimeNG descartado: v22 exige licencia comercial con clave.

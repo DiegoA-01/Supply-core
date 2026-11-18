@@ -26,7 +26,7 @@ Rutas sin uso: `/api/cotizaciones/{id}/extraccion`, `.../extraccion/campos/{camp
 4. Exportaciones sin uso: kardex (descarga y correo), solicitudes (descarga y correo), stock por correo, orden por correo. Botón en cada pantalla de origen.
 5. Factura: botón "recruzar" (`/api/facturas/{id}/recruzar`) y ver el resultado del cruce de tres vías.
 
-## Fase 2. Cuenta y seguridad (SaaS 3 en la interfaz)
+## Fase 2. Cuenta y seguridad (SaaS 3 en la interfaz) — hecha el 2026-11-18, salvo el punto 7 (editar el código de ingreso): el backend no tiene esa ruta, hay que crearla primero (PATCH de plataforma con validación, duplicado, auditoría y aviso de que los usuarios deberán usar el código nuevo)
 Rutas sin uso: `/api/auth/recuperar`, `/restablecer`, `/mfa`, `/mfa/configurar`, `/mfa/activar`, `/me`, `PATCH /api/usuarios/{id}/mfa/reiniciar`.
 1. "Olvidé mi contraseña": pedir el correo, mensaje igual exista o no la cuenta, pantalla de restablecer con el token de la dirección.
 2. Segundo paso del ingreso de empresa cuando el usuario tiene MFA (desafío y código).
@@ -37,7 +37,7 @@ Rutas sin uso: `/api/auth/recuperar`, `/restablecer`, `/mfa`, `/mfa/configurar`,
 7. Consola del dueño: editar el código de ingreso de una empresa (hoy solo se fija al crear). Requiere confirmar con el backend la ruta de edición.
 8. Configuración de notificaciones por usuario (`/api/config-notificaciones`).
 
-## Fase 3. Inventario
+## Fase 3. Inventario — hecha el 2026-11-18 (reorden y carga masiva ya estaban completas; el kardex se exporta aquí)
 Rutas sin uso: `/api/inventario/stock`, `/api/inventario/movimientos`.
 1. Stock por bodega con filtros y alertas de stock bajo.
 2. Movimientos de inventario con filtros y detalle.
@@ -45,6 +45,8 @@ Rutas sin uso: `/api/inventario/stock`, `/api/inventario/movimientos`.
 4. Kardex por producto y exportación (se une con la fase 1).
 5. Reorden sugerida y su borrador (ya existe la llamada; verificar la pantalla completa).
 6. Carga masiva por Excel de productos (ya existe la llamada; verificar plantilla, errores por fila y confirmación).
+
+## Rotación de productos (pedido el 2026-11-18, hecho): reporte nuevo en el backend y tablero en el frontend; sin filtro por bodega ni Excel todavía
 
 ## Fase 4. Caja y pagos
 Rutas sin uso: `/api/despachos` (lista, detalle, confirmar, anular), `/api/pagos` (lista, detalle, anular, comprobante).

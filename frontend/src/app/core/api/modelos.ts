@@ -57,6 +57,17 @@ export type CampoLeido = S['Campo'];
 export type LineaDigitada = S['LineaCotizacionRequest'];
 export type LineaCotizacion = S['CotizacionLinea'];
 export type CorreoExportacion = S['CorreoExportacionResponse'];
+export type ConfiguracionMfa = S['ConfiguracionMfaResponse'];
+export type MensajeApi = S['MensajeResponse'];
+export type ConfigNotificacion = S['ConfigNotificacionResponse'];
+export type StockBodega = S['StockResponse'];
+export type Rotacion = S['RotacionResponse'];
+export type ItemRotacion = S['RotacionItem'];
+export type ClaseRotacion = NonNullable<ItemRotacion['clase']>;
+export type Movimiento = S['MovimientoResponse'];
+export type MovimientoNuevo = S['MovimientoRequest'];
+export type RegistroMovimiento = S['RegistroMovimientoResponse'];
+export type TipoMovimiento = MovimientoNuevo['tipo'];
 
 // Órdenes, facturas, pagos y recepción
 export type OrdenResumen = S['OrdenResumenResponse'];

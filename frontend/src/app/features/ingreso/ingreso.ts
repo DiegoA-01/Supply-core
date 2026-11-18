@@ -1,8 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { switchMap } from 'rxjs';
 
+
+import { LoginResponse } from '../../core/api/modelos';
 import { mensajeError } from '../../core/http/api';
 import { SesionService } from '../../core/sesion/sesion.service';
 
@@ -26,7 +27,9 @@ export class Ingreso {
   protected readonly enviando = signal(false);
   protected readonly error = signal<string | null>(
     this.ruta.snapshot.queryParamMap.get('motivo') === 'sesion' ? 'Tu sesión terminó. Ingresa de nuevo.' : null);
-  protected readonly olvido = signal(false);
+  /** Desafío del segundo paso (código de la app autenticadora); {@code null} mientras se pide la contraseña. */
+  protected readonly desafio = signal<LoginResponse | null>(null);
+  protected readonly codigo = signal('');
   /** Muestra la contraseña para revisar que esté bien escrita. */
   protected readonly verClave = signal(false);
 
@@ -38,14 +41,49 @@ export class Ingreso {
     const { empresa, correo, password } = this.form.getRawValue();
     this.enviando.set(true);
     this.error.set(null);
-    this.sesion.ingresar(empresa, correo, password).pipe(switchMap(() => this.sesion.cargarContexto())).subscribe({
-      next: () => void this.router.navigateByUrl(this.sesion.esProveedor() ? '/portal' : '/app/inicio'),
-      error: e => {
-        // El backend responde igual para clave errada, usuario inexistente o cuenta bloqueada (no revela cuál).
-        this.error.set(mensajeError(e));
-        this.enviando.set(false);
+    this.sesion.ingresar(empresa, correo, password).subscribe({
+      next: r => {
+        if (r.desafioMfa) {
+          this.desafio.set(r);
+          this.enviando.set(false);
+          return;
+        }
+        this.entrar();
       },
+      error: e => this.fallo(e),
     });
+  }
+
+  /** Segundo paso: confirma el código de 6 dígitos de la app autenticadora. */
+  protected confirmar(): void {
+    const d = this.desafio();
+    if (!d?.desafioMfa || !/^\d{6}$/.test(this.codigo().trim())) {
+      this.error.set('Escribe los 6 dígitos que muestra tu app.');
+      return;
+    }
+    this.enviando.set(true);
+    this.error.set(null);
+    this.sesion.confirmarMfa(d.desafioMfa, this.codigo()).subscribe({ next: () => this.entrar(), error: e => this.fallo(e) });
+  }
+
+  /** Vuelve a pedir la contraseña (por ejemplo, si el desafío venció). */
+  protected volver(): void {
+    this.desafio.set(null);
+    this.codigo.set('');
+    this.error.set(null);
+  }
+
+  private entrar(): void {
+    this.sesion.cargarContexto().subscribe({
+      next: () => void this.router.navigateByUrl(this.sesion.esProveedor() ? '/portal' : '/app/inicio'),
+      error: e => this.fallo(e),
+    });
+  }
+
+  private fallo(e: unknown): void {
+    // El backend responde igual para clave errada, usuario inexistente o cuenta bloqueada (no revela cuál).
+    this.error.set(mensajeError(e));
+    this.enviando.set(false);
   }
 
   /** @param campo nombre del control */

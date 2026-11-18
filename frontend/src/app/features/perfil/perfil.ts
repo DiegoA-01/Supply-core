@@ -2,7 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { Usuario } from '../../core/api/modelos';
+import { ConfiguracionMfa, Usuario } from '../../core/api/modelos';
 import { nombreRol } from '../../core/formato/etiquetas';
 import { FechaPipe } from '../../core/formato/formato';
 import { UsuariosService } from '../../core/servicios/usuarios.service';
@@ -32,8 +32,51 @@ export class Perfil implements OnInit {
   protected readonly claveValida = computed(() => PATRON_CLAVE.test(this.nueva()));
   protected readonly coinciden = computed(() => this.nueva() === this.confirmacion());
 
+  /** Secreto para vincular la app autenticadora mientras se configura; {@code null} fuera de ese paso. */
+  protected readonly mfa = signal<ConfiguracionMfa | null>(null);
+  protected readonly codigoMfa = signal('');
+
   ngOnInit(): void {
+    this.cargar();
+  }
+
+  private cargar(): void {
     this.usuarios.perfil().subscribe({ next: p => this.perfil.set(p), error: e => this.avisos.error(e) });
+  }
+
+  protected configurarMfa(): void {
+    this.trabajando.set(true);
+    this.sesion.configurarMfa().subscribe({
+      next: m => {
+        this.trabajando.set(false);
+        this.codigoMfa.set('');
+        this.mfa.set(m);
+      },
+      error: e => {
+        this.trabajando.set(false);
+        this.avisos.error(e);
+      },
+    });
+  }
+
+  protected activarMfa(): void {
+    if (!/^\d{6}$/.test(this.codigoMfa().trim())) {
+      this.avisos.ok('Escribe los 6 dígitos que muestra tu app.');
+      return;
+    }
+    this.trabajando.set(true);
+    this.sesion.activarMfa(this.codigoMfa()).subscribe({
+      next: () => {
+        this.trabajando.set(false);
+        this.mfa.set(null);
+        this.avisos.ok('Segundo factor activado: desde ahora te pedimos el código al ingresar.');
+        this.cargar();
+      },
+      error: e => {
+        this.trabajando.set(false);
+        this.avisos.error(e);
+      },
+    });
   }
 
   /** @param rol código del rol */

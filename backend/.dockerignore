@@ -1,0 +1,29 @@
+# Lo que NUNCA debe entrar a la imagen ni al contexto de build.
+
+# Secretos locales (están fuera de git, pero Docker no lee .gitignore)
+src/main/resources/application-local.yaml
+**/application-local.yaml
+.env
+.env.*
+*.pem
+*.key
+
+# Archivos subidos y datos locales
+almacenamiento
+almacenamiento-demo
+
+# Resultado de compilar y ayudas del editor
+target
+.mvn/wrapper/maven-wrapper.jar
+.idea
+.vscode
+*.iml
+HELP.md
+README.md
+
+# Ya se resuelve en la imagen
+mvnw
+mvnw.cmd
+sql
+Dockerfile
+.dockerignore

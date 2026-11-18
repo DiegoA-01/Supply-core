@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REPORTES, ROLES_RFQ } from './core/navegacion/menu';
+import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION } from './core/navegacion/menu';
 import { empresaGuard, invitadoGuard, permisoGuard, plataformaGuard, proveedorGuard } from './core/sesion/guards';
 
 /**
@@ -14,6 +14,12 @@ export const routes: Routes = [
     canActivate: [invitadoGuard],
     title: 'Ingresar · Supply-Core',
     loadComponent: () => import('./features/ingreso/ingreso').then(m => m.Ingreso),
+  },
+  {
+    path: 'recuperar',
+    canActivate: [invitadoGuard],
+    title: 'Recuperar contraseña · Supply-Core',
+    loadComponent: () => import('./features/ingreso/recuperar').then(m => m.Recuperar),
   },
   {
     path: 'app',
@@ -93,6 +99,20 @@ export const routes: Routes = [
         loadComponent: () => import('./features/recepcion/recepcion').then(m => m.RecepcionOrden),
       },
       {
+        path: 'inventario/rotacion',
+        title: 'Rotación de productos · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_ROTACION, modulo: 'REPORTES' },
+        loadComponent: () => import('./features/inventario/rotacion').then(m => m.RotacionProductos),
+      },
+      {
+        path: 'inventario/movimientos',
+        title: 'Movimientos de stock · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: INTERNOS, modulo: 'INVENTARIO' },
+        loadComponent: () => import('./features/inventario/movimientos').then(m => m.Movimientos),
+      },
+      {
         path: 'inventario',
         title: 'Productos y stock · Supply-Core',
         canActivate: [permisoGuard],
@@ -119,6 +139,13 @@ export const routes: Routes = [
         canActivate: [permisoGuard],
         data: { roles: ['AUDITOR', 'ADMIN_SISTEMA'], modulo: 'AUDITORIA', titulo: 'Auditoría' },
         loadComponent: () => import('./features/pendiente/pendiente').then(m => m.Pendiente),
+      },
+      {
+        path: 'configuracion/notificaciones',
+        title: 'Avisos y correos · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['ADMIN_SISTEMA'] },
+        loadComponent: () => import('./features/configuracion/notificaciones-config').then(m => m.NotificacionesConfig),
       },
       {
         path: 'usuarios',

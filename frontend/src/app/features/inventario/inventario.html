@@ -7,6 +7,10 @@
         <p>El stock solo cambia con recepciones, ajustes con motivo y traslados.</p>
       </div>
       <div class="acciones">
+        @if (conReporte()) {
+          <a class="boton" routerLink="/app/inventario/rotacion"><span class="material-symbols-outlined">trending_up</span> Rotación</a>
+        }
+        <a class="boton" routerLink="/app/inventario/movimientos"><span class="material-symbols-outlined">swap_horiz</span> Movimientos y bodegas</a>
         <button type="button" class="boton" (click)="exportar()"><span class="material-symbols-outlined">download</span> Exportar Excel</button>
         <button type="button" class="boton" (click)="exportarPorCorreo()"><span class="material-symbols-outlined">mail</span> Enviarme el Excel</button>
         @if (esAdminCompras()) {

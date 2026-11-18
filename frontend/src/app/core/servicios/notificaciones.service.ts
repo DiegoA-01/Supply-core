@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 
-import { Notificacion, Pagina } from '../api/modelos';
+import { ConfigNotificacion, Notificacion, Pagina } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
 /** Bandeja interna de notificaciones (campana del encabezado). */
@@ -22,6 +22,16 @@ export class NotificacionesService {
   /** Las más recientes. */
   recientes(): Observable<Pagina<Notificacion>> {
     return this.http.get<Pagina<Notificacion>>(api('/api/notificaciones'), { params: parametros({ size: 12, sort: 'creadoEn,desc' }) });
+  }
+
+  /** Configuración de la empresa: qué eventos generan correo y cuáles llegan a la campana (solo ADMIN_SISTEMA). */
+  configuracion(): Observable<ConfigNotificacion[]> {
+    return this.http.get<ConfigNotificacion[]>(api('/api/config-notificaciones'));
+  }
+
+  /** @param id canal de un evento; @param activo nuevo estado */
+  cambiarConfiguracion(id: number, activo: boolean): Observable<ConfigNotificacion> {
+    return this.http.patch<ConfigNotificacion>(api(`/api/config-notificaciones/${id}`), { activo });
   }
 
   /** Marca todas como leídas. */

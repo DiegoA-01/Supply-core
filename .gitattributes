@@ -1,0 +1,8 @@
+# Los archivos que lee Docker o nginx deben terminar siempre en LF, aunque se editen en Windows.
+# Un Dockerfile con CRLF falla en las lineas con "\" y los .conf de nginx pueden fallar al leerse.
+Dockerfile text eol=lf
+*.conf text eol=lf
+.dockerignore text eol=lf
+docker-compose.yml text eol=lf
+.env.example text eol=lf
+*.sh text eol=lf

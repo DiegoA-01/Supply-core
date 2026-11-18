@@ -313,7 +313,7 @@ class ExportacionServiceTest {
 
     private static UsuarioResponse usuario(Long id, String nombre) {
         return new UsuarioResponse(id, nombre, "u" + id + "@ferreteria.com", true, Set.of("COMPRADOR"), null, null,
-                null, null);
+                null, null, false);
     }
 
     private static OrdenResponse orden() {

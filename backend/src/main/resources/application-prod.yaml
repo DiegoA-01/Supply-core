@@ -1,0 +1,53 @@
+# Perfil "prod": lo que cambia al correr en un servidor (por ejemplo, dentro de Docker).
+# Regla: lo que es secreto o depende del ambiente NO tiene valor por defecto. Si falta una variable, la aplicación
+# no arranca (falla rápido) en vez de funcionar con un valor inseguro.
+#
+# Variables obligatorias: DB_URL, DB_USER, DB_PASSWORD, JWT_SECRET (32 caracteres o más).
+# Ver .env.example y DOCKER.md en la raíz del repositorio.
+
+server:
+  port: 8080
+  # Detrás de nginx: toma la IP real del cliente de X-Forwarded-For (solo si quien conecta es un proxy de confianza,
+  # es decir, una dirección de red privada). Sin esto, el límite de peticiones por IP y la auditoría verían todos la IP del proxy.
+  forward-headers-strategy: native
+  shutdown: graceful
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+    include-exception: false
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s      # termina las peticiones en curso antes de apagar
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:10}
+      connection-timeout: 20000
+      max-lifetime: 1500000              # menos que wait_timeout de MySQL
+  jpa:
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    clean-disabled: true                 # jamás borrar la base por accidente
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}                # sin valor por defecto: sin secreto no se arranca
+  sesion:
+    mfa-admin-obligatorio: ${MFA_ADMIN_OBLIGATORIO:true}
+
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ACTIVO:false}     # el contrato de la API no se publica en producción
+  swagger-ui:
+    enabled: ${SWAGGER_ACTIVO:false}
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: WARN

@@ -24,6 +24,34 @@
 
   <section class="formulario-ingreso">
     <div class="marca movil"><img src="logo.svg" alt="" width="32" height="32"><span>Supply-Core</span></div>
+    @if (desafio(); as d) {
+      <h2>Código de verificación</h2>
+      <p class="texto-2">Escribe el código de 6 dígitos que muestra tu app autenticadora.</p>
+      <form (ngSubmit)="confirmar()" class="formulario" novalidate>
+        @if (d.mfaConfigurado === false) {
+          <div class="aviso ambar">
+            <span class="material-symbols-outlined">phonelink_lock</span>
+            <div>
+              <strong>Vincula tu app autenticadora (primera vez)</strong>
+              <div>En Google Authenticator, Microsoft Authenticator o similar, agrega una cuenta con esta clave:</div>
+              <code class="clave-mfa">{{ d.secretoMfa }}</code>
+              @if (d.otpauthUri) { <a [href]="d.otpauthUri" class="texto-chico">Abrir en mi app (en el celular)</a> }
+            </div>
+          </div>
+        }
+        <div class="campo">
+          <label for="codigo">Código</label>
+          <input id="codigo" name="codigo" class="entrada codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="6"
+                 [value]="codigo()" (input)="codigo.set($any($event.target).value)">
+        </div>
+        @if (error(); as e) {
+          <div class="aviso rojo" role="alert"><span class="material-symbols-outlined">error</span>{{ e }}</div>
+        }
+        <button type="submit" class="boton primario bloque" [disabled]="enviando()">{{ enviando() ? 'Verificando…' : 'Verificar' }}</button>
+        <button type="button" class="enlace" (click)="volver()">Volver</button>
+        <p class="texto-chico texto-2">Si el código no funciona, revisa que la hora de tu celular y de tu computador estén en automático.</p>
+      </form>
+    } @else {
     <h2>Ingresa a tu empresa</h2>
     <p class="texto-2">Usa el código que te dio el administrador de tu empresa.</p>
 
@@ -51,10 +79,7 @@
       </div>
 
       <p class="texto-chico texto-2 sin-margen">Tu sesión se renueva sola mientras trabajas.</p>
-      <button type="button" class="enlace" (click)="olvido.set(!olvido())">Olvidé mi contraseña</button>
-      @if (olvido()) {
-        <div class="aviso">Pídele al administrador de tu empresa que la restablezca. La recuperación por correo llega con la fase de seguridad.</div>
-      }
+      <a routerLink="/recuperar" class="enlace">Olvidé mi contraseña</a>
 
       @if (error(); as e) {
         <div class="aviso rojo" role="alert"><span class="material-symbols-outlined">error</span>{{ e }}</div>
@@ -73,5 +98,6 @@
         ¿Eres proveedor? Entra aquí mismo con tu correo · <a routerLink="/plataforma/ingreso">Soy el dueño del software</a>
       </p>
     </form>
+    }
   </section>
 </div>

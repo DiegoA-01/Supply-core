@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { EstadoCuenta, Gasto, Pagina, Proveedor, ProveedorRanking } from '../api/modelos';
+import { EstadoCuenta, Gasto, Pagina, Proveedor, ProveedorRanking, Rotacion } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
 /** Reportes de solo lectura y proveedores. Todos los totales los calcula el backend. */
@@ -18,6 +18,17 @@ export class ReportesService {
    */
   gasto(desde: string, hasta: string): Observable<Gasto> {
     return this.http.get<Gasto>(api('/api/reportes/gasto'), { params: parametros({ desde, hasta }) });
+  }
+
+  /**
+   * Rotación de productos: salidas, días que alcanza el stock, fecha estimada de agotamiento y dinero parado.
+   *
+   * @param desde       fecha ISO
+   * @param hasta       fecha ISO
+   * @param categoriaId categoría (vacío = todas)
+   */
+  rotacion(desde: string, hasta: string, categoriaId: number | null): Observable<Rotacion> {
+    return this.http.get<Rotacion>(api('/api/reportes/rotacion'), { params: parametros({ desde, hasta, categoriaId }) });
   }
 
   /** Ranking de proveedores por score en el periodo. */

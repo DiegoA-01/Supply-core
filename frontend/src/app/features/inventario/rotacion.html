@@ -1,0 +1,187 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / <a routerLink="/app/inventario">Inventario</a> / Rotación de productos</p>
+    <div class="encabezado">
+      <div><h1>Rotación de productos</h1>
+        <p>Qué sale más, qué sale menos, cuánto tiempo alcanza lo que tienes y qué lleva tiempo sin moverse.</p></div>
+    </div>
+  </div>
+
+  <section class="tarjeta">
+    <div class="pastillas" role="group" aria-label="Período">
+      @for (p of periodos; track p.valor) {
+        <button type="button" class="pastilla" [class.activa]="periodo() === p.valor" (click)="elegirPeriodo(p.valor)">{{ p.texto }}</button>
+      }
+    </div>
+    <div class="filtros">
+      @if (periodo() === 'otro') {
+        <div class="campo"><label for="rd">Desde</label><input id="rd" type="date" class="entrada" [ngModel]="desde()" (ngModelChange)="desde.set($event)"></div>
+        <div class="campo"><label for="rh">Hasta</label><input id="rh" type="date" class="entrada" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)"></div>
+      }
+      <div class="campo"><label for="rc">Categoría</label>
+        <select id="rc" class="entrada" [ngModel]="categoriaId()" (ngModelChange)="categoriaId.set($event); cargar()">
+          <option [ngValue]="null">Todas</option>
+          @for (c of categorias(); track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
+        </select></div>
+      @if (periodo() === 'otro') {
+        <button type="button" class="boton primario" (click)="cargar()">Actualizar</button>
+      }
+    </div>
+    @if (datos(); as d) {
+      <p class="texto-chico texto-2 sin-margen">Se miran las salidas del {{ d.desde | fecha }} al {{ d.hasta | fecha }} ({{ d.dias }} días): consumo interno y despachos, sin contar traslados entre bodegas ni ajustes.</p>
+    }
+  </section>
+
+  @if (datos(); as d) {
+    @if (d.resumen; as r) {
+      <div class="rejilla kpis">
+        <div class="tarjeta kpi"><div class="etiqueta">Productos analizados</div><div class="valor">{{ r.productos }}</div>
+          <div class="nota">{{ r.conSalidas }} tuvieron salidas</div></div>
+        <div class="tarjeta kpi"><div class="etiqueta">Por agotarse</div><div class="valor" [class.peligro]="(r.porAgotarse ?? 0) > 0">{{ r.porAgotarse }}</div>
+          <div class="nota">les alcanza {{ r.diasPorAgotarse }} días o menos</div></div>
+        <div class="tarjeta kpi"><div class="etiqueta">Agotados que se movían</div><div class="valor" [class.peligro]="(r.agotados ?? 0) > 0">{{ r.agotados }}</div>
+          <div class="nota">se vendían y hoy no queda nada</div></div>
+        <div class="tarjeta kpi"><div class="etiqueta">Sin movimiento</div><div class="valor">{{ r.sinMovimiento }}</div>
+          <div class="nota">con stock y sin salidas</div></div>
+        <div class="tarjeta kpi"><div class="etiqueta">Dinero parado</div><div class="valor">{{ r.valorSinMovimiento | pesos }}</div>
+          <div class="nota">de {{ r.valorInventario | pesos }} en inventario</div></div>
+      </div>
+    }
+
+    @if (!items().length) {
+      <section class="tarjeta vacio-grande"><span class="material-symbols-outlined">inventory_2</span>
+        <h2>No hay productos para analizar</h2><p class="texto-2">Cambia la categoría o el período.</p></section>
+    } @else {
+      <section class="tarjeta">
+        <h2>Cómo está tu inventario</h2>
+        <div class="distribucion" role="img" aria-label="Distribución de productos por tipo de rotación">
+          @for (c of clases; track c) {
+            @if (parte(c) > 0) { <span class="tramo {{ tono(c) }}" [style.width.%]="parte(c)" [title]="texto_(c) + ': ' + (cuenta()[c] ?? 0)"></span> }
+          }
+        </div>
+        <ul class="leyenda">
+          @for (c of clases; track c) {
+            <li><span class="punto {{ tono(c) }}"></span><strong>{{ texto_(c) }}</strong> {{ cuenta()[c] ?? 0 }}
+              <span class="texto-chico texto-2">· {{ ayuda(c) }}</span></li>
+          }
+        </ul>
+        <p class="texto-chico texto-2 sin-margen">Rota rápido: el stock alcanza {{ d.resumen?.diasRotacionAlta }} días o menos. Rota lento: alcanza más de {{ d.resumen?.diasRotacionBaja }} días.</p>
+      </section>
+
+      <div class="rejilla dos">
+        <section class="tarjeta">
+          <h2>Los que más salen</h2>
+          @for (i of masSalen(); track i.productoId) {
+            <div class="barra-fila">
+              <div class="barra-texto"><strong>{{ i.nombre }}</strong>
+                <span class="texto-chico texto-2">{{ i.codigo }} · {{ frase(i) }}</span></div>
+              <div class="barra-grafica"><span class="barra-relleno" [style.width.%]="ancho(i)"></span></div>
+              <div class="barra-valor">{{ i.salidas | numero }} <span class="texto-chico texto-2">{{ i.unidad }}</span></div>
+            </div>
+          } @empty { <p class="texto-2">Ningún producto tuvo salidas en este período.</p> }
+        </section>
+
+        <section class="tarjeta">
+          <h2>Los que menos salen</h2>
+          <p class="texto-chico texto-2 sin-margen">De los que sí tuvieron salidas, los de menor movimiento (los que ya salen arriba no se repiten).</p>
+          @for (i of menosSalen(); track i.productoId) {
+            <div class="barra-fila">
+              <div class="barra-texto"><strong>{{ i.nombre }}</strong>
+                <span class="texto-chico texto-2">{{ i.codigo }} · última salida {{ ultima(i) }}</span></div>
+              <div class="barra-grafica"><span class="barra-relleno suave" [style.width.%]="ancho(i)"></span></div>
+              <div class="barra-valor">{{ i.salidas | numero }} <span class="texto-chico texto-2">{{ i.unidad }}</span></div>
+            </div>
+          } @empty { <p class="texto-2">Con tan pocos productos con salidas, ya aparecen todos en la lista de la izquierda.</p> }
+        </section>
+      </div>
+
+      <div class="rejilla dos">
+        <section class="tarjeta">
+          <h2><span class="material-symbols-outlined rojo">hourglass_bottom</span> Se acaban pronto</h2>
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead><tr><th>Producto</th><th class="num">Stock</th><th class="num">Sale por día</th><th>Le alcanza</th><th>Se acaba hacia</th></tr></thead>
+              <tbody>
+                @for (i of porAgotarse(); track i.productoId) {
+                  <tr>
+                    <td><strong>{{ i.nombre }}</strong><div class="texto-chico texto-2">{{ i.codigo }}</div></td>
+                    <td class="num">{{ i.stock | numero }} {{ i.unidad }}</td>
+                    <td class="num">{{ i.consumoDiario | numero }}</td>
+                    <td><span class="chip rojo">{{ alcanza(i) }}</span></td>
+                    <td>{{ i.fechaEstimadaAgotamiento | fecha }}</td>
+                  </tr>
+                } @empty { <tr><td colspan="5" class="vacio">Nada se acaba en los próximos {{ d.resumen?.diasPorAgotarse }} días.</td></tr> }
+              </tbody>
+            </table>
+          </div>
+          @if (agotados().length) {
+            <h3>Ya se agotaron</h3>
+            <ul class="lista-simple">
+              @for (i of agotados(); track i.productoId) { <li><strong>{{ i.nombre }}</strong> <span class="texto-2">· salieron {{ i.salidas | numero }} {{ i.unidad }} en el período</span></li> }
+            </ul>
+          }
+        </section>
+
+        <section class="tarjeta">
+          <h2><span class="material-symbols-outlined ambar">inventory</span> No rotan (dinero parado)</h2>
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead><tr><th>Producto</th><th class="num">Stock</th><th>Última salida</th><th class="num">Valor parado</th></tr></thead>
+              <tbody>
+                @for (i of sinMovimiento(); track i.productoId) {
+                  <tr>
+                    <td><strong>{{ i.nombre }}</strong><div class="texto-chico texto-2">{{ i.codigo }}</div></td>
+                    <td class="num">{{ i.stock | numero }} {{ i.unidad }}</td>
+                    <td>{{ ultima(i) }}</td>
+                    <td class="num">{{ i.valorStock == null ? '—' : (i.valorStock | pesos) }}</td>
+                  </tr>
+                } @empty { <tr><td colspan="4" class="vacio">Todo lo que tienes en stock tuvo salidas en este período.</td></tr> }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <section class="tarjeta">
+        <h2>Todos los productos</h2>
+        <div class="filtros">
+          <div class="campo"><label for="tx">Buscar</label>
+            <input id="tx" type="search" class="entrada" placeholder="Código o nombre" [ngModel]="texto()" (ngModelChange)="texto.set($event)"></div>
+          <div class="campo"><label for="cl">Tipo de rotación</label>
+            <select id="cl" class="entrada" [ngModel]="claseFiltro()" (ngModelChange)="claseFiltro.set($event)">
+              <option [ngValue]="null">Todos</option>
+              @for (c of clases; track c) { <option [ngValue]="c">{{ texto_(c) }}</option> }
+            </select></div>
+        </div>
+        <div class="tabla-contenedor">
+          <table class="tabla">
+            <thead><tr>
+              <th><button type="button" class="orden" (click)="ordenarPor('nombre')">Producto</button></th>
+              <th class="num"><button type="button" class="orden" (click)="ordenarPor('salidas')">Salió</button></th>
+              <th class="num"><button type="button" class="orden" (click)="ordenarPor('stock')">Stock</button></th>
+              <th class="num"><button type="button" class="orden" (click)="ordenarPor('cobertura')">Le alcanza</button></th>
+              <th><button type="button" class="orden" (click)="ordenarPor('sinSalida')">Última salida</button></th>
+              <th class="num"><button type="button" class="orden" (click)="ordenarPor('valor')">Valor</button></th>
+              <th>Rotación</th>
+            </tr></thead>
+            <tbody>
+              @for (i of filas(); track i.productoId) {
+                <tr>
+                  <td><strong>{{ i.nombre }}</strong><div class="texto-chico texto-2">{{ i.codigo }} · {{ i.categoria }}</div></td>
+                  <td class="num">{{ i.salidas | numero }} {{ i.unidad }}</td>
+                  <td class="num">{{ i.stock | numero }} {{ i.unidad }}</td>
+                  <td class="num">{{ alcanza(i) }}</td>
+                  <td>{{ ultima(i) }}</td>
+                  <td class="num">{{ i.valorStock == null ? '—' : (i.valorStock | pesos) }}</td>
+                  <td><span class="chip {{ tono(i.clase) }}" [title]="i.clase ? ayuda(i.clase) : ''">{{ texto_(i.clase) }}</span></td>
+                </tr>
+              } @empty { <tr><td colspan="7" class="vacio">No hay productos con ese filtro.</td></tr> }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+  } @else {
+    <section class="tarjeta"><p class="texto-2">{{ cargando() ? 'Calculando…' : 'Sin datos.' }}</p></section>
+  }
+</div>

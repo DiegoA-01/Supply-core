@@ -12,10 +12,13 @@ import org.springframework.data.repository.query.Param;
 
 import com.proyecto.supply_core.compra.orden.entity.OrdenCompra;
 import com.proyecto.supply_core.compra.orden.enums.EstadoOrden;
+import com.proyecto.supply_core.inventario.enums.TipoMovimiento;
 import com.proyecto.supply_core.reporte.dto.GastoFila;
 import com.proyecto.supply_core.reporte.dto.GastoMesFila;
 import com.proyecto.supply_core.reporte.dto.InventarioFila;
 import com.proyecto.supply_core.reporte.dto.OrdenFila;
+import com.proyecto.supply_core.reporte.dto.RotacionMovimiento;
+import com.proyecto.supply_core.reporte.dto.RotacionUltima;
 import com.proyecto.supply_core.reporte.dto.SumaConsecutivo;
 
 /**
@@ -138,6 +141,39 @@ public interface ReporteRepository extends Repository<OrdenCompra, Long> {
             order by p.nombre
             """)
     List<InventarioFila> inventario(@Param("categoriaId") Long categoriaId);
+
+    /**
+     * Lo movido por producto y tipo de movimiento en un período (base de la rotación).
+     *
+     * @param tipos tipos que interesan (salidas, anulaciones de despacho, compras y devoluciones)
+     * @param desde fecha y hora desde (incluida)
+     * @param hasta fecha y hora hasta (excluida)
+     * @return una fila por producto y tipo con movimientos
+     */
+    @Query("""
+            select new com.proyecto.supply_core.reporte.dto.RotacionMovimiento(m.producto.id, m.tipo, sum(m.cantidad))
+            from MovimientoInventario m
+            where m.tipo in :tipos
+              and m.creadoEn >= :desde
+              and m.creadoEn < :hasta
+            group by m.producto.id, m.tipo
+            """)
+    List<RotacionMovimiento> movimientosPorProducto(@Param("tipos") Collection<TipoMovimiento> tipos,
+            @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+
+    /**
+     * Última salida de cada producto, en cualquier fecha.
+     *
+     * @param tipos tipos que cuentan como salida
+     * @return una fila por producto que alguna vez salió
+     */
+    @Query("""
+            select new com.proyecto.supply_core.reporte.dto.RotacionUltima(m.producto.id, max(m.creadoEn))
+            from MovimientoInventario m
+            where m.tipo in :tipos
+            group by m.producto.id
+            """)
+    List<RotacionUltima> ultimaSalida(@Param("tipos") Collection<TipoMovimiento> tipos);
 
     /**
      * Órdenes vigentes de un proveedor.
