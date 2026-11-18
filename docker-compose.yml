@@ -1,0 +1,107 @@
+# Supply-Core completo: base de datos, backend y frontend.
+#
+#   cp .env.example .env      # y completar las claves (ver DOCKER.md)
+#   docker compose up -d --build
+#   abrir http://localhost:${WEB_PORT:-8088}
+#
+# Solo el frontend (nginx) publica un puerto. La base de datos y el backend viven en redes internas de Docker:
+# nadie desde afuera puede hablarles directamente.
+
+name: supply-core
+
+services:
+  # ---------------------------------------------------------------- Base de datos
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Falta MYSQL_ROOT_PASSWORD en .env}
+      MYSQL_DATABASE: supply_core
+      MYSQL_USER: ${DB_USER:-supply}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en .env}
+      TZ: America/Bogota
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=-05:00
+      - --max-connections=100
+    volumes:
+      - db-data:/var/lib/mysql
+    networks: [datos]
+    healthcheck:
+      # 127.0.0.1 (no localhost): durante la inicialización MySQL solo escucha por socket y mysqladmin daría "listo" antes de tiempo.
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    security_opt: [no-new-privileges:true]
+
+  # ---------------------------------------------------------------- Backend (Spring Boot)
+  api:
+    build:
+      context: ./backend
+    image: supply-core-api:${VERSION:-local}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:mysql://db:3306/supply_core?serverTimezone=America/Bogota&useUnicode=true&characterEncoding=utf8&allowPublicKeyRetrieval=true
+      DB_USER: ${DB_USER:-supply}
+      DB_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en .env}
+      JWT_SECRET: ${JWT_SECRET:?Falta JWT_SECRET en .env (32 caracteres o mas)}
+      CORS_ORIGINS: ${PUBLIC_URL:-http://localhost:8088}
+      # Primer dueño de la plataforma: solo se crea si todavía no existe uno.
+      PLATAFORMA_ADMIN_CORREO: ${PLATAFORMA_ADMIN_CORREO:?Falta PLATAFORMA_ADMIN_CORREO en .env}
+      PLATAFORMA_ADMIN_PASSWORD: ${PLATAFORMA_ADMIN_PASSWORD:?Falta PLATAFORMA_ADMIN_PASSWORD en .env (12 a 72 caracteres)}
+      # Lectura de cotizaciones con IA: ninguno | gemini | claude | ollama
+      IA_PROVEEDOR: ${IA_PROVEEDOR:-ninguno}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+      SWAGGER_ACTIVO: ${SWAGGER_ACTIVO:-false}
+      TZ: America/Bogota
+    volumes:
+      # Archivos subidos (cotizaciones, facturas, evidencias): fuera de la imagen y de la base.
+      - storage:/data/almacenamiento
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # para llegar a un Ollama que corre en el equipo anfitrión
+    # Red "datos": solo para hablar con MySQL (interna, sin salida). Red "frontal": con nginx y con internet (Gemini, correo).
+    networks: [datos, frontal]
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: ${API_MEMORIA:-1g}
+    stop_grace_period: 40s
+
+  # ---------------------------------------------------------------- Frontend (nginx)
+  web:
+    build:
+      context: ./frontend
+    image: supply-core-web:${VERSION:-local}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8088}:8080"
+    networks: [frontal]
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 128m
+
+networks:
+  datos:
+    internal: true      # sin acceso a internet: la base de datos solo se habla con el backend
+  frontal: {}
+
+volumes:
+  db-data:
+  storage:

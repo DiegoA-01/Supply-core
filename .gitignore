@@ -1,1 +1,6 @@
 graphify-out/
+
+# Variables de docker-compose (secretos): nunca a git
+.env
+.env.*
+!.env.example

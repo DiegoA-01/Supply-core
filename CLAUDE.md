@@ -8,6 +8,7 @@ Al iniciar cada sesión, usa la skill caveman en nivel full.
 - Backend: `backend` — Java 21, Spring Boot 4.1.1, JPA, Web MVC, Validation, Flyway, MySQL 8, Lombok. Paquete base `com.proyecto.supply_core`.
 - Frontend: `frontend/` — Angular 22 + Material, `npm start` (proxy a :8080), `npm test`, `npm run api:tipos`. Detalle: `references/frontend.md`.
 - Ejecutar: `cd backend && ./mvnw spring-boot:run` (secretos en `src/main/resources/application-local.yaml`, gitignored; plantilla `application-local.example.yaml`) · Pruebas: `./mvnw test`
+- Docker: `docker compose up -d --build` levanta MySQL, backend (perfil `prod`) y frontend (nginx) con las claves del `.env` (plantilla `.env.example`). Guía, seguridad y operación: `DOCKER.md`.
 - Todo método lleva Javadoc (verificar con doclint, ver `backend.md` › Calidad obligatoria).
 
 ## Reglas de oro (no negociables)
@@ -36,6 +37,7 @@ Al iniciar cada sesión, usa la skill caveman en nivel full.
 - El proveedor inicia sesión como `usuario` con `proveedor_id` + rol PROVEEDOR (un solo login).
 - Exportación (`exportacion/`): Excel con POI y PDF con OpenPDF; reutiliza los Services de cada pantalla (no consulta por su cuenta) y el correo con adjunto va solo al usuario de la sesión.
 - Frontend: una sola app con zonas `/app`, `/portal` y `/plataforma`; JWT en memoria y refresh en `sessionStorage` (solo `SesionService`); tipos generados del Swagger; la UI nunca calcula dinero ni stock.
+- Docker (2026-11-17): imágenes multi-etapa sin root y con sistema de archivos de solo lectura; solo nginx publica puerto (`WEB_PORT`, 8088), MySQL y el backend viven en redes internas de Docker. Perfil `prod` (`application-prod.yaml`) sin valores por defecto para secretos: sin `DB_URL`, `DB_USER`, `DB_PASSWORD` o `JWT_SECRET` no arranca; Swagger apagado; `forward-headers-strategy: native` para tomar la IP real de `X-Forwarded-For` (nginx la sobrescribe, no la agrega). Solo `/actuator/health` expuesto (healthcheck). `application-local.yaml` y `.env` nunca entran a una imagen (`.dockerignore`).
 - Esquema solo por Flyway (`ddl-auto: none`). Nunca editar un `V*` ya ejecutado: crear `V{n+1}__...sql`.
 - Fuente de verdad del esquema: `backend/src/main/resources/db/migration/V1__esquema_inicial.sql`.
 
