@@ -31,11 +31,26 @@ export class InventarioService {
     return this.http.get<InventarioResumen>(api('/api/reportes/inventario'), { params: parametros({ categoriaId, soloBajoMinimo }) });
   }
 
-  /** @param filtros texto, categoría y estado */
-  productos(filtros: { texto?: string | null; categoriaId?: number | null; tamano?: number }): Observable<Pagina<Producto>> {
+  /** @param filtros texto, categoría y estado (por defecto solo los activos) */
+  productos(filtros: { texto?: string | null; categoriaId?: number | null; tamano?: number; activo?: boolean }): Observable<Pagina<Producto>> {
     return this.http.get<Pagina<Producto>>(api('/api/productos'), {
-      params: parametros({ texto: filtros.texto, categoriaId: filtros.categoriaId, activo: true, size: filtros.tamano ?? 100, sort: 'nombre,asc' }),
+      params: parametros({ texto: filtros.texto, categoriaId: filtros.categoriaId, activo: filtros.activo ?? true, size: filtros.tamano ?? 100, sort: 'nombre,asc' }),
     });
+  }
+
+  /** @param id producto; detalle para editarlo */
+  producto(id: number): Observable<Producto> {
+    return this.http.get<Producto>(api(`/api/productos/${id}`));
+  }
+
+  /** @param id producto; @param datos todos los campos del formulario; el stock no se toca desde aquí */
+  actualizarProducto(id: number, datos: ProductoNuevo): Observable<Producto> {
+    return this.http.put<Producto>(api(`/api/productos/${id}`), datos);
+  }
+
+  /** @param id producto; @param activar {@code false} lo desactiva (deja de ofrecerse; el historial se conserva) */
+  cambiarEstadoProducto(id: number, activar: boolean): Observable<Producto> {
+    return this.http.patch<Producto>(api(`/api/productos/${id}/${activar ? 'activar' : 'desactivar'}`), {});
   }
 
   /** Productos bajo su stock mínimo. */

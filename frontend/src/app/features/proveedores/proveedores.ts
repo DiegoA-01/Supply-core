@@ -1,64 +1,31 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { Proveedor } from '../../core/api/modelos';
+import { Categoria, Evaluacion, Pagina, Proveedor } from '../../core/api/modelos';
 import { Estado } from '../../core/formato/etiquetas';
-import { FechaPipe, PuntajePipe } from '../../core/formato/formato';
+import { FechaPipe, NumeroPipe, PuntajePipe } from '../../core/formato/formato';
+import { ConfiguracionService } from '../../core/servicios/configuracion.service';
+import { InventarioService } from '../../core/servicios/inventario.service';
 import { ReportesService } from '../../core/servicios/reportes.service';
-import { Avisos } from '../../core/ui/avisos';
 import { SesionService } from '../../core/sesion/sesion.service';
+import { Avisos } from '../../core/ui/avisos';
 
-/** Proveedores de la empresa: los que se registraron en el portal esperan que compras los habilite. */
+/**
+ * Proveedores de la empresa. Se registran solos en el portal y solo cotizan cuando compras los habilita. Compras puede
+ * habilitar, rechazar, suspender (y volver a habilitar), corregir el contacto y las categorías en que cotizan, y ver las
+ * calificaciones que han recibido. El score lo calcula el backend al cerrar cada recepción.
+ */
 @Component({
   selector: 'sc-proveedores',
-  imports: [RouterLink, Estado, FechaPipe, PuntajePipe],
-  template: `
-    <div class="pagina">
-      <div>
-        <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Proveedores</p>
-        <div class="encabezado">
-          <div><h1>Proveedores</h1><p>Se registran solos en el portal; solo cotizan cuando compras los habilita.</p></div>
-          <div class="acciones pastillas">
-            @for (e of estados; track e.texto) {
-              <button type="button" class="pastilla" [class.activa]="estado() === e.valor" (click)="filtrar(e.valor)">{{ e.texto }}</button>
-            }
-          </div>
-        </div>
-      </div>
-      <section class="tarjeta sin-relleno">
-        <div class="tabla-contenedor">
-          <table class="tabla">
-            <thead><tr><th>Proveedor</th><th class="oculto-movil">Contacto</th><th>Estado</th><th class="num">Score</th><th class="oculto-movil">Registro</th><th></th></tr></thead>
-            <tbody>
-              @for (p of lista() ?? []; track p.id) {
-                <tr>
-                  <td><strong>{{ p.razonSocial }}</strong><span class="sub">NIT {{ p.nit }}</span></td>
-                  <td class="oculto-movil">{{ p.correoContacto }}<span class="sub">{{ p.telefono }}</span></td>
-                  <td><sc-estado [valor]="p.estado" /></td>
-                  <td class="num">{{ p.scoreActual | puntaje }}</td>
-                  <td class="oculto-movil">{{ p.creadoEn | fecha }}</td>
-                  <td class="num">
-                    @if (p.estado === 'PENDIENTE' && puedeDecidir()) {
-                      <div class="fila fin">
-                        <button type="button" class="boton chico primario" (click)="habilitar(p)">Habilitar</button>
-                        <button type="button" class="boton chico peligro" (click)="rechazar(p)">Rechazar</button>
-                      </div>
-                    }
-                  </td>
-                </tr>
-              } @empty {
-                <tr><td colspan="6" class="vacio">{{ lista() ? 'No hay proveedores con este filtro.' : 'Cargando…' }}</td></tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-  `,
-  styles: `.fin { justify-content: flex-end; }`,
+  imports: [FormsModule, RouterLink, Estado, FechaPipe, NumeroPipe, PuntajePipe],
+  templateUrl: './proveedores.html',
+  styleUrl: './proveedores.scss',
 })
 export class Proveedores implements OnInit {
-  private readonly servicio = inject(ReportesService);
+  private readonly reportes = inject(ReportesService);
+  private readonly servicio = inject(ConfiguracionService);
+  private readonly inventario = inject(InventarioService);
   private readonly avisos = inject(Avisos);
   private readonly sesion = inject(SesionService);
 
@@ -66,12 +33,34 @@ export class Proveedores implements OnInit {
     { valor: null, texto: 'Todos' },
     { valor: 'PENDIENTE', texto: 'Por habilitar' },
     { valor: 'HABILITADO', texto: 'Habilitados' },
+    { valor: 'SUSPENDIDO', texto: 'Suspendidos' },
+    { valor: 'RECHAZADO', texto: 'Rechazados' },
   ];
   protected readonly estado = signal<string | null>(null);
   protected readonly lista = signal<Proveedor[] | null>(null);
+  protected readonly categorias = signal<Categoria[]>([]);
+  protected readonly detalle = signal<Proveedor | null>(null);
+  protected readonly trabajando = signal(false);
+
+  // Edición de contacto y categorías
+  protected readonly editando = signal(false);
+  protected readonly correo = signal('');
+  protected readonly telefono = signal('');
+  protected readonly direccion = signal('');
+  protected readonly categoriaIds = signal<number[]>([]);
+
+  // Cambio de estado con motivo (rechazar o suspender)
+  protected readonly motivoPara = signal<'rechazar' | 'suspender' | null>(null);
+  protected readonly motivo = signal('');
+
+  // Calificaciones
+  protected readonly evaluaciones = signal<Pagina<Evaluacion> | null>(null);
+  protected readonly paginaEval = signal(0);
+
   protected readonly puedeDecidir = computed(() => this.sesion.tieneRol(['ADMIN_COMPRAS']) && !this.sesion.soloLectura());
 
   ngOnInit(): void {
+    this.inventario.categorias().subscribe({ next: l => this.categorias.set(l), error: () => undefined });
     this.cargar();
   }
 
@@ -81,35 +70,115 @@ export class Proveedores implements OnInit {
     this.cargar();
   }
 
-  /** @param p proveedor pendiente */
-  protected habilitar(p: Proveedor): void {
-    this.servicio.habilitar(p.id!).subscribe({
-      next: () => {
-        this.avisos.ok(`${p.razonSocial} quedó habilitado y ya puede cotizar.`);
-        this.cargar();
-      },
-      error: e => this.avisos.error(e),
+  /** @param p proveedor de la lista; abre su ficha y sus calificaciones */
+  protected abrir(p: Proveedor): void {
+    this.editando.set(false);
+    this.cancelarMotivo();
+    this.evaluaciones.set(null);
+    this.servicio.proveedor(p.id!).subscribe({ next: d => this.detalle.set(d), error: e => this.avisos.error(e) });
+    this.cargarEvaluaciones(p.id!, 0);
+  }
+
+  /** @param id proveedor; @param pagina número de página desde 0 */
+  protected cargarEvaluaciones(id: number, pagina: number): void {
+    this.paginaEval.set(pagina);
+    this.servicio.evaluaciones(id, pagina).subscribe({ next: e => this.evaluaciones.set(e), error: () => this.evaluaciones.set(null) });
+  }
+
+  protected habilitar(): void {
+    const p = this.detalle();
+    if (!p?.id) {
+      return;
+    }
+    this.trabajando.set(true);
+    this.servicio.habilitarProveedor(p.id).subscribe({
+      next: r => this.terminado(r, `${r.razonSocial} quedó habilitado y ya puede cotizar.`),
+      error: e => this.fallo(e),
     });
   }
 
-  /** @param p proveedor pendiente */
-  protected rechazar(p: Proveedor): void {
-    const motivo = window.prompt(`Motivo para rechazar a ${p.razonSocial}:`);
-    if (!motivo?.trim()) {
+  /** Rechaza o suspende con el motivo escrito (es obligatorio). */
+  protected confirmarMotivo(): void {
+    const p = this.detalle();
+    const que = this.motivoPara();
+    const motivo = this.motivo().trim();
+    if (!p?.id || !que) {
       return;
     }
-    this.servicio.rechazar(p.id!, motivo.trim()).subscribe({
-      next: () => {
-        this.avisos.ok(`${p.razonSocial} quedó rechazado.`);
-        this.cargar();
+    if (motivo.length < 5) {
+      this.avisos.ok('Escribe el motivo (mínimo 5 caracteres).');
+      return;
+    }
+    this.trabajando.set(true);
+    const peticion = que === 'rechazar' ? this.reportes.rechazar(p.id, motivo) : this.servicio.suspenderProveedor(p.id, motivo);
+    peticion.subscribe({
+      next: r => {
+        this.cancelarMotivo();
+        this.terminado(r, que === 'rechazar' ? `${r.razonSocial} quedó rechazado.` : `${r.razonSocial} quedó suspendido: ya no puede cotizar.`);
       },
-      error: e => this.avisos.error(e),
+      error: e => this.fallo(e),
     });
+  }
+
+  protected cancelarMotivo(): void {
+    this.motivoPara.set(null);
+    this.motivo.set('');
+  }
+
+  protected editar(): void {
+    const p = this.detalle();
+    if (!p) {
+      return;
+    }
+    this.correo.set(p.correoContacto ?? '');
+    this.telefono.set(p.telefono ?? '');
+    this.direccion.set(p.direccion ?? '');
+    this.categoriaIds.set((p.categorias ?? []).map(c => c.id!));
+    this.editando.set(true);
+  }
+
+  /** @param id categoría; la marca o la desmarca */
+  protected alternarCategoria(id: number): void {
+    this.categoriaIds.update(l => (l.includes(id) ? l.filter(x => x !== id) : [...l, id]));
+  }
+
+  protected guardar(): void {
+    const p = this.detalle();
+    if (!p?.id) {
+      return;
+    }
+    if (!this.categoriaIds().length) {
+      this.avisos.ok('Elige al menos una categoría: de ahí salen las invitaciones a cotizar.');
+      return;
+    }
+    this.trabajando.set(true);
+    this.servicio.editarProveedor(p.id, {
+      correoContacto: this.correo().trim() || undefined, telefono: this.telefono().trim() || undefined,
+      direccion: this.direccion().trim() || undefined, categoriaIds: this.categoriaIds(),
+    }).subscribe({
+      next: r => {
+        this.editando.set(false);
+        this.terminado(r, 'Datos del proveedor actualizados.');
+      },
+      error: e => this.fallo(e),
+    });
+  }
+
+  private terminado(r: Proveedor, mensaje: string): void {
+    this.trabajando.set(false);
+    this.detalle.set(r);
+    this.avisos.ok(mensaje);
+    this.cargar();
+  }
+
+  private fallo(e: unknown): void {
+    this.trabajando.set(false);
+    this.avisos.error(e);
   }
 
   private cargar(): void {
     this.lista.set(null);
-    this.servicio.proveedores(this.estado()).subscribe({
+    this.reportes.proveedores(this.estado()).subscribe({
       next: p => this.lista.set(p.contenido ?? []),
       error: e => {
         this.lista.set([]);

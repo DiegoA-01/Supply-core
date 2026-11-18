@@ -1,0 +1,25 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Configuración</p>
+    <div class="encabezado"><div><h1>Configuración</h1>
+      <p>Todo lo que define cómo trabaja tu empresa. Cada tarjeta dice si puedes cambiarlo o solo consultarlo.</p></div></div>
+  </div>
+
+  @for (g of visibles(); track g.titulo) {
+    <section>
+      <h2 class="grupo">{{ g.titulo }}</h2>
+      <div class="rejilla tarjetas">
+        @for (e of g.entradas; track e.ruta) {
+          <a class="tarjeta entrada" [routerLink]="e.ruta">
+            <span class="material-symbols-outlined icono">{{ e.icono }}</span>
+            <div>
+              <strong>{{ e.titulo }}</strong>
+              <p class="texto-chico texto-2">{{ e.descripcion }}</p>
+              <span class="chip" [class.verde]="puedeEditar(e)">{{ puedeEditar(e) ? 'Puedes cambiarlo' : 'Solo consulta' }}</span>
+            </div>
+          </a>
+        }
+      </div>
+    </section>
+  }
+</div>

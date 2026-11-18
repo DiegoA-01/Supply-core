@@ -1,0 +1,11 @@
+.pastillas { display: flex; gap: 8px; flex-wrap: wrap; }
+.pastilla {
+  padding: 8px 16px; border: 1px solid #e0e0e0; border-radius: 999px; background: #fff; font: inherit; font-weight: 600; cursor: pointer;
+  &.activa { background: var(--sc-primario); border-color: var(--sc-primario); color: #fff; }
+  &:focus-visible { outline: 3px solid #f6b9a3; outline-offset: 2px; }
+}
+.filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin-bottom: 14px; .campo { min-width: 180px; } }
+.inactivo td { opacity: .6; }
+.fin { justify-content: flex-end; }
+.margen-arriba { margin-top: 14px; }
+.aviso { margin: 12px 0; }

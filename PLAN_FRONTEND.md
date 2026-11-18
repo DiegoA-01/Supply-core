@@ -63,7 +63,7 @@ Rutas sin uso: `/api/adjudicaciones/pendientes`, `/adjudicaciones/{id}`, `/adjud
 5. Cancelar RFQ.
 6. Delegaciones: otorgadas, recibidas, crear y revocar.
 
-## Fase 6. Catálogos de configuración (la más grande)
+## Fase 6. Catálogos de configuración — hecha el 2026-11-18 (catálogos simples con una pantalla genérica; el índice está en /app/configuracion) (la más grande)
 Cada catálogo lleva lista, crear, editar, activar y desactivar. Hoy se leen en selectores, pero no se administran.
 1. Sedes (`/api/sedes`: sin uso).
 2. Centros de costo, bodegas y categorías (verificar edición, activar, desactivar).

@@ -64,6 +64,7 @@ export const MENU: SeccionMenu[] = [
       { texto: 'Delegaciones', icono: 'group_add', ruta: '/app/delegaciones', roles: INTERNOS, modulo: 'COMPRAS' },
       { texto: 'Auditoría', icono: 'shield', ruta: '/app/auditoria', roles: ['AUDITOR', 'ADMIN_SISTEMA'], modulo: 'AUDITORIA' },
       { texto: 'Usuarios y roles', icono: 'apartment', ruta: '/app/usuarios', roles: ['ADMIN_SISTEMA', 'AUDITOR'] },
+      { texto: 'Configuración', icono: 'settings', ruta: '/app/configuracion', roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO'], exacta: true },
       { texto: 'Avisos y correos', icono: 'notifications', ruta: '/app/configuracion/notificaciones', roles: ['ADMIN_SISTEMA'] },
     ],
   },

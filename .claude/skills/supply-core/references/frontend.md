@@ -46,6 +46,16 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 - `/app/ordenes/directa` (COMPRADOR): elige una solicitud aprobada, ve los contratos vigentes que la cubren (cobertura, tope, lo aprobado y totales calculados por el backend) y emite la orden al precio pactado. Enlace "Orden directa" en la lista de órdenes. La ruta va antes de `ordenes/:id`.
 - Orden: el COMPRADOR cancela (con motivo) o crea una versión nueva (motivo y cambios de entrega o cantidades; manda solo lo que cambió) mientras no esté despachada. Recepción: ALMACENISTA y ADMIN_COMPRAS cierran la recepción (el motivo es obligatorio si queda faltante). RFQ: el COMPRADOR la cancela en borrador o abierta.
 
+## Configuración (2026-11-18, fase 6 de `PLAN_FRONTEND.md`)
+- `/app/configuracion`: índice de todo lo que define cómo trabaja la empresa; cada tarjeta dice si el usuario puede cambiarlo o solo consultarlo, y solo muestra lo de los módulos activos.
+- Catálogos simples con **una sola pantalla genérica** (`features/configuracion/catalogo.*`, configurada en `catalogos.ts`): `/app/configuracion/:catalogo` con sedes, centros-costo, bodegas, categorias y unidades-medida (lista con filtro activos/inactivos, crear, editar, activar y desactivar; desactivar no borra). Roles como el backend: sedes, centros y bodegas = ADMIN_SISTEMA; categorías y unidades = ADMIN_COMPRAS o ADMIN_SISTEMA. Una bodega con stock no se desactiva; de una unidad solo se edita el nombre (código, magnitud y factor quedan fijos). Convertidor de unidades en la pantalla de unidades (lo calcula el backend). Un catálogo nuevo = una entrada en `CATALOGOS`.
+- `/app/configuracion/politicas` (ADMIN_COMPRAS edita): rangos [desde, hasta) por tipo (solicitud o adjudicación) con el rol que aprueba (APROBADOR o ADMIN_COMPRAS); entre las activas del mismo tipo no se superponen; un monto que ningún rango cubre no necesita aprobación.
+- `/app/configuracion/pesos`: pesos de evaluación (deben sumar 100; cada cambio crea una versión y los análisis ya hechos conservan los suyos).
+- `/app/configuracion/presupuestos`: por centro de costo y mes; comprometido, disponible y uso los calcula el backend; al editar solo cambia el monto.
+- `/app/configuracion/contratos`: contratos con precios pactados (con tope opcional de cantidad), detalle con lo consumido y disponible, cambiar vigencia y anular con motivo; alimentan la orden directa.
+- `/app/proveedores` ahora tiene ficha: habilitar, rechazar y suspender con motivo, volver a habilitar a un suspendido, editar contacto y categorías, y ver las calificaciones.
+- `/app/inventario`: editar, desactivar y reactivar productos (ADMIN_COMPRAS); el stock no se edita ahí.
+
 ## Decisiones (2026-11-05)
 - **Una sola app SaaS con tres zonas**: `/app` (empresa, `empresaGuard`), `/portal` (rol PROVEEDOR, `proveedorGuard`), `/plataforma` (dueño con MFA, `plataformaGuard`). Cada pantalla se carga perezosa.
 - **Librería**: Angular Material solo para comportamiento (menús, avisos, tooltips); el aspecto sale de tokens CSS en `styles.scss` tomados del mockup (primario `#d93a0b`). PrimeNG descartado: v22 exige licencia comercial con clave.

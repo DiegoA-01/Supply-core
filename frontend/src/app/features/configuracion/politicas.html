@@ -1,0 +1,70 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / <a routerLink="/app/configuracion">Configuración</a> / Políticas de aprobación</p>
+    <div class="encabezado"><div><h1>Políticas de aprobación</h1>
+      <p>Según el monto, qué rol aprueba. Cada política cubre un rango: el "desde" entra y el "hasta" no. Un monto que ningún rango cubre no necesita aprobación.</p></div></div>
+  </div>
+
+  @if (!puedeEditar()) {
+    <div class="aviso"><span class="material-symbols-outlined">visibility</span>Solo consulta: las políticas las administra el jefe de compras.</div>
+  }
+
+  @if (abierto()) {
+    <section class="tarjeta">
+      <h2>{{ editando() ? 'Editar política' : 'Nueva política' }}</h2>
+      <form class="formulario dos" (ngSubmit)="guardar()">
+        <div class="campo"><label for="pt">Qué se aprueba</label>
+          <select id="pt" name="pt" class="entrada" [ngModel]="tipo()" (ngModelChange)="tipo.set($event)">
+            @for (t of tipos; track t.valor) { <option [value]="t.valor">{{ t.titulo }}</option> }
+          </select></div>
+        <div class="campo"><label for="pr">Rol que aprueba</label>
+          <select id="pr" name="pr" class="entrada" [ngModel]="rol()" (ngModelChange)="rol.set($event)">
+            @for (r of roles; track r) { <option [value]="r">{{ nombre(r) }}</option> }
+          </select></div>
+        <div class="campo"><label for="pd">Desde el monto</label>
+          <input id="pd" name="pd" type="number" min="0" step="any" class="entrada num" [ngModel]="desde()" (ngModelChange)="desde.set($event)">
+          <span class="ayuda">Este monto sí entra en el rango.</span></div>
+        <div class="campo"><label for="ph">Hasta el monto (opcional)</label>
+          <input id="ph" name="ph" type="number" min="0" step="any" class="entrada num" placeholder="Sin tope" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)">
+          <span class="ayuda">Este monto no entra: ya lo cubre la política siguiente. Vacío = sin tope.</span></div>
+        <div class="fila">
+          <button type="submit" class="boton primario" [disabled]="trabajando()">{{ trabajando() ? 'Guardando…' : 'Guardar' }}</button>
+          <button type="button" class="boton" (click)="abierto.set(false)">Cancelar</button>
+        </div>
+      </form>
+      <div class="aviso margen-arriba"><span class="material-symbols-outlined">info</span>Entre las políticas activas del mismo tipo los rangos no pueden superponerse: si chocan, el sistema te dice con cuál.</div>
+    </section>
+  }
+
+  @for (t of tipos; track t.valor) {
+    <section class="tarjeta sin-relleno">
+      <div class="cabecera">
+        <div><h2>{{ t.titulo }}</h2><p class="texto-chico texto-2 sin-margen">{{ t.ayuda }}</p></div>
+        @if (puedeEditar()) { <button type="button" class="boton chico primario" (click)="nueva(t.valor)"><span class="material-symbols-outlined">add</span> Agregar rango</button> }
+      </div>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th class="num">Desde</th><th class="num">Hasta (no incluido)</th><th>Aprueba</th><th>Estado</th>@if (puedeEditar()) { <th></th> }</tr></thead>
+          <tbody>
+            @for (p of de(t.valor); track p.id) {
+              <tr [class.inactivo]="!p.activo">
+                <td class="num">{{ p.montoDesde | pesos }}</td>
+                <td class="num">{{ p.montoHasta == null ? 'Sin tope' : (p.montoHasta | pesos) }}</td>
+                <td><strong>{{ p.rolAprobadorNombre ?? nombre(p.rolAprobador) }}</strong></td>
+                <td><span class="chip" [class.verde]="p.activo">{{ p.activo ? 'Activa' : 'Inactiva' }}</span></td>
+                @if (puedeEditar()) {
+                  <td class="num"><div class="fila fin">
+                    <button type="button" class="boton chico" (click)="editar(p)">Editar</button>
+                    <button type="button" class="boton chico" [class.peligro]="p.activo" (click)="alternar(p)">{{ p.activo ? 'Desactivar' : 'Activar' }}</button>
+                  </div></td>
+                }
+              </tr>
+            } @empty {
+              <tr><td [attr.colspan]="puedeEditar() ? 5 : 4" class="vacio">{{ lista() ? 'No hay rangos: esta operación no necesita aprobación.' : 'Cargando…' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</div>

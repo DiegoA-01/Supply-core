@@ -1,0 +1,84 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / <a routerLink="/app/configuracion">Configuración</a> / Presupuestos</p>
+    <div class="encabezado">
+      <div><h1>Presupuestos</h1>
+        <p>Cuánto puede gastar cada centro de costo cada mes. Lo comprometido y lo disponible los calcula el sistema con las solicitudes y órdenes vigentes.</p></div>
+      <div class="acciones">
+        @if (puedeEditar()) { <button type="button" class="boton primario" (click)="nuevo()"><span class="material-symbols-outlined">add</span> Nuevo presupuesto</button> }
+      </div>
+    </div>
+  </div>
+
+  @if (!puedeEditar()) {
+    <div class="aviso"><span class="material-symbols-outlined">visibility</span>Solo consulta: los presupuestos los administra el jefe de compras.</div>
+  }
+
+  @if (abierto()) {
+    <section class="tarjeta">
+      <h2>{{ editando() ? 'Cambiar el monto' : 'Nuevo presupuesto' }}</h2>
+      <form class="formulario dos" (ngSubmit)="guardar()">
+        @if (editando(); as p) {
+          <div class="campo"><label>Centro de costo</label><input class="entrada" disabled [value]="centro(p.centroCostoId)"></div>
+          <div class="campo"><label>Mes</label><input class="entrada" disabled [value]="nombreMes(p.mes) + ' ' + p.anio"></div>
+        } @else {
+          <div class="campo"><label for="pc">Centro de costo</label>
+            <select id="pc" name="pc" class="entrada" [ngModel]="centroId()" (ngModelChange)="centroId.set($event)">
+              <option [ngValue]="null" disabled>Elige</option>
+              @for (c of centros(); track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
+            </select></div>
+          <div class="campo"><label for="pa">Año</label>
+            <select id="pa" name="pa" class="entrada" [ngModel]="anio()" (ngModelChange)="anio.set($event)">
+              @for (a of anios; track a) { <option [ngValue]="a">{{ a }}</option> }
+            </select></div>
+          <div class="campo"><label for="pm">Mes</label>
+            <select id="pm" name="pm" class="entrada" [ngModel]="mes()" (ngModelChange)="mes.set($event)">
+              @for (m of meses; track m; let i = $index) { <option [ngValue]="i + 1">{{ m }}</option> }
+            </select></div>
+        }
+        <div class="campo"><label for="pmo">Monto</label>
+          <input id="pmo" name="pmo" type="number" min="0" step="any" class="entrada num" [ngModel]="monto()" (ngModelChange)="monto.set($event)"></div>
+        <div class="fila">
+          <button type="submit" class="boton primario" [disabled]="trabajando()">{{ trabajando() ? 'Guardando…' : 'Guardar' }}</button>
+          <button type="button" class="boton" (click)="abierto.set(false)">Cancelar</button>
+        </div>
+      </form>
+      <div class="aviso margen-arriba"><span class="material-symbols-outlined">info</span>Si ya hay presupuesto para ese centro y mes, cámbiale el monto en vez de crear otro.</div>
+    </section>
+  }
+
+  <section class="tarjeta">
+    <div class="filtros">
+      <div class="campo"><label for="fc">Centro de costo</label>
+        <select id="fc" class="entrada" [ngModel]="centroFiltro()" (ngModelChange)="centroFiltro.set($event); cargar()">
+          <option [ngValue]="null">Todos</option>
+          @for (c of centros(); track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
+        </select></div>
+      <div class="campo"><label for="fa">Año</label>
+        <select id="fa" class="entrada" [ngModel]="anioFiltro()" (ngModelChange)="anioFiltro.set($event); cargar()">
+          @for (a of anios; track a) { <option [ngValue]="a">{{ a }}</option> }
+        </select></div>
+    </div>
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead><tr><th>Centro de costo</th><th>Mes</th><th class="num">Presupuesto</th><th class="num">Comprometido</th><th class="num">Disponible</th><th>Uso</th>@if (puedeEditar()) { <th></th> }</tr></thead>
+        <tbody>
+          @for (p of lista() ?? []; track p.id) {
+            <tr>
+              <td><strong>{{ centro(p.centroCostoId) }}</strong></td>
+              <td class="nowrap">{{ nombreMes(p.mes) }} {{ p.anio }}</td>
+              <td class="num">{{ p.monto | pesos }}</td>
+              <td class="num">{{ p.comprometido | pesos }}</td>
+              <td class="num">{{ p.disponible | pesos }}</td>
+              <td class="uso"><div class="barra" role="img" [attr.aria-label]="'Uso ' + p.usoPct + ' por ciento'"><span class="{{ tono(p) }}" [style.width.%]="p.usoPct && p.usoPct > 100 ? 100 : p.usoPct"></span></div>
+                <span class="texto-chico">{{ p.usoPct | numero }} %</span></td>
+              @if (puedeEditar()) { <td class="num"><button type="button" class="boton chico" (click)="editar(p)">Cambiar monto</button></td> }
+            </tr>
+          } @empty {
+            <tr><td [attr.colspan]="puedeEditar() ? 7 : 6" class="vacio">{{ lista() ? 'No hay presupuestos para ese filtro.' : 'Cargando…' }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,120 @@
+<div class="pagina">
+  @if (config(); as c) {
+    <div>
+      <p class="migas"><a routerLink="/app/inicio">Inicio</a> / <a routerLink="/app/configuracion">Configuración</a> / {{ c.titulo }}</p>
+      <div class="encabezado">
+        <div><h1>{{ c.titulo }}</h1><p>{{ c.descripcion }}</p></div>
+        <div class="acciones">
+          @if (puedeEditar()) { <button type="button" class="boton primario" (click)="nuevo()"><span class="material-symbols-outlined">add</span> Nueva {{ c.singular }}</button> }
+        </div>
+      </div>
+    </div>
+
+    @if (!puedeEditar()) {
+      <div class="aviso"><span class="material-symbols-outlined">visibility</span>Solo consulta: este catálogo lo administra otro rol de tu empresa.</div>
+    }
+
+    @if (abierto()) {
+      <section class="tarjeta">
+        <h2>{{ editando() ? 'Editar ' + c.singular : 'Nueva ' + c.singular }}</h2>
+        <form class="formulario dos" (ngSubmit)="guardar()">
+          @for (k of c.campos; track k.clave) {
+            <div class="campo">
+              <label [for]="'campo-' + k.clave">{{ k.etiqueta }}{{ k.requerido ? '' : ' (opcional)' }}</label>
+              @switch (k.tipo) {
+                @case ('seleccion') {
+                  <select [id]="'campo-' + k.clave" [name]="k.clave" class="entrada" [disabled]="!editable(k)" [ngModel]="valores()[k.clave] ?? ''" (ngModelChange)="escribir(k, $event)">
+                    <option value="" disabled>Elige</option>
+                    @for (o of k.opciones; track o.valor) { <option [value]="o.valor">{{ o.texto }}</option> }
+                  </select>
+                }
+                @case ('sede') {
+                  <select [id]="'campo-' + k.clave" [name]="k.clave" class="entrada" [ngModel]="valores()[k.clave] ?? ''" (ngModelChange)="escribir(k, $event)">
+                    <option value="">Sin sede</option>
+                    @for (s of sedes(); track s.id) { <option [value]="s.id">{{ s['nombre'] }}</option> }
+                  </select>
+                }
+                @case ('numero') {
+                  <input [id]="'campo-' + k.clave" [name]="k.clave" type="number" step="any" class="entrada num" [disabled]="!editable(k)" [ngModel]="valores()[k.clave] ?? ''" (ngModelChange)="escribir(k, $event)">
+                }
+                @default {
+                  <input [id]="'campo-' + k.clave" [name]="k.clave" class="entrada" [attr.maxlength]="k.max ?? null" [disabled]="!editable(k)" [ngModel]="valores()[k.clave] ?? ''" (ngModelChange)="escribir(k, $event)">
+                }
+              }
+              @if (k.ayuda && editable(k)) { <span class="ayuda">{{ k.ayuda }}</span> }
+            </div>
+          }
+          <div class="fila">
+            <button type="submit" class="boton primario" [disabled]="trabajando()">{{ trabajando() ? 'Guardando…' : 'Guardar' }}</button>
+            <button type="button" class="boton" (click)="abierto.set(false)">Cancelar</button>
+          </div>
+        </form>
+        @if (c.aviso) { <div class="aviso margen-arriba"><span class="material-symbols-outlined">info</span>{{ c.aviso }}</div> }
+      </section>
+    }
+
+    <section class="tarjeta">
+      <div class="filtros">
+        <div class="pastillas" role="group" aria-label="Estado">
+          <button type="button" class="pastilla" [class.activa]="estado() === 'activos'" (click)="filtrar('activos')">Activos</button>
+          <button type="button" class="pastilla" [class.activa]="estado() === 'inactivos'" (click)="filtrar('inactivos')">Inactivos</button>
+          <button type="button" class="pastilla" [class.activa]="estado() === 'todos'" (click)="filtrar('todos')">Todos</button>
+        </div>
+        <div class="campo"><label for="busca">Buscar</label>
+          <input id="busca" type="search" class="entrada" [ngModel]="texto()" (ngModelChange)="texto.set($event)" placeholder="Escribe para filtrar"></div>
+      </div>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr>
+            @for (k of c.campos; track k.clave) { <th [class.num]="k.tipo === 'numero'">{{ k.etiqueta }}</th> }
+            <th>Estado</th>
+            @if (puedeEditar()) { <th></th> }
+          </tr></thead>
+          <tbody>
+            @for (f of visibles(); track f.id) {
+              <tr [class.inactivo]="f.activo === false">
+                @for (k of c.campos; track k.clave) { <td [class.num]="k.tipo === 'numero'">{{ celda(f, k) }}</td> }
+                <td><span class="chip" [class.verde]="f.activo !== false">{{ f.activo === false ? 'Inactivo' : 'Activo' }}</span></td>
+                @if (puedeEditar()) {
+                  <td class="num"><div class="fila fin">
+                    <button type="button" class="boton chico" (click)="editar(f)">Editar</button>
+                    <button type="button" class="boton chico" [class.peligro]="f.activo !== false" (click)="alternar(f)">{{ f.activo === false ? 'Activar' : 'Desactivar' }}</button>
+                  </div></td>
+                }
+              </tr>
+            } @empty {
+              <tr><td [attr.colspan]="c.campos.length + 2" class="vacio">{{ filas() ? 'No hay nada con este filtro.' : 'Cargando…' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    @if (c.clave === 'unidades-medida') {
+      <section class="tarjeta">
+        <h2>Convertir entre unidades</h2>
+        <p class="texto-2">Sirve para comprobar los factores. Solo se puede convertir entre unidades de la misma magnitud; el cálculo lo hace el sistema.</p>
+        <div class="filtros">
+          <div class="campo"><label for="cc">Cantidad</label><input id="cc" type="number" min="0" step="any" class="entrada num" [ngModel]="convCantidad()" (ngModelChange)="convCantidad.set($event)"></div>
+          <div class="campo"><label for="cd">De</label>
+            <select id="cd" class="entrada" [ngModel]="convDesde()" (ngModelChange)="convDesde.set($event)">
+              <option [ngValue]="null" disabled>Elige</option>
+              @for (u of unidades(); track u.id) { <option [ngValue]="u.id">{{ u.codigo }} · {{ u.nombre }}</option> }
+            </select></div>
+          <div class="campo"><label for="ch">A</label>
+            <select id="ch" class="entrada" [ngModel]="convHacia()" (ngModelChange)="convHacia.set($event)">
+              <option [ngValue]="null" disabled>Elige</option>
+              @for (u of unidades(); track u.id) { <option [ngValue]="u.id">{{ u.codigo }} · {{ u.nombre }}</option> }
+            </select></div>
+          <button type="button" class="boton primario" (click)="convertir()">Convertir</button>
+        </div>
+        @if (conversion(); as r) {
+          <div class="aviso verde"><span class="material-symbols-outlined">calculate</span>
+            <div><strong>{{ r.cantidadOrigen }} {{ r.unidadOrigen }} = {{ r.resultado }} {{ r.unidadDestino }}</strong></div></div>
+        }
+      </section>
+    }
+  } @else {
+    <section class="tarjeta"><h2>Ese catálogo no existe</h2><p class="texto-2"><a routerLink="/app/configuracion">Volver a Configuración</a></p></section>
+  }
+</div>
