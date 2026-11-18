@@ -58,6 +58,9 @@ export class Proveedores implements OnInit {
   protected readonly evaluaciones = signal<Pagina<Evaluacion> | null>(null);
   protected readonly paginaEval = signal(0);
 
+  /** Código de la empresa: con él entran los proveedores al portal. */
+  protected readonly codigoEmpresa = computed(() => this.sesion.empresa()?.codigoPublico);
+
   protected readonly puedeDecidir = computed(() => this.sesion.tieneRol(['ADMIN_COMPRAS']) && !this.sesion.soloLectura());
 
   ngOnInit(): void {
@@ -68,6 +71,11 @@ export class Proveedores implements OnInit {
       this.estado.set(pedido);
     }
     this.cargar();
+  }
+
+  /** @param texto texto que se copia al portapapeles */
+  protected copiar(texto: string): void {
+    navigator.clipboard?.writeText(texto).then(() => this.avisos.ok('Copiado'), () => undefined);
   }
 
   /** @param estado estado del proveedor ({@code null} = todos) */
