@@ -100,8 +100,9 @@ def main():
 
     # 4. Usuarios por rol
     cuentas = [
-        # Flujo de la ferretería: el bodeguero pide lo que falta, el jefe de compras lo aprueba y lanza la RFQ
-        ('Jefe de compras', 'jefe.compras@ferreteriademo.local', ['ADMIN_COMPRAS', 'COMPRADOR']),
+        # Flujo de la ferretería: el bodeguero pide lo que falta, el jefe de compras lo aprueba y lanza la RFQ.
+        # El jefe de compras también pide; lo suyo lo aprueba el dueño (también ADMIN_COMPRAS), nunca él mismo.
+        ('Jefe de compras', 'jefe.compras@ferreteriademo.local', ['ADMIN_COMPRAS', 'COMPRADOR', 'SOLICITANTE']),
         ('Jefe de bodega', 'jefe.bodega@ferreteriademo.local', ['ALMACENISTA', 'AUDITOR']),
         ('Bodeguero', 'bodeguero@ferreteriademo.local', ['ALMACENISTA', 'SOLICITANTE']),
         ('Solicitante', 'solicitante@ferreteriademo.local', ['SOLICITANTE']),
