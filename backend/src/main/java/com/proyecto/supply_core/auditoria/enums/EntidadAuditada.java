@@ -60,5 +60,7 @@ public enum EntidadAuditada {
     /** Tabla {@code factura_proveedor}. */
     FACTURA,
     /** Exportación de información (archivo descargado o enviado por correo). */
-    EXPORTACION
+    EXPORTACION,
+    /** Tabla {@code informe_compras}. */
+    INFORME_COMPRAS
 }

@@ -898,6 +898,56 @@ class AislamientoEmpresasTest {
     }
 
     @Test
+    void losInformesDeComprasSonDeCadaEmpresa() throws Exception {
+        jdbc.update("INSERT INTO informe_compras (empresa_id, estado, periodo_desde, periodo_hasta, mensaje_pedido, "
+                + "pedido_por_usuario_id, pedido_en) VALUES (?, 'PEDIDO', '2026-11-01', '2026-11-30', 'Informe de B', ?, NOW())",
+                empresaB, usuarioB);
+        Long informeB = jdbc.queryForObject("SELECT MAX(id) FROM informe_compras WHERE empresa_id = ?", Long.class, empresaB);
+        String jefeA = token(empresaA, usuarioA, "ADMIN_COMPRAS");
+        String duenoA = token(empresaA, usuarioA2, "ADMIN_SISTEMA");
+        try {
+            // A no ve, no lee y no responde el pedido de B
+            mvc.perform(get("/api/informes-compras").header(HttpHeaders.AUTHORIZATION, jefeA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contenido[?(@.id == " + informeB + ")]").isEmpty());
+            mvc.perform(get("/api/informes-compras/" + informeB).header(HttpHeaders.AUTHORIZATION, jefeA))
+                    .andExpect(status().isNotFound());
+            mvc.perform(post("/api/informes-compras/" + informeB + "/leido").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isNotFound());
+            mvc.perform(post("/api/informes-compras").header(HttpHeaders.AUTHORIZATION, jefeA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"desde\":\"2026-11-01\",\"hasta\":\"2026-11-30\",\"analisis\":\"Responde un pedido ajeno\","
+                                    + "\"pedidoId\":" + informeB + "}"))
+                    .andExpect(status().isNotFound());
+
+            // el dueño de A pide y su jefe de compras le responde: queda en A y el pedido de B sigue intacto
+            String pedido = mvc.perform(post("/api/informes-compras/pedir").header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"desde\":\"2026-11-01\",\"hasta\":\"2026-11-30\",\"mensaje\":\"Como vamos\"}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+            Long informeA = Long.valueOf(pedido.replaceAll(".*\"id\":(\\d+).*", "$1"));
+            mvc.perform(post("/api/informes-compras").header(HttpHeaders.AUTHORIZATION, jefeA)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"desde\":\"2026-11-01\",\"hasta\":\"2026-11-30\",\"analisis\":\"Todo en orden este mes\","
+                                    + "\"pedidoId\":" + informeA + "}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.estado").value("ENVIADO"))
+                    .andExpect(jsonPath("$.contenido.resumen.solicitudes").isNumber());
+            assertEquals(empresaA, jdbc.queryForObject("SELECT empresa_id FROM informe_compras WHERE id = ?", Long.class, informeA));
+            assertEquals("PEDIDO", jdbc.queryForObject("SELECT estado FROM informe_compras WHERE id = ?", String.class, informeB));
+            // el jefe de compras no pide ni marca leído; el dueño no envía
+            mvc.perform(post("/api/informes-compras/" + informeA + "/leido").header(HttpHeaders.AUTHORIZATION, jefeA))
+                    .andExpect(status().isForbidden());
+            mvc.perform(get("/api/informes-compras/vista-previa?desde=2026-11-01&hasta=2026-11-30")
+                            .header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isForbidden());
+        } finally {
+            jdbc.update("DELETE FROM notificacion WHERE evento IN ('INFORME_PEDIDO', 'INFORME_RECIBIDO')");
+            jdbc.update("DELETE FROM informe_compras WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+        }
+    }
+
+    @Test
     void lasCategoriasQueVeUnProveedorSonSoloLasDeSuEmpresa() throws Exception {
         mvc.perform(get("/api/portal/proveedor/categorias").header(HttpHeaders.AUTHORIZATION, tokenProveedor(empresaA, usuarioA, proveedorA)))
                 .andExpect(status().isOk())

@@ -134,7 +134,7 @@ public class SlaAprobacionService {
      * @param horas horas del SLA
      */
     private void avisar(SolicitudCompra s, LocalDateTime ahora, int horas) {
-        Optional<String> rol = rolDe(s.getPoliticaAprobacionId());
+        Optional<String> rol = s.isApruebaDueno() ? Optional.of(Roles.ADMIN_SISTEMA) : rolDe(s.getPoliticaAprobacionId());
         if (rol.isEmpty()) {
             return;
         }
@@ -154,14 +154,16 @@ public class SlaAprobacionService {
      */
     private void escalar(SolicitudCompra s, LocalDateTime ahora, int horas) {
         Long anterior = s.getPoliticaAprobacionId();
-        Optional<PoliticaAprobacion> mayor = politicaService.deMayorTramo(TipoPolitica.SOLICITUD);
+        // la que decide el dueño ya está en el nivel más alto: no cambia de política
+        Optional<PoliticaAprobacion> mayor = s.isApruebaDueno() ? Optional.empty()
+                : politicaService.deMayorTramo(TipoPolitica.SOLICITUD);
         boolean cambia = mayor.isPresent() && !mayor.get().getId().equals(anterior);
         String rolDestino;
         if (cambia) {
             s.setPoliticaAprobacionId(mayor.get().getId());
             rolDestino = mayor.get().getRolAprobador().getCodigo();
         } else {
-            rolDestino = rolDe(anterior).orElse(Roles.ADMIN_COMPRAS);
+            rolDestino = s.isApruebaDueno() ? Roles.ADMIN_SISTEMA : rolDe(anterior).orElse(Roles.ADMIN_COMPRAS);
         }
         String mensaje = "La solicitud " + s.getConsecutivo() + " superó las " + horas + " h sin decidirse"
                 + (cambia ? " y pasó a la aprobación del rol " + rolDestino : " y ya está en el nivel más alto");

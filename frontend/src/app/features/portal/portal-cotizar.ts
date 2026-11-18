@@ -45,6 +45,10 @@ export class PortalCotizar implements OnInit {
   protected readonly trabajando = signal(false);
   /** Hay cambios sin guardar: el total mostrado puede no corresponder a los precios escritos. */
   protected readonly sinGuardar = signal(false);
+  /** Nombre del archivo que se acaba de subir (solo para mostrarlo). */
+  protected readonly nombreArchivo = signal<string | null>(null);
+  /** La cotización ya tiene su documento adjunto: con eso basta para enviarla. */
+  protected readonly tieneArchivo = computed(() => !!this.cotizacion()?.documentoOriginalId);
 
   protected readonly editable = computed(() => this.rfq()?.estado === 'ABIERTA' && !this.cotizacion()?.sellada && this.cotizacion()?.estado !== 'ENVIADA');
   protected readonly enviada = computed(() => this.cotizacion()?.estado === 'ENVIADA' || !!this.cotizacion()?.sellada);
@@ -88,7 +92,17 @@ export class PortalCotizar implements OnInit {
         precioUnitarioOfertado: o.precio ?? 0, impuestoPct: o.impuesto,
       }));
     if (!lineas.length) {
-      this.avisos.ok('Escribe el precio de al menos un producto.');
+      if (this.tieneArchivo()) {
+        // Con el archivo adjunto no hace falta escribir precios: se envía así y compras lo revisa
+        if (luegoEnviar) {
+          this.trabajando.set(true);
+          this.enviar();
+        } else {
+          this.avisos.ok('Tu archivo ya quedó guardado. Puedes enviar la cotización sin escribir precios.');
+        }
+        return;
+      }
+      this.avisos.ok('Escribe el precio de al menos un producto o sube el archivo de tu cotización.');
       return;
     }
     this.trabajando.set(true);
@@ -116,7 +130,9 @@ export class PortalCotizar implements OnInit {
 
   /** @param evento cambio del selector de archivos */
   protected subirArchivo(evento: Event): void {
-    const archivo = (evento.target as HTMLInputElement).files?.[0];
+    const campo = evento.target as HTMLInputElement;
+    const archivo = campo.files?.[0];
+    campo.value = ''; // permite volver a elegir el mismo archivo
     const id = this.rfq()?.id;
     if (!archivo || !id) {
       return;
@@ -126,7 +142,8 @@ export class PortalCotizar implements OnInit {
       next: c => {
         this.trabajando.set(false);
         this.aplicar(c);
-        this.avisos.ok('Archivo recibido: la IA está leyendo los datos. Revisa y envía cuando estén listos.');
+        this.nombreArchivo.set(archivo.name);
+        this.avisos.ok(`Archivo «${archivo.name}» adjunto. Ya puedes enviar la cotización.`);
       },
       error: e => {
         this.trabajando.set(false);

@@ -29,12 +29,13 @@ import com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud;
  * @param creadoEn             fecha de creación
  * @param lineas               líneas
  * @param aprobaciones         decisiones, de la más antigua a la más reciente
+ * @param apruebaDueno         si la decide el administrador de la empresa porque quien la pidió aprueba con su rol
  */
 public record SolicitudResponse(Long id, String consecutivo, EstadoSolicitud estado, Long centroCostoId,
         Long usuarioSolicitanteId, String motivo, LocalDate fechaRequerida, BigDecimal montoEstimado,
         boolean montoIncompleto, Long politicaAprobacionId, boolean excedePresupuesto, String justificacionExcepcion,
         LocalDateTime escaladaEn, LocalDateTime enviadoEn, LocalDateTime creadoEn, List<LineaSolicitudResponse> lineas,
-        List<AprobacionResponse> aprobaciones) {
+        List<AprobacionResponse> aprobaciones, boolean apruebaDueno) {
 
     /**
      * Convierte la entidad (líneas con producto y unidad cargados).
@@ -49,6 +50,6 @@ public record SolicitudResponse(Long id, String consecutivo, EstadoSolicitud est
                 s.isMontoIncompleto(), s.getPoliticaAprobacionId(), s.isExcedePresupuesto(),
                 s.getJustificacionExcepcion(), s.getEscaladaEn(), s.getEnviadoEn(), s.getCreadoEn(),
                 s.getLineas().stream().map(LineaSolicitudResponse::of).toList(),
-                aprobaciones.stream().map(AprobacionResponse::of).toList());
+                aprobaciones.stream().map(AprobacionResponse::of).toList(), s.isApruebaDueno());
     }
 }

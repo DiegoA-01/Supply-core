@@ -175,6 +175,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/reportes/reportes').then(m => m.Reportes),
       },
       {
+        path: 'informes',
+        title: 'Informe de compras · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS'], modulo: 'COMPRAS' },
+        loadComponent: () => import('./features/informes/informes').then(m => m.Informes),
+      },
+      {
         path: 'auditoria',
         title: 'Auditoría · Supply-Core',
         canActivate: [permisoGuard],

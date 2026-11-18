@@ -237,7 +237,9 @@ public class SolicitudService {
             PoliticaAprobacion p = politica.get();
             s.setPoliticaAprobacionId(p.getId());
             s.setEstado(EstadoSolicitud.PENDIENTE_APROBACION);
-            notificacionService.notificarRol(p.getRolAprobador().getCodigo(),
+            // Si quien pide aprueba con ese mismo rol (p. ej. el jefe de compras), la decide el dueño de la empresa
+            s.setApruebaDueno(SesionActual.usuario().roles().contains(p.getRolAprobador().getCodigo()));
+            notificacionService.notificarRol(s.isApruebaDueno() ? Roles.ADMIN_SISTEMA : p.getRolAprobador().getCodigo(),
                     EventoNotificacion.SOLICITUD_PENDIENTE_APROBACION, "La solicitud " + s.getConsecutivo()
                             + " por " + describirMonto(e) + " espera su aprobación");
         } else {

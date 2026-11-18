@@ -39,7 +39,7 @@ class SolicitudControllerTest extends WebTestBase {
     private AprobacionSolicitudService aprobacionService;
 
     private final SolicitudResponse borrador = new SolicitudResponse(1L, "SOL-000001", EstadoSolicitud.BORRADOR, 5L,
-            10L, "Papelería", LocalDate.now(), null, false, null, false, null, null, null, null, List.of(), List.of());
+            10L, "Papelería", LocalDate.now(), null, false, null, false, null, null, null, null, List.of(), List.of(), false);
 
     @BeforeEach
     void catalogosActivos() {

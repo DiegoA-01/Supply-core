@@ -97,9 +97,10 @@ public class AprobacionSolicitudService {
         if (s.getUsuarioSolicitanteId().equals(sesion.id())) {
             throw new AccesoDenegadoException("No puede aprobar su propia solicitud (segregación de funciones)");
         }
-        String rolAprobador = politicaRepository.findWithRolById(s.getPoliticaAprobacionId())
-                .map(p -> p.getRolAprobador().getCodigo())
-                .orElseThrow(() -> new IllegalStateException("Solicitud " + id + " sin política asignada"));
+        String rolAprobador = s.isApruebaDueno() ? Roles.ADMIN_SISTEMA
+                : politicaRepository.findWithRolById(s.getPoliticaAprobacionId())
+                        .map(p -> p.getRolAprobador().getCodigo())
+                        .orElseThrow(() -> new IllegalStateException("Solicitud " + id + " sin política asignada"));
         // con su propio rol o por una delegación vigente (nunca la de quien pidió la solicitud)
         Long delegacionId = delegaciones.autorizar(sesion, rolAprobador, s.getUsuarioSolicitanteId()).orElse(null);
 

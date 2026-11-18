@@ -87,11 +87,8 @@ def main():
     tok_admin, secreto_admin = entrar_con_mfa('/api/auth/login', '/api/auth/mfa',
                                               {'empresa': CODIGO_EMPRESA, 'correo': admin_correo, 'password': admin_clave}, 'desafioMfa')
 
-    # El dueño de la ferretería también decide sobre proveedores nuevos: además de administrar, lleva compras
-    lista = exigir('usuarios de la empresa', llamar('GET', '/api/usuarios?size=50', token=tok_admin))
-    yo = next(u for u in (lista['contenido'] if isinstance(lista, dict) else lista) if u['correo'] == admin_correo)
-    exigir('el dueño también administra compras', llamar('PUT', f'/api/usuarios/{yo["id"]}', {
-        'nombreCompleto': yo['nombreCompleto'], 'correo': yo['correo'], 'roles': ['ADMIN_SISTEMA', 'ADMIN_COMPRAS']}, tok_admin))
+    # El dueño de la ferretería solo administra (ADMIN_SISTEMA): no recibe avisos de RFQ, cotizaciones ni proveedores.
+    # Pide y lee el informe de compras, y aprueba solo las solicitudes que hace el propio jefe de compras.
 
     # 3. Estructura de la empresa
     sede = exigir('sede', llamar('POST', '/api/sedes', {'nombre': 'Sede principal', 'direccion': 'Calle 10 # 20-30'}, tok_admin))
@@ -101,7 +98,7 @@ def main():
     # 4. Usuarios por rol
     cuentas = [
         # Flujo de la ferretería: el bodeguero pide lo que falta, el jefe de compras lo aprueba y lanza la RFQ.
-        # El jefe de compras también pide; lo suyo lo aprueba el dueño (también ADMIN_COMPRAS), nunca él mismo.
+        # El jefe de compras también pide; como aprueba con ese rol, lo suyo lo aprueba el dueño, nunca él mismo.
         ('Jefe de compras', 'jefe.compras@ferreteriademo.local', ['ADMIN_COMPRAS', 'COMPRADOR', 'SOLICITANTE']),
         ('Jefe de bodega', 'jefe.bodega@ferreteriademo.local', ['ALMACENISTA', 'AUDITOR']),
         ('Bodeguero', 'bodeguero@ferreteriademo.local', ['ALMACENISTA', 'SOLICITANTE']),

@@ -136,8 +136,10 @@ public interface SolicitudCompraRepository extends JpaRepository<SolicitudCompra
             select s from SolicitudCompra s
             where s.estado = com.proyecto.supply_core.compra.solicitud.enums.EstadoSolicitud.PENDIENTE_APROBACION
               and s.usuarioSolicitanteId <> :usuarioId
-              and s.politicaAprobacionId in (
-                    select p.id from PoliticaAprobacion p where p.rolAprobador.codigo in :roles)
+              and ((s.apruebaDueno = false and s.politicaAprobacionId in (
+                        select p.id from PoliticaAprobacion p where p.rolAprobador.codigo in :roles))
+                   or (s.apruebaDueno = true and exists (
+                        select r.id from Rol r where r.codigo = 'ADMIN_SISTEMA' and r.codigo in :roles)))
             """)
     Page<SolicitudCompra> pendientesPara(@Param("roles") Collection<String> roles,
             @Param("usuarioId") Long usuarioId, Pageable pageable);

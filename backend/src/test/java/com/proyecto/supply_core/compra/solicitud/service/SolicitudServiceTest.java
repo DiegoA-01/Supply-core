@@ -176,6 +176,23 @@ class SolicitudServiceTest {
     }
 
     @Test
+    void siQuienPideApruebaConElRolDeLaPoliticaLaDecideElDueno() {
+        request.setAttribute(SesionActual.ATRIBUTO, new UsuarioAutenticado(10L, "jefe@x.com", "Jefe de compras",
+                Set.of("SOLICITANTE", "ADMIN_COMPRAS"), null, 1L));
+        SolicitudCompra s = existente(EstadoSolicitud.BORRADOR, 10L, linea(100L, 2L, "2"));
+        when(politicas.aplicable(TipoPolitica.SOLICITUD, new BigDecimal("24000.00")))
+                .thenReturn(Optional.of(politica(7L, "ADMIN_COMPRAS")));
+
+        var r = service.enviar(1L);
+
+        assertTrue(s.isApruebaDueno());
+        assertTrue(r.apruebaDueno());
+        verify(notificaciones).notificarRol(eq("ADMIN_SISTEMA"), eq(EventoNotificacion.SOLICITUD_PENDIENTE_APROBACION),
+                anyString());
+        verify(notificaciones, never()).notificarRol(eq("ADMIN_COMPRAS"), any(), anyString());
+    }
+
+    @Test
     void productoSinCostoExigeLaPoliticaDeMayorTramo() {
         lapiz.setCostoReferencia(null);
         existente(EstadoSolicitud.BORRADOR, 10L, linea(100L, 1L, "3"));

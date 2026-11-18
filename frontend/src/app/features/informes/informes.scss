@@ -1,0 +1,15 @@
+.rejilla.dos { grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); align-items: start; }
+.fechas { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.titulo { justify-content: space-between; align-items: flex-start; flex-wrap: wrap; h2 { margin: 0; } p { margin: 4px 0 0; } }
+.analisis { margin: 14px 0; padding: 14px 16px; border-radius: 12px; background: var(--sc-primario-suave);
+  p { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; } }
+.analisis-campo { min-height: 140px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 12px 0; }
+.kpi { display: flex; flex-direction: column; gap: 4px; padding: 14px; border: 1px solid var(--sc-borde); border-radius: 12px;
+  span { font-size: 13px; color: var(--sc-texto-2); } strong { font-size: 24px; letter-spacing: -0.01em; } small { color: var(--sc-texto-2); } }
+.estados { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+h3 { margin: 22px 0 8px; }
+.tabla-contenedor + .tabla-contenedor { margin-top: 10px; }
+.nowrap { white-space: nowrap; }
+tr.nuevo td { background: #fff6f2; font-weight: 600; }
+.enlace { border: 0; background: none; padding: 0; margin-left: 6px; color: var(--sc-primario); font: inherit; cursor: pointer; text-decoration: underline; }

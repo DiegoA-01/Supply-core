@@ -75,6 +75,13 @@ public class SolicitudCompra {
     @Column(name = "politica_aprobacion_id")
     private Long politicaAprobacionId;
 
+    /**
+     * {@code true} si quien la pidió tiene el rol aprobador de su política (p. ej. el jefe de compras): como nadie
+     * aprueba lo suyo, la decide el administrador de la empresa (ADMIN_SISTEMA). Se calcula al enviarla.
+     */
+    @Column(name = "aprueba_dueno", nullable = false)
+    private boolean apruebaDueno;
+
     /** {@code true} si al enviarla excedía el presupuesto del centro de costo (pasó por excepción, paso 18-a). */
     @Column(name = "excede_presupuesto", nullable = false)
     private boolean excedePresupuesto;
