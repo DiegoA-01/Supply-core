@@ -1,0 +1,58 @@
+<div class="pantalla">
+  <section class="caja tarjeta">
+    <div class="marca"><img src="logo.svg" alt="" width="32" height="32"><span>Supply-Core</span></div>
+
+    @if (resultado(); as r) {
+      <h1>Registro enviado</h1>
+      <div class="aviso verde" role="status"><span class="material-symbols-outlined">check_circle</span>
+        <div>{{ r.mensaje ?? 'Tu solicitud quedó pendiente.' }}</div></div>
+      <p class="texto-2">El jefe de compras de la empresa revisa tu solicitud. Cuando te habilite, ingresas con tu correo y la contraseña que acabas de elegir, usando el código de empresa <strong>{{ empresa() }}</strong>. Hasta entonces no puedes ingresar.</p>
+      <a routerLink="/ingreso" class="boton primario bloque">Ir al ingreso</a>
+    } @else if (!empresaValida()) {
+      <h1>Enlace de registro no válido</h1>
+      <div class="aviso rojo" role="alert"><span class="material-symbols-outlined">error</span>No encontramos la empresa «{{ empresa() }}». Pídele a tu cliente que te comparta de nuevo el enlace de registro.</div>
+      <a routerLink="/ingreso" class="texto-chico volver">Volver al ingreso</a>
+    } @else {
+      <h1>Regístrate como proveedor</h1>
+      <p class="texto-2">Para cotizar a la empresa <strong>{{ empresa() }}</strong>. El registro queda pendiente hasta que la empresa lo apruebe.</p>
+
+      <form class="formulario" (ngSubmit)="registrar()" novalidate>
+        <h2>Tu empresa</h2>
+        <div class="campo"><label for="rs">Razón social</label><input id="rs" name="rs" class="entrada" maxlength="200" autocomplete="organization" [ngModel]="razonSocial()" (ngModelChange)="razonSocial.set($event)"></div>
+        <div class="campo"><label for="nit">NIT</label>
+          <input id="nit" name="nit" class="entrada" inputmode="numeric" placeholder="900123456-7" [ngModel]="nit()" (ngModelChange)="nit.set($event)">
+          <span class="ayuda">Solo números, sin puntos; el dígito de verificación es opcional.</span></div>
+        <div class="campo"><label for="tel">Teléfono (opcional)</label><input id="tel" name="tel" class="entrada" autocomplete="tel" [ngModel]="telefono()" (ngModelChange)="telefono.set($event)"></div>
+        <div class="campo"><label for="dir">Dirección (opcional)</label><input id="dir" name="dir" class="entrada" maxlength="250" autocomplete="street-address" [ngModel]="direccion()" (ngModelChange)="direccion.set($event)"></div>
+
+        <fieldset class="categorias">
+          <legend>¿En qué categorías cotizas?</legend>
+          @if (categorias(); as l) {
+            @for (c of l; track c.id) {
+              <label class="check"><input type="checkbox" [checked]="categoriaIds().includes(c.id!)" (change)="alternar(c.id!)"> {{ c.nombre }}</label>
+            } @empty { <span class="texto-2">La empresa todavía no tiene categorías.</span> }
+          } @else { <span class="texto-2">Cargando…</span> }
+        </fieldset>
+
+        <h2>Quien administrará el portal</h2>
+        <div class="campo"><label for="nc">Nombre completo</label><input id="nc" name="nc" class="entrada" maxlength="200" autocomplete="name" [ngModel]="nombreContacto()" (ngModelChange)="nombreContacto.set($event)"></div>
+        <div class="campo"><label for="co">Correo (con él ingresarás)</label><input id="co" name="co" type="email" class="entrada" maxlength="150" autocomplete="username" [ngModel]="correo()" (ngModelChange)="correo.set($event)"></div>
+        <div class="campo"><label for="pw">Contraseña</label>
+          <div class="con-ojo">
+            <input id="pw" name="pw" class="entrada" [type]="verClave() ? 'text' : 'password'" autocomplete="new-password" [ngModel]="password()" (ngModelChange)="password.set($event)">
+            <button type="button" class="ojo" (click)="verClave.set(!verClave())" [attr.aria-label]="verClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="verClave()">
+              <span class="material-symbols-outlined">{{ verClave() ? 'visibility_off' : 'visibility' }}</span></button>
+          </div>
+          <span class="ayuda" [class.ok]="claveValida()"><span class="material-symbols-outlined">{{ claveValida() ? 'check_circle' : 'radio_button_unchecked' }}</span>
+            Entre 8 y 72 caracteres, con al menos una letra y un número.</span></div>
+        <div class="campo"><label for="pw2">Repite la contraseña</label>
+          <input id="pw2" name="pw2" class="entrada" [type]="verClave() ? 'text' : 'password'" autocomplete="new-password" [ngModel]="confirmacion()" (ngModelChange)="confirmacion.set($event)">
+          @if (confirmacion() && !coinciden()) { <span class="error">No coincide con la contraseña.</span> }</div>
+
+        @if (error(); as e) { <div class="aviso rojo" role="alert"><span class="material-symbols-outlined">error</span>{{ e }}</div> }
+        <button type="submit" class="boton primario bloque" [disabled]="enviando()">{{ enviando() ? 'Enviando…' : 'Enviar registro' }}</button>
+        <a routerLink="/ingreso" class="texto-chico volver">¿Ya tienes cuenta? Ingresar</a>
+      </form>
+    }
+  </section>
+</div>

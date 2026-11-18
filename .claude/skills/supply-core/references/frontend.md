@@ -56,6 +56,11 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 - `/app/proveedores` ahora tiene ficha: habilitar, rechazar y suspender con motivo, volver a habilitar a un suspendido, editar contacto y categorías, y ver las calificaciones.
 - `/app/inventario`: editar, desactivar y reactivar productos (ADMIN_COMPRAS); el stock no se edita ahí.
 
+## Portal del proveedor (2026-11-18, fase 7 de `PLAN_FRONTEND.md`)
+- `/registro/:empresa` (público; el código de la empresa va codificado en la dirección porque puede llevar espacios): el proveedor llena razón social, NIT (solo números, con dígito de verificación opcional), teléfono, dirección, categorías en que cotiza y los datos de quien administrará el portal. Queda PENDIENTE y **no puede ingresar** hasta que ADMIN_COMPRAS lo habilite. En el ingreso hay un enlace "regístrate aquí" que usa el código escrito.
+- `/portal/perfil`: su ficha (estado de la habilitación, score, categorías), editar contacto y categorías, y las calificaciones que recibió. La razón social y el NIT los cambia la empresa. Backend nuevo: `GET /api/portal/proveedor/categorias` (el proveedor no puede leer `/api/categorias`, que es solo para usuarios internos); con prueba de fuga entre empresas.
+- `/portal/ordenes`: además de aceptar, rechazar, preparar y despachar, ahora muestra lo que el cliente ya recibió (pedido, aceptado, rechazado, faltante) y los rechazos con su motivo.
+
 ## Decisiones (2026-11-05)
 - **Una sola app SaaS con tres zonas**: `/app` (empresa, `empresaGuard`), `/portal` (rol PROVEEDOR, `proveedorGuard`), `/plataforma` (dueño con MFA, `plataformaGuard`). Cada pantalla se carga perezosa.
 - **Librería**: Angular Material solo para comportamiento (menús, avisos, tooltips); el aspecto sale de tokens CSS en `styles.scss` tomados del mockup (primario `#d93a0b`). PrimeNG descartado: v22 exige licencia comercial con clave.

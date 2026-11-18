@@ -1,5 +1,7 @@
 package com.proyecto.supply_core.proveedor.controller;
 
+import java.util.List;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
+import com.proyecto.supply_core.catalogo.dto.CategoriaResponse;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.proveedor.dto.ActualizarProveedorRequest;
 import com.proyecto.supply_core.proveedor.dto.EvaluacionResponse;
@@ -65,6 +68,17 @@ public class PortalProveedorController {
     public PageResponse<EvaluacionResponse> misEvaluaciones(
             @PageableDefault(size = 20, sort = "creadoEn", direction = Sort.Direction.DESC) Pageable pageable) {
         return evaluacionService.mias(pageable);
+    }
+
+    /**
+     * Categorías activas de la empresa, para que el proveedor elija en cuáles cotiza (editar su perfil). El proveedor no
+     * puede leer el catálogo completo, solo esta lista.
+     *
+     * @return categorías activas de su empresa
+     */
+    @GetMapping("/proveedor/categorias")
+    public List<CategoriaResponse> categoriasDisponibles() {
+        return proveedorService.categoriasDisponibles();
     }
 
     /**

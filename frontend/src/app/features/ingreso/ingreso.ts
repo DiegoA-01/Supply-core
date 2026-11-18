@@ -33,6 +33,16 @@ export class Ingreso {
   /** Muestra la contraseña para revisar que esté bien escrita. */
   protected readonly verClave = signal(false);
 
+  /** Lleva al registro de proveedores de la empresa cuyo código está escrito en el formulario. */
+  protected registrarProveedor(): void {
+    const codigo = this.form.controls.empresa.value.trim();
+    if (!codigo) {
+      this.error.set('Escribe primero el código de la empresa a la que le vas a cotizar.');
+      return;
+    }
+    void this.router.navigate(['/registro', codigo]);
+  }
+
   protected ingresar(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();

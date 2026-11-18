@@ -75,7 +75,7 @@ Cada catálogo lleva lista, crear, editar, activar y desactivar. Hoy se leen en 
 8. Contratos y precios pactados, ofertas, vigencia y anular (`/api/contratos`: sin uso).
 9. Proveedores: editar, suspender, rechazar, habilitar, ver evaluaciones (`/api/proveedores/{id}/evaluaciones`).
 
-## Fase 7. Portal del proveedor
+## Fase 7. Portal del proveedor — hecha el 2026-11-18 (con un endpoint nuevo en el backend: categorías del proveedor)
 Sin uso: `/api/portal/proveedor/evaluaciones`. Verificar: registro público y sus categorías, aceptar, rechazar, preparar, despachar y recepciones de una orden del portal.
 1. Registro público del proveedor (`/api/portal/registro/{codigo}` y categorías), con el código de empresa decodificado de la dirección.
 2. Perfil del proveedor: datos, categorías, documentos.
