@@ -20,6 +20,10 @@ export interface SeccionMenu {
 export const ROLES_ORDENES = ['COMPRADOR', 'ADMIN_COMPRAS', 'ALMACENISTA', 'ADMINISTRATIVO', 'APROBADOR', 'AUDITOR'];
 /** Roles que ven RFQ y análisis (mismos que {@code GET /api/rfqs}). */
 export const ROLES_RFQ = ['COMPRADOR', 'ADMIN_COMPRAS', 'APROBADOR', 'AUDITOR'];
+/** Roles que leen pagos (mismos que {@code GET /api/pagos}). */
+export const ROLES_PAGOS = ['ADMINISTRATIVO', 'ADMIN_COMPRAS', 'AUDITOR'];
+/** Roles que leen despachos (mismos que {@code GET /api/despachos}). */
+export const ROLES_DESPACHOS = ['ALMACENISTA', 'ADMIN_COMPRAS', 'COMPRADOR', 'AUDITOR'];
 /** Roles que ven la rotación de productos (mismos que {@code GET /api/reportes/rotacion}). */
 export const ROLES_ROTACION = ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO', 'AUDITOR', 'ALMACENISTA'];
 /** Roles que leen reportes de gasto y proveedores. */
@@ -39,6 +43,7 @@ export const MENU: SeccionMenu[] = [
       { texto: 'Cotizaciones con IA', icono: 'auto_awesome', ruta: '/app/cotizaciones', roles: ROLES_RFQ, modulo: 'RFQ_COTIZACIONES' },
       { texto: 'Órdenes y pagos', icono: 'receipt_long', ruta: '/app/ordenes', roles: ROLES_ORDENES, modulo: 'ORDENES_PAGOS' },
       { texto: 'Recepción', icono: 'local_shipping', ruta: '/app/recepcion', roles: ROLES_ORDENES, modulo: 'RECEPCION' },
+      { texto: 'Pagos', icono: 'payments', ruta: '/app/pagos', roles: ROLES_PAGOS, modulo: 'ORDENES_PAGOS' },
     ],
   },
   {
@@ -46,6 +51,7 @@ export const MENU: SeccionMenu[] = [
     opciones: [
       { texto: 'Productos y stock', icono: 'inventory_2', ruta: '/app/inventario', modulo: 'INVENTARIO', contador: 'bajoMinimo', exacta: true },
       { texto: 'Rotación de productos', icono: 'trending_up', ruta: '/app/inventario/rotacion', roles: ROLES_ROTACION, modulo: 'REPORTES' },
+      { texto: 'Despachos', icono: 'outbox', ruta: '/app/despachos', roles: ROLES_DESPACHOS, modulo: 'DESPACHOS' },
       { texto: 'Movimientos de stock', icono: 'swap_horiz', ruta: '/app/inventario/movimientos', modulo: 'INVENTARIO' },
       { texto: 'Proveedores', icono: 'group', ruta: '/app/proveedores', roles: ROLES_PROVEEDORES, modulo: 'PROVEEDORES' },
     ],

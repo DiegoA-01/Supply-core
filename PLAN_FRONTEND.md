@@ -48,7 +48,7 @@ Rutas sin uso: `/api/inventario/stock`, `/api/inventario/movimientos`.
 
 ## Rotación de productos (pedido el 2026-11-18, hecho): reporte nuevo en el backend y tablero en el frontend; sin filtro por bodega ni Excel todavía
 
-## Fase 4. Caja y pagos
+## Fase 4. Caja y pagos — hecha el 2026-11-18 (los despachos son del almacenista, no del cajero; no hay exportación del estado de cuenta en el backend)
 Rutas sin uso: `/api/despachos` (lista, detalle, confirmar, anular), `/api/pagos` (lista, detalle, anular, comprobante).
 1. Despachos de caja para CAJERO: lista, crear, confirmar, anular con motivo.
 2. Pagos: lista, registrar (ya existe dentro de la orden), anular con motivo, descargar el comprobante.

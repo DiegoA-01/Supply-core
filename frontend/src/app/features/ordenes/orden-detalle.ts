@@ -10,6 +10,7 @@ import { FechaPipe, NumeroPipe, PesosPipe } from '../../core/formato/formato';
 import { OrdenesService } from '../../core/servicios/ordenes.service';
 import { iso } from '../../core/servicios/reportes.service';
 import { Avisos, descargar } from '../../core/ui/avisos';
+import { PagoAcciones } from './pago-acciones';
 import { SesionService } from '../../core/sesion/sesion.service';
 
 /**
@@ -18,7 +19,7 @@ import { SesionService } from '../../core/sesion/sesion.service';
  */
 @Component({
   selector: 'sc-orden-detalle',
-  imports: [FormsModule, RouterLink, LowerCasePipe, Estado, EtiquetaPipe, PesosPipe, NumeroPipe, FechaPipe],
+  imports: [FormsModule, RouterLink, LowerCasePipe, Estado, EtiquetaPipe, PesosPipe, NumeroPipe, FechaPipe, PagoAcciones],
   templateUrl: './orden-detalle.html',
   styleUrl: './orden-detalle.scss',
 })
@@ -202,7 +203,8 @@ export class OrdenDetalle implements OnInit {
     });
   }
 
-  private cargar(): void {
+  /** Vuelve a leer la orden, la factura y los pagos (tras anular un pago o adjuntar un comprobante). */
+  protected cargar(): void {
     const id = Number(this.id());
     forkJoin({
       orden: this.servicio.obtener(id),

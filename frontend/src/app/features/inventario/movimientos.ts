@@ -7,6 +7,7 @@ import { Estado, EtiquetaPipe } from '../../core/formato/etiquetas';
 import { FechaPipe, NumeroPipe } from '../../core/formato/formato';
 import { FiltroMovimientos, InventarioService } from '../../core/servicios/inventario.service';
 import { SesionService } from '../../core/sesion/sesion.service';
+import { BuscadorProducto } from '../../core/ui/buscador-producto';
 import { Avisos, descargar } from '../../core/ui/avisos';
 
 /** Tipos que el almacenista puede registrar a mano (el resto los generan recepción y despachos). */
@@ -17,42 +18,6 @@ const EXIGEN_MOTIVO: readonly TipoMovimiento[] = ['AJUSTE_POSITIVO', 'AJUSTE_NEG
 const TODOS_LOS_TIPOS: readonly TipoMovimiento[] = [
   'ENTRADA_COMPRA', 'SALIDA_CONSUMO', 'AJUSTE_POSITIVO', 'AJUSTE_NEGATIVO', 'DEVOLUCION_PROVEEDOR', 'TRASLADO', 'SALIDA_VENTA', 'ANULACION_DESPACHO',
 ];
-
-/**
- * Buscador de producto por código o nombre (escribe, elige de la lista). El id sale del texto elegido.
- * Consulta al backend a partir de 2 letras para no cargar todo el catálogo.
- */
-class BuscadorProducto {
-  readonly texto = signal('');
-  readonly opciones = signal<Producto[]>([]);
-  readonly id = computed(() => this.opciones().find(p => this.etiqueta(p) === this.texto())?.id ?? null);
-  private espera: ReturnType<typeof setTimeout> | null = null;
-
-  constructor(private readonly servicio: InventarioService) {}
-
-  /** @param p producto; texto que se ve en la lista */
-  etiqueta(p: Producto): string {
-    return `${p.codigo} · ${p.nombre}`;
-  }
-
-  /** @param texto lo escrito; pide opciones al backend con una pequeña espera entre teclas */
-  escribir(texto: string): void {
-    this.texto.set(texto);
-    if (this.espera) {
-      clearTimeout(this.espera);
-    }
-    if (texto.trim().length < 2) {
-      return;
-    }
-    this.espera = setTimeout(() => this.servicio.productos({ texto: texto.trim(), tamano: 15 })
-      .subscribe({ next: p => this.opciones.set(p.contenido ?? []), error: () => undefined }), 250);
-  }
-
-  limpiar(): void {
-    this.texto.set('');
-    this.opciones.set([]);
-  }
-}
 
 /**
  * Movimientos de stock: existencias por bodega, kardex con filtros y exportación, y registro de salidas, ajustes y

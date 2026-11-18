@@ -34,6 +34,12 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 - Frontend: `/app/inventario/rotacion` (menú "Rotación de productos"). Tablero con períodos rápidos (30 días a 12 meses u otras fechas) y categoría; KPIs (por agotarse, agotados, sin movimiento, dinero parado); barra de distribución por tipo de rotación; los que más y menos salen (barras); "se acaban pronto" con fecha estimada; "no rotan" con el dinero parado; tabla completa con búsqueda, filtro por tipo y orden por columna. La pantalla solo ordena, filtra, cuenta y dibuja.
 - Pendiente de esta pantalla: filtro por bodega y exportar a Excel (el backend aún no lo ofrece).
 
+## Despachos y pagos (2026-11-18, fase 4 de `PLAN_FRONTEND.md`)
+- `/app/despachos` (ven ALMACENISTA, ADMIN_COMPRAS, COMPRADOR y AUDITOR; módulo DESPACHOS): lista con filtros y detalle. El ALMACENISTA arma el borrador (bodega, cliente, factura o ticket y productos con unidad y cantidad), lo corrige, lo confirma (descuenta el stock y avisa qué productos quedaron bajo su mínimo) o lo anula con motivo; ADMIN_COMPRAS también anula. Un despacho confirmado no se edita: se anula (el stock vuelve) y se arma otro. **El rol CAJERO no interviene**: en el backend los despachos son de bodega.
+- `/app/pagos` (ven ADMINISTRATIVO, ADMIN_COMPRAS y AUDITOR; módulo ORDENES_PAGOS): pagos de todas las órdenes con filtros (estado, proveedor, fechas de pago y solo los que no tienen comprobante). Tesorería (ADMINISTRATIVO) adjunta el comprobante (una sola vez), lo descarga y anula pagos con motivo (mínimo 5 caracteres); el pago anulado deja de sumar a lo pagado de la orden. La pantalla no suma valores.
+- `<sc-pago-acciones>` se usa en `/app/pagos` y en el detalle de la orden. `BuscadorProducto` pasó a `core/ui/buscador-producto.ts` (lo usan movimientos y despachos).
+- Estado de cuenta del proveedor: ya está en Reportes; el backend no tiene exportación de él, así que no hay botón de Excel.
+
 ## Decisiones (2026-11-05)
 - **Una sola app SaaS con tres zonas**: `/app` (empresa, `empresaGuard`), `/portal` (rol PROVEEDOR, `proveedorGuard`), `/plataforma` (dueño con MFA, `plataformaGuard`). Cada pantalla se carga perezosa.
 - **Librería**: Angular Material solo para comportamiento (menús, avisos, tooltips); el aspecto sale de tokens CSS en `styles.scss` tomados del mockup (primario `#d93a0b`). PrimeNG descartado: v22 exige licencia comercial con clave.

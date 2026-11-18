@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION } from './core/navegacion/menu';
+import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS } from './core/navegacion/menu';
 import { empresaGuard, invitadoGuard, permisoGuard, plataformaGuard, proveedorGuard } from './core/sesion/guards';
 
 /**
@@ -97,6 +97,20 @@ export const routes: Routes = [
         canActivate: [permisoGuard],
         data: { roles: ROLES_ORDENES, modulo: 'RECEPCION' },
         loadComponent: () => import('./features/recepcion/recepcion').then(m => m.RecepcionOrden),
+      },
+      {
+        path: 'pagos',
+        title: 'Pagos · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_PAGOS, modulo: 'ORDENES_PAGOS' },
+        loadComponent: () => import('./features/pagos/pagos').then(m => m.Pagos),
+      },
+      {
+        path: 'despachos',
+        title: 'Despachos · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_DESPACHOS, modulo: 'DESPACHOS' },
+        loadComponent: () => import('./features/despachos/despachos').then(m => m.Despachos),
       },
       {
         path: 'inventario/rotacion',

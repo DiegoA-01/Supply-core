@@ -1,0 +1,66 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Pagos</p>
+    <div class="encabezado"><div><h1>Pagos</h1>
+      <p>Los pagos que se han registrado a proveedores. Supply-Core no mueve dinero: solo lleva el registro y su comprobante.</p></div></div>
+  </div>
+
+  <section class="tarjeta">
+    <div class="filtros">
+      <div class="campo"><label for="pe">Estado</label>
+        <select id="pe" class="entrada" [ngModel]="estado()" (ngModelChange)="estado.set($event)">
+          <option [ngValue]="null">Todos</option><option value="REGISTRADO">Registrado</option><option value="ANULADO">Anulado</option>
+        </select></div>
+      <div class="campo"><label for="pp">Proveedor</label>
+        <select id="pp" class="entrada" [ngModel]="proveedorId()" (ngModelChange)="proveedorId.set($event)">
+          <option [ngValue]="null">Todos</option>
+          @for (p of proveedores(); track p.id) { <option [ngValue]="p.id">{{ p.razonSocial }}</option> }
+        </select></div>
+      <div class="campo"><label for="pd">Pagados desde</label><input id="pd" type="date" class="entrada" [ngModel]="desde()" (ngModelChange)="desde.set($event)"></div>
+      <div class="campo"><label for="ph">Hasta</label><input id="ph" type="date" class="entrada" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)"></div>
+      <label class="check"><input type="checkbox" [ngModel]="sinComprobante()" (ngModelChange)="sinComprobante.set($event)"> Solo los que no tienen comprobante</label>
+    </div>
+    <div class="fila">
+      <button type="button" class="boton primario" (click)="buscar(0)">Buscar</button>
+      <button type="button" class="boton" (click)="limpiar()">Limpiar</button>
+    </div>
+  </section>
+
+  <section class="tarjeta sin-relleno">
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead><tr><th>Fecha</th><th>Orden</th><th>Proveedor</th><th>Pago</th><th class="num">Valor</th><th>Comprobante</th><th>Estado</th></tr></thead>
+        <tbody>
+          @for (p of pagina()?.contenido ?? []; track p.id) {
+            <tr [class.anulado]="p.estado === 'ANULADO'">
+              <td class="nowrap">{{ p.fechaPago | fecha }}</td>
+              <td><a [routerLink]="['/app/ordenes', p.ordenId]">{{ p.ordenConsecutivo }}</a><div class="texto-chico texto-2">versión {{ p.ordenVersion }}</div></td>
+              <td>{{ p.proveedorRazonSocial }}</td>
+              <td>{{ p.tipo | etiqueta }}<div class="texto-chico texto-2">{{ p.metodo | etiqueta }}@if (p.referencia) { · {{ p.referencia }} }</div></td>
+              <td class="num"><strong>{{ p.valor | pesos }}</strong></td>
+              <td>
+                @if (p.estado === 'REGISTRADO' && p.evidenciaPendiente) { <span class="chip ambar">Pendiente</span> }
+                @else if (p.comprobanteDocumentoId) { <span class="chip verde">Adjunto</span> }
+                @else { — }
+                <sc-pago-acciones [pago]="p" [puedeEditar]="puedeEditar()" (cambio)="buscar(numeroPagina())" />
+              </td>
+              <td><sc-estado [valor]="p.estado" />@if (p.motivoAnulacion) { <div class="texto-chico texto-2">{{ p.motivoAnulacion }}</div> }</td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="vacio">{{ pagina() ? 'No hay pagos con ese filtro.' : 'Cargando…' }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  @if (pagina(); as p) {
+    @if ((p.totalPaginas ?? 0) > 1) {
+      <div class="fila paginacion">
+        <button type="button" class="boton chico" [disabled]="numeroPagina() === 0" (click)="buscar(numeroPagina() - 1)">Anterior</button>
+        <span class="texto-chico texto-2">Página {{ numeroPagina() + 1 }} de {{ p.totalPaginas }} · {{ p.totalElementos }} pagos</span>
+        <button type="button" class="boton chico" [disabled]="numeroPagina() + 1 >= (p.totalPaginas ?? 0)" (click)="buscar(numeroPagina() + 1)">Siguiente</button>
+      </div>
+    }
+  }
+</div>

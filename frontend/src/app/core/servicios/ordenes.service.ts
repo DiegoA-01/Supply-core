@@ -131,6 +131,44 @@ export class OrdenesService {
     return this.http.post(api('/api/documentos'), datos, { params: parametros({ entidad, entidadId }) });
   }
 
+  /**
+   * Pagos de todas las órdenes con filtros (administrativo, jefe de compras y auditoría).
+   *
+   * @param f      estado, sin comprobante, proveedor y rango de fechas de pago (ISO)
+   * @param pagina número de página desde 0
+   */
+  buscarPagos(f: { estado?: string | null; evidenciaPendiente?: boolean | null; proveedorId?: number | null; desde?: string | null; hasta?: string | null },
+      pagina: number): Observable<Pagina<Pago>> {
+    return this.http.get<Pagina<Pago>>(api('/api/pagos'), { params: parametros({ ...f, page: pagina, size: 20, sort: 'fechaPago,desc' }) });
+  }
+
+  /**
+   * Anula un pago registrado por error; deja de sumar al pagado de la orden.
+   *
+   * @param id     pago registrado
+   * @param motivo entre 5 y 500 caracteres
+   */
+  anularPago(id: number, motivo: string): Observable<Pago> {
+    return this.http.post<Pago>(api(`/api/pagos/${id}/anular`), { motivo });
+  }
+
+  /**
+   * Adjunta el comprobante del pago (PDF o imagen); solo se puede una vez.
+   *
+   * @param id      pago sin comprobante
+   * @param archivo comprobante
+   */
+  adjuntarComprobante(id: number, archivo: File): Observable<Pago> {
+    const datos = new FormData();
+    datos.append('archivo', archivo);
+    return this.http.post<Pago>(api(`/api/pagos/${id}/comprobante`), datos);
+  }
+
+  /** @param documentoId documento del comprobante; archivo para descargar */
+  comprobante(documentoId: number): Observable<Blob> {
+    return this.http.get(api(`/api/documentos/${documentoId}/contenido`), { responseType: 'blob' });
+  }
+
   /** PDF de la orden (descarga). */
   pdf(ordenId: number): Observable<Blob> {
     return this.http.get(api(`/api/exportaciones/ordenes/${ordenId}`), { params: parametros({ formato: 'pdf' }), responseType: 'blob' });

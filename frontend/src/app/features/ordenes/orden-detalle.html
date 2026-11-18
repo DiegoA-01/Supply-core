@@ -136,7 +136,9 @@
                 <div class="separado"><sc-estado [valor]="pg.tipo" /><sc-estado [valor]="pg.estado" /></div>
                 <strong>{{ pg.valor | pesos }}</strong>
                 <span class="texto-chico texto-2">{{ pg.fechaPago | fecha: 'corta' }} · {{ pg.metodo | etiqueta }} @if (pg.referencia) { · {{ pg.referencia }} }</span>
-                @if (pg.evidenciaPendiente) { <span class="chip ambar">Comprobante pendiente</span> }
+                @if (pg.evidenciaPendiente && pg.estado === 'REGISTRADO') { <span class="chip ambar">Comprobante pendiente</span> }
+                @if (pg.estado === 'ANULADO' && pg.motivoAnulacion) { <span class="texto-chico texto-2">Anulado: {{ pg.motivoAnulacion }}</span> }
+                <sc-pago-acciones [pago]="pg" [puedeEditar]="puedePagar()" (cambio)="cargar()" />
               </div>
             } @empty {
               <p class="texto-2">Sin pagos registrados.</p>
