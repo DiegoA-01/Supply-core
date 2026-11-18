@@ -59,7 +59,11 @@ public enum EventoNotificacion {
     /** Una solicitud pendiente venció su tiempo y pasó a la política de mayor tramo. */
     SOLICITUD_ESCALADA("Solicitud escalada"),
     /** Un aprobador le delegó sus decisiones. */
-    DELEGACION_ASIGNADA("Delegación de aprobación asignada");
+    DELEGACION_ASIGNADA("Delegación de aprobación asignada"),
+    /** El administrador de la empresa le pidió un informe de compras al área de compras. */
+    INFORME_PEDIDO("Informe de compras pedido"),
+    /** El área de compras envió un informe de compras al administrador de la empresa. */
+    INFORME_RECIBIDO("Informe de compras recibido");
 
     /** Asunto del correo. */
     private final String asunto;

@@ -19,3 +19,7 @@
   .cotizar td:nth-child(4)::before { content: 'Impuesto %'; display: block; font-size: 13px; color: var(--sc-texto-2); margin-bottom: 4px; }
   .precio, .impuesto { width: 100%; }
 }
+
+.archivo.listo { border-style: solid; border-color: #9fd8b2; background: #f2fbf5; }
+.ok { color: #1e8e3e; font-size: 32px; }
+.nombre-archivo { font-weight: 600; overflow-wrap: anywhere; }

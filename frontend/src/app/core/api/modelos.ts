@@ -139,3 +139,26 @@ export type EstadoSuscripcion = NonNullable<S['ModulosEmpresaResponse']['estado'
 // Portal del proveedor
 export type RfqPortal = S['RfqPortalResponse'];
 export type CotizacionNueva = S['CotizacionRequest'];
+
+// ------------------------------------------------------------ informe de compras (V25)
+/** Cifras del periodo del informe de compras (las suma el backend). */
+export interface InformeResumen {
+  solicitudes: number; montoSolicitado: number; solicitudesPorEstado: Record<string, number>;
+  rfqs: number; cotizacionesRecibidas: number; adjudicaciones: number; adjudicacionesFueraDeRecomendacion: number; montoAdjudicado: number;
+}
+export interface InformeSolicitud { consecutivo: string; solicitante: string; centroCosto: string; estado: string; montoEstimado?: number | null; montoIncompleto: boolean; motivo?: string | null; enviadoEn?: string; }
+export interface InformeRfq { consecutivo: string; solicitud: string; estado: string; invitados: number; cotizaciones: number; fechaLimite?: string; }
+export interface InformeCotizacion { rfq: string; proveedor: string; estado: string; total?: number | null; plazoEntregaDias?: number | null; enviadoEn?: string; }
+export interface InformeAdjudicacion { rfq: string; proveedor: string; montoTotal: number; sigueRecomendacion: boolean; justificacion?: string | null; estado: string; decididoEn?: string; }
+/** Foto fija del periodo que arma el backend. */
+export interface InformeContenido {
+  desde: string; hasta: string; generadoEn: string; resumen: InformeResumen;
+  solicitudes: InformeSolicitud[]; rfqs: InformeRfq[]; cotizaciones: InformeCotizacion[]; adjudicaciones: InformeAdjudicacion[];
+  gasto: Gasto; recortado: boolean;
+}
+/** Informe de compras: lo pide el dueño (PEDIDO) y lo envía compras (ENVIADO). */
+export interface InformeCompras {
+  id: number; estado: 'PEDIDO' | 'ENVIADO'; desde: string; hasta: string; mensajePedido?: string | null;
+  pedidoPor?: string | null; pedidoEn?: string | null; enviadoPor?: string | null; enviadoEn?: string | null; leidoEn?: string | null;
+  analisis?: string | null; contenido?: InformeContenido | null;
+}

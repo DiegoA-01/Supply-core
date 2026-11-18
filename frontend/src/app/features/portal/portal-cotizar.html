@@ -72,18 +72,26 @@
             <button type="button" class="boton bloque margen-arriba" [disabled]="trabajando()" (click)="guardar()">Guardar borrador</button>
             <p class="texto-chico texto-2">Una vez enviada no podrás editarla. El comprador verá tu oferta cuando cierre la fecha.</p>
           } @else if (enviada()) {
-            <p class="aviso verde margen-arriba">Cotización enviada el {{ cotizacion()?.enviadoEn | fecha: 'hora' }}.</p>
+            <p class="aviso verde margen-arriba">Cotización enviada el {{ cotizacion()?.enviadoEn | fecha: 'hora' }}.@if (tieneArchivo()) { Incluye tu archivo adjunto. }</p>
           } @else {
             <p class="aviso margen-arriba">La RFQ ya no recibe cotizaciones.</p>
           }
         </section>
 
         @if (editable()) {
-          <label class="tarjeta archivo">
-            <span class="material-symbols-outlined">auto_awesome</span>
-            <strong>¿Ya tienes tu cotización en un archivo?</strong>
-            <span class="texto-chico texto-2">Sube Excel, PDF o una foto. La IA llena los campos y tú revisas antes de enviar.</span>
-            <span class="boton chico">Subir archivo</span>
+          <label class="tarjeta archivo" [class.listo]="tieneArchivo()">
+            @if (tieneArchivo()) {
+              <span class="material-symbols-outlined ok">check_circle</span>
+              <strong>Archivo adjunto</strong>
+              <span class="nombre-archivo">{{ nombreArchivo() ?? 'Documento de tu cotización' }}</span>
+              <span class="texto-chico texto-2">Ya puedes pulsar «Enviar cotización». Escribir los precios arriba es opcional: compras revisa tu archivo.</span>
+              <span class="boton chico">Cambiar archivo</span>
+            } @else {
+              <span class="material-symbols-outlined">upload_file</span>
+              <strong>¿Ya tienes tu cotización en un archivo?</strong>
+              <span class="texto-chico texto-2">Sube Excel, PDF o una foto. Con el archivo puedes enviarla sin escribir los precios.</span>
+              <span class="boton chico">Subir archivo</span>
+            }
             <input type="file" accept=".xlsx,.xls,.docx,.pdf,image/*" (change)="subirArchivo($event)">
           </label>
         }

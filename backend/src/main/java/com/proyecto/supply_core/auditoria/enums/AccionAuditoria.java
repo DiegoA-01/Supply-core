@@ -198,5 +198,9 @@ public enum AccionAuditoria {
     /** Un administrador de empresa desactivó o reinició el MFA de un usuario. */
     MFA_DESACTIVAR,
     /** Se escribió un código de MFA incorrecto o repetido al iniciar sesión. */
-    MFA_FALLO
+    MFA_FALLO,
+    /** El administrador de la empresa pidió un informe de compras. */
+    INFORME_PEDIR,
+    /** El área de compras envió un informe de compras (foto fija del periodo). */
+    INFORME_ENVIAR
 }

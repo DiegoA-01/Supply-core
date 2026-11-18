@@ -181,6 +181,27 @@ class AprobacionSolicitudServiceTest {
     }
 
     @Test
+    void laQuePidioQuienApruebaConEseRolLaDecideElDuenoYNoElRolDeLaPolitica() {
+        s.setApruebaDueno(true); // la pidió el jefe de compras y la política la aprueba su propio rol
+        // el rol de la política ya no alcanza
+        assertThrows(AccesoDenegadoException.class,
+                () -> service.decidir(1L, new DecisionRequest(DecisionAprobacion.APROBADA, null)));
+
+        sesion(30L, "ADMIN_SISTEMA");
+        var r = service.decidir(1L, new DecisionRequest(DecisionAprobacion.APROBADA, null));
+
+        assertEquals(EstadoSolicitud.APROBADA, r.estado());
+        assertEquals(true, r.apruebaDueno());
+    }
+
+    @Test
+    void elDuenoNoDecideLasQueApruebaElRolDeLaPolitica() {
+        sesion(30L, "ADMIN_SISTEMA");
+        assertThrows(AccesoDenegadoException.class,
+                () -> service.decidir(1L, new DecisionRequest(DecisionAprobacion.APROBADA, null)));
+    }
+
+    @Test
     void soloSeDecideLoPendiente() {
         s.setEstado(EstadoSolicitud.APROBADA);
         assertEquals("TRANSICION_INVALIDA", assertThrows(NegocioException.class,

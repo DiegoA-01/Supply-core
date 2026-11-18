@@ -87,11 +87,8 @@ def main():
     tok_admin, secreto_admin = entrar_con_mfa('/api/auth/login', '/api/auth/mfa',
                                               {'empresa': CODIGO_EMPRESA, 'correo': admin_correo, 'password': admin_clave}, 'desafioMfa')
 
-    # El dueño de la ferretería también decide sobre proveedores nuevos: además de administrar, lleva compras
-    lista = exigir('usuarios de la empresa', llamar('GET', '/api/usuarios?size=50', token=tok_admin))
-    yo = next(u for u in (lista['contenido'] if isinstance(lista, dict) else lista) if u['correo'] == admin_correo)
-    exigir('el dueño también administra compras', llamar('PUT', f'/api/usuarios/{yo["id"]}', {
-        'nombreCompleto': yo['nombreCompleto'], 'correo': yo['correo'], 'roles': ['ADMIN_SISTEMA', 'ADMIN_COMPRAS']}, tok_admin))
+    # El dueño de la ferretería solo administra (ADMIN_SISTEMA): no recibe avisos de RFQ, cotizaciones ni proveedores.
+    # Pide y lee el informe de compras, y aprueba solo las solicitudes que hace el propio jefe de compras.
 
     # 3. Estructura de la empresa
     sede = exigir('sede', llamar('POST', '/api/sedes', {'nombre': 'Sede principal', 'direccion': 'Calle 10 # 20-30'}, tok_admin))
@@ -100,9 +97,11 @@ def main():
 
     # 4. Usuarios por rol
     cuentas = [
-        ('Jefe de compras', 'jefe.compras@ferreteriademo.local', ['ADMIN_COMPRAS']),
+        # Flujo de la ferretería: el bodeguero pide lo que falta, el jefe de compras lo aprueba y lanza la RFQ.
+        # El jefe de compras también pide; como aprueba con ese rol, lo suyo lo aprueba el dueño, nunca él mismo.
+        ('Jefe de compras', 'jefe.compras@ferreteriademo.local', ['ADMIN_COMPRAS', 'COMPRADOR', 'SOLICITANTE']),
         ('Jefe de bodega', 'jefe.bodega@ferreteriademo.local', ['ALMACENISTA', 'AUDITOR']),
-        ('Bodeguero', 'bodeguero@ferreteriademo.local', ['ALMACENISTA']),
+        ('Bodeguero', 'bodeguero@ferreteriademo.local', ['ALMACENISTA', 'SOLICITANTE']),
         ('Solicitante', 'solicitante@ferreteriademo.local', ['SOLICITANTE']),
         ('Aprobador', 'aprobador@ferreteriademo.local', ['APROBADOR']),
         ('Comprador', 'comprador@ferreteriademo.local', ['COMPRADOR']),
@@ -147,10 +146,11 @@ def main():
             exigir('salida de ' + codigo, llamar('POST', '/api/inventario/movimientos', {
                 'productoId': p['id'], 'tipo': 'SALIDA_CONSUMO', 'bodegaOrigenId': bodega['id'], 'cantidad': sale}, tok_bodega))
 
-    # 6. Políticas de aprobación (quién aprueba cada solicitud y cada adjudicación)
-    for tipo in ('SOLICITUD', 'ADJUDICACION'):
+    # 6. Políticas de aprobación: las solicitudes las aprueba el jefe de compras; las adjudicaciones, el aprobador
+    #    (nadie aprueba lo suyo: el backend lo impide por segregación de funciones)
+    for tipo, rol in (('SOLICITUD', 'ADMIN_COMPRAS'), ('ADJUDICACION', 'APROBADOR')):
         exigir('política ' + tipo, llamar('POST', '/api/politicas-aprobacion', {
-            'tipo': tipo, 'rolAprobador': 'APROBADOR', 'montoDesde': 0}, tok_compras))
+            'tipo': tipo, 'rolAprobador': rol, 'montoDesde': 0}, tok_compras))
 
     # 7. Un proveedor: se autorregistra y el jefe de compras lo habilita
     prov_correo, prov_clave = 'proveedor@electrosur.local', clave()

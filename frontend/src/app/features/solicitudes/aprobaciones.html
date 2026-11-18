@@ -59,7 +59,11 @@
             <div><span>Centro de costo</span><strong>{{ centro()?.nombre ?? '#' + s.centroCostoId }}</strong></div>
             <div><span>Fecha requerida</span><strong>{{ s.fechaRequerida | fecha }}</strong></div>
           </div>
-          @if (politica(); as p) {
+          @if (s.apruebaDueno) {
+            <div class="datos">
+              <div><span>Quién la aprueba</span><strong>El dueño de la empresa (quien la pidió aprueba con ese rol y nadie aprueba lo suyo)</strong></div>
+            </div>
+          } @else if (politica(); as p) {
             <div class="datos">
               <div><span>Política aplicada</span><strong>{{ p.rolAprobadorNombre ?? p.rolAprobador }} · desde {{ p.montoDesde | pesos }}</strong></div>
             </div>

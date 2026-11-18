@@ -8,6 +8,7 @@ export const ACCIONES: Record<string, string> = {
   CUENTA_BLOQUEADA: 'Cuenta bloqueada por intentos fallidos', PASSWORD_CAMBIAR: 'Cambió su contraseña',
   PASSWORD_RECUPERAR_PEDIR: 'Pidió recuperar su contraseña', PASSWORD_RECUPERAR_USAR: 'Cambió su contraseña con el código de recuperación',
   MFA_ACTIVAR: 'Activó el segundo factor', MFA_DESACTIVAR: 'Reinició el segundo factor',
+  INFORME_PEDIR: 'Pidió un informe de compras', INFORME_ENVIAR: 'Envió un informe de compras',
   // Usuarios, empresa y estructura
   USUARIO_CREAR: 'Creó un usuario', USUARIO_EDITAR: 'Editó un usuario', USUARIO_ACTIVAR: 'Activó un usuario', USUARIO_DESACTIVAR: 'Desactivó un usuario',
   USUARIO_RESTABLECER_PASSWORD: 'Restableció la contraseña de un usuario', EMPRESA_EDITAR: 'Editó los datos de la empresa',
@@ -56,7 +57,7 @@ export const ENTIDADES: Record<string, string> = {
   UNIDAD_MEDIDA: 'Unidad de medida', PRODUCTO: 'Producto', BODEGA: 'Bodega', MOVIMIENTO_INVENTARIO: 'Movimiento de inventario', DOCUMENTO: 'Documento',
   CONFIG_NOTIFICACION: 'Aviso o correo', SOLICITUD_COMPRA: 'Solicitud', RFQ: 'RFQ', DESPACHO: 'Despacho', COTIZACION: 'Cotización',
   CONFIG_PESOS: 'Pesos de evaluación', ANALISIS: 'Análisis', ADJUDICACION: 'Adjudicación', ORDEN_COMPRA: 'Orden de compra', PAGO: 'Pago',
-  RECEPCION: 'Recepción', FACTURA: 'Factura', EXPORTACION: 'Exportación',
+  RECEPCION: 'Recepción', FACTURA: 'Factura', EXPORTACION: 'Exportación', INFORME_COMPRAS: 'Informe de compras',
 };
 
 /** Pantalla donde se ve cada entidad, cuando existe una dirección por id. */

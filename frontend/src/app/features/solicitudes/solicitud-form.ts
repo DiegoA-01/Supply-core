@@ -1,15 +1,16 @@
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { Subject, debounceTime, distinctUntilChanged, switchMap } from 'rxjs';
+import { Observable, Subject, catchError, debounceTime, map, of, switchMap } from 'rxjs';
 
-import { Producto, Solicitud } from '../../core/api/modelos';
+import { Categoria, Producto, Solicitud, UnidadMedida } from '../../core/api/modelos';
 import { Estado } from '../../core/formato/etiquetas';
 import { NumeroPipe, PesosPipe } from '../../core/formato/formato';
 import { codigoError, mensajeError } from '../../core/http/api';
 import { ComprasService } from '../../core/servicios/compras.service';
 import { InventarioService } from '../../core/servicios/inventario.service';
 import { iso } from '../../core/servicios/reportes.service';
+import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 
 /** Producto pedido en la solicitud. */
@@ -33,6 +34,7 @@ export class SolicitudForm implements OnInit {
   private readonly inventario = inject(InventarioService);
   private readonly avisos = inject(Avisos);
   private readonly router = inject(Router);
+  private readonly sesion = inject(SesionService);
 
   /** Id de la solicitud a editar (de la ruta); vacío al crear. */
   readonly id = input<string>();
@@ -44,6 +46,20 @@ export class SolicitudForm implements OnInit {
   protected readonly busqueda = signal('');
   protected readonly resultados = signal<Producto[]>([]);
   protected readonly trabajando = signal(false);
+  protected readonly listaAbierta = signal(false);
+  protected readonly cargandoLista = signal(false);
+  /** La lista no es la coincidencia exacta sino productos parecidos (primera palabra). */
+  protected readonly parecidos = signal(false);
+  // Alta de un producto nuevo desde la misma pantalla (solo quien administra compras)
+  protected readonly creando = signal(false);
+  protected readonly categorias = signal<Categoria[]>([]);
+  protected readonly unidades = signal<UnidadMedida[]>([]);
+  protected readonly nuevoCodigo = signal('');
+  protected readonly nuevoNombre = signal('');
+  protected readonly nuevaCategoria = signal<number | null>(null);
+  protected readonly nuevaUnidad = signal<number | null>(null);
+  protected readonly nuevoCosto = signal<number | null>(null);
+  protected readonly puedeCrear = computed(() => this.sesion.tieneRol(['ADMIN_COMPRAS']));
   protected readonly sinGuardar = signal(false);
   /** El envío respondió que excede el presupuesto o que está duplicada: se puede reenviar con justificación. */
   protected readonly excede = signal<string | null>(null);
@@ -62,21 +78,53 @@ export class SolicitudForm implements OnInit {
   private readonly buscar$ = new Subject<string>();
 
   ngOnInit(): void {
-    this.buscar$.pipe(debounceTime(250), distinctUntilChanged(), switchMap(t => this.inventario.productos({ texto: t, tamano: 10 })))
-      .subscribe({ next: p => this.resultados.set(p.contenido ?? []), error: () => this.resultados.set([]) });
+    this.buscar$.pipe(debounceTime(200), switchMap(t => this.consultar(t)))
+      .subscribe(r => {
+        this.resultados.set(r.lista);
+        this.parecidos.set(r.parecidos);
+        this.cargandoLista.set(false);
+      });
     const id = Number(this.id());
     if (id) {
       this.compras.obtener(id).subscribe({ next: s => this.aplicar(s), error: e => this.avisos.error(e) });
     }
   }
 
+  /** Busca por código o nombre; sin texto trae los primeros del catálogo. Si nada coincide con varias palabras, prueba con la primera. */
+  private consultar(texto: string): Observable<{ lista: Producto[]; parecidos: boolean }> {
+    this.cargandoLista.set(true);
+    return this.inventario.productos({ texto: texto || null, tamano: 10 }).pipe(
+      switchMap(p => {
+        const lista = p.contenido ?? [];
+        const primera = texto.split(/\s+/)[0];
+        if (!lista.length && primera && primera !== texto) {
+          return this.inventario.productos({ texto: primera, tamano: 10 }).pipe(map(q => ({ lista: q.contenido ?? [], parecidos: true })));
+        }
+        return of({ lista, parecidos: false });
+      }),
+      catchError(() => of({ lista: [] as Producto[], parecidos: false })));
+  }
+
   /** @param texto lo que se busca (código o nombre) */
   protected buscar(texto: string): void {
     this.busqueda.set(texto);
-    if (texto.trim().length >= 2) {
-      this.buscar$.next(texto.trim());
-    } else {
-      this.resultados.set([]);
+    this.listaAbierta.set(true);
+    this.cargandoLista.set(true);
+    this.buscar$.next(texto.trim());
+  }
+
+  /** Al poner el cursor en el campo se abre el catálogo, aunque no se haya escrito nada. */
+  protected abrirLista(): void {
+    this.listaAbierta.set(true);
+    this.cargandoLista.set(true);
+    this.buscar$.next(this.busqueda().trim());
+  }
+
+  /** Cierra la lista cuando el foco sale del bloque de búsqueda. */
+  protected alSalir(e: FocusEvent): void {
+    const bloque = e.currentTarget as HTMLElement;
+    if (!bloque.contains(e.relatedTarget as Node | null)) {
+      this.listaAbierta.set(false);
     }
   }
 
@@ -88,6 +136,45 @@ export class SolicitudForm implements OnInit {
     }
     this.busqueda.set('');
     this.resultados.set([]);
+    this.listaAbierta.set(false);
+  }
+
+  /** Abre el formulario de producto nuevo (con el texto buscado como nombre) y trae categorías y unidades. */
+  protected abrirCrear(): void {
+    this.listaAbierta.set(false);
+    this.creando.set(true);
+    this.nuevoNombre.set(this.busqueda().trim());
+    if (!this.categorias().length) {
+      this.inventario.categorias().subscribe({ next: l => this.categorias.set(l), error: e => this.avisos.error(e) });
+      this.inventario.unidades().subscribe({ next: l => this.unidades.set(l), error: e => this.avisos.error(e) });
+    }
+  }
+
+  /** Crea el producto en el catálogo y lo deja agregado a la solicitud. */
+  protected crearProducto(): void {
+    if (!this.nuevoCodigo().trim() || !this.nuevoNombre().trim() || !this.nuevaCategoria() || !this.nuevaUnidad()) {
+      this.avisos.ok('Completa código, nombre, categoría y unidad.');
+      return;
+    }
+    this.trabajando.set(true);
+    this.inventario.crear({
+      codigo: this.nuevoCodigo().trim(), nombre: this.nuevoNombre().trim(), categoriaId: this.nuevaCategoria()!,
+      unidadMedidaId: this.nuevaUnidad()!, stockMinimo: 0, costoReferencia: this.nuevoCosto() ?? undefined,
+    }).subscribe({
+      next: p => {
+        this.trabajando.set(false);
+        this.creando.set(false);
+        this.nuevoCodigo.set('');
+        this.nuevoNombre.set('');
+        this.nuevoCosto.set(null);
+        this.agregar(p);
+        this.avisos.ok(`${p.nombre} creado y agregado.`);
+      },
+      error: e => {
+        this.trabajando.set(false);
+        this.avisos.error(e);
+      },
+    });
   }
 
   /** @param i posición; @param cantidad cantidad pedida */

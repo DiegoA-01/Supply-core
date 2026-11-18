@@ -33,6 +33,7 @@ py scripts/sembrar_demo.py
 
 - Empresa `Ferreteria Demo` (plan EMPRESARIAL, activa), con su administrador, sede, centro de costo, bodega, 8 productos con existencias y salidas (para el tablero de rotación) y políticas de aprobación.
 - Usuarios por rol: jefe de compras, jefe de bodega, bodeguero, solicitante, aprobador, comprador, tesorería y auditor, más un proveedor ya habilitado.
+- Flujo de compra de la demo: el bodeguero (también solicitante) pide lo que falta, la solicitud le llega al jefe de compras (la política de solicitudes la aprueba `ADMIN_COMPRAS`), y él, que también es comprador, arma y abre la RFQ que llega a los proveedores habilitados de la categoría. El jefe de compras también puede pedir; su solicitud la aprueba el dueño de la ferretería, porque nadie aprueba su propia solicitud. El dueño solo administra: no recibe avisos de RFQ, cotizaciones ni proveedores; pide y lee el **informe de compras** que le envía el jefe de compras con su análisis.
 - Todas las claves son aleatorias y se escriben en `credenciales-docker.local.txt` (ignorado por git, nunca se sube). Ese archivo también trae la llave de la app autenticadora del dueño del software y del administrador de la empresa, que tienen segundo factor obligatorio.
 - El script se niega a correr dos veces. Para empezar de cero: `docker compose down -v`, `docker compose up -d`, borrar `credenciales-docker.local.txt` y repetir. **`down -v` borra toda la base.**
 - Es solo para ambientes de prueba: no se usa en producción.

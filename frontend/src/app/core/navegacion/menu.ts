@@ -61,6 +61,7 @@ export const MENU: SeccionMenu[] = [
     titulo: 'Gestión',
     opciones: [
       { texto: 'Reportes', icono: 'bar_chart', ruta: '/app/reportes', roles: ROLES_REPORTES, modulo: 'REPORTES' },
+      { texto: 'Informe de compras', icono: 'summarize', ruta: '/app/informes', roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS'], modulo: 'COMPRAS' },
       { texto: 'Delegaciones', icono: 'group_add', ruta: '/app/delegaciones', roles: INTERNOS, modulo: 'COMPRAS' },
       { texto: 'Auditoría', icono: 'shield', ruta: '/app/auditoria', roles: ['AUDITOR', 'ADMIN_SISTEMA'], modulo: 'AUDITORIA' },
       { texto: 'Usuarios y roles', icono: 'apartment', ruta: '/app/usuarios', roles: ['ADMIN_SISTEMA', 'AUDITOR'] },
