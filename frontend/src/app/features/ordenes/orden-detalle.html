@@ -12,12 +12,67 @@
           @if (factura(); as f) { <span class="chip" [class.ambar]="f.estado === 'EN_REVISION'" [class.verde]="f.estado !== 'EN_REVISION'">Factura {{ f.estado | etiqueta | lowercase }}</span> }
           <button type="button" class="boton chico" (click)="descargarPdf()"><span class="material-symbols-outlined">download</span> PDF</button>
           <button type="button" class="boton chico" (click)="enviarPorCorreo()"><span class="material-symbols-outlined">mail</span> Enviar por correo</button>
+          @if (puedeCambiar()) {
+            <button type="button" class="boton chico" (click)="abrirCambio('version')"><span class="material-symbols-outlined">edit_note</span> Nueva versión</button>
+            <button type="button" class="boton chico peligro" (click)="abrirCambio('cancelar')">Cancelar orden</button>
+          }
           @if (sesion.tieneModulo('RECEPCION') && (o.estado === 'DESPACHADA' || o.estado === 'RECIBIDA_PARCIAL')) {
             <a class="boton chico" [routerLink]="['/app/recepcion', o.id]">Ver recepción</a>
           }
         </div>
       </div>
     </div>
+
+    @if (panelCambio() === 'cancelar') {
+      <section class="tarjeta">
+        <h2>Cancelar la orden {{ o.consecutivo }}</h2>
+        <p class="texto-2">La solicitud vuelve a quedar aprobada y el proveedor recibe un aviso. Solo se puede mientras la orden no se haya despachado.</p>
+        <div class="campo"><label for="mc">Motivo (obligatorio, mínimo 5 caracteres)</label>
+          <input id="mc" class="entrada" maxlength="500" [ngModel]="motivoCambio()" (ngModelChange)="motivoCambio.set($event)" placeholder="Ej. El proveedor no puede cumplir la fecha"></div>
+        <div class="fila margen-arriba">
+          <button type="button" class="boton peligro" [disabled]="trabajando()" (click)="cancelarOrden()">Cancelar la orden</button>
+          <button type="button" class="boton" (click)="cerrarCambio()">Volver</button>
+        </div>
+      </section>
+    }
+    @if (panelCambio() === 'version') {
+      <section class="tarjeta">
+        <h2>Nueva versión de {{ o.consecutivo }}</h2>
+        <p class="texto-2">La orden emitida no se edita: se crea la versión {{ (o.version ?? 0) + 1 }} y la actual queda reemplazada. El proveedor recibe aviso.</p>
+        <div class="formulario dos">
+          <div class="campo"><label for="vb">Bodega de destino</label>
+            <select id="vb" class="entrada" [ngModel]="versionBodega()" (ngModelChange)="versionBodega.set($event)">
+              @for (b of bodegas(); track b.id) { <option [ngValue]="b.id">{{ b.nombre }}</option> }
+              @if (!bodegas().length) { <option [ngValue]="o.bodegaDestinoId">{{ o.bodegaDestinoNombre }}</option> }
+            </select></div>
+          <div class="campo"><label for="vl">Lugar de entrega</label>
+            <input id="vl" class="entrada" maxlength="250" [ngModel]="versionLugar()" (ngModelChange)="versionLugar.set($event)"></div>
+          <div class="campo"><label for="vf">Fecha de entrega esperada</label>
+            <input id="vf" type="date" class="entrada" [ngModel]="versionFecha()" (ngModelChange)="versionFecha.set($event)"></div>
+          <div class="campo"><label for="vm">Motivo del cambio (obligatorio)</label>
+            <input id="vm" class="entrada" maxlength="500" [ngModel]="motivoCambio()" (ngModelChange)="motivoCambio.set($event)" placeholder="Ej. El cliente pidió menos cantidad"></div>
+        </div>
+        <h3>Cantidades</h3>
+        <table class="tabla">
+          <thead><tr><th>Producto</th><th class="num">Cantidad actual</th><th class="num">Cantidad nueva</th></tr></thead>
+          <tbody>
+            @for (l of o.lineas ?? []; track l.id) {
+              <tr>
+                <td>{{ l.productoNombre }}</td>
+                <td class="num">{{ l.cantidad | numero }} {{ l.unidad }}</td>
+                <td class="num"><input type="number" min="0" step="any" class="entrada num corta" [attr.aria-label]="'Nueva cantidad de ' + l.productoNombre"
+                  [ngModel]="versionCantidades()[l.id!]" (ngModelChange)="cambiarCantidad(l.id!, +$event)"></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        <p class="texto-chico texto-2">Los totales los recalcula el sistema. No puede quedar por debajo de lo ya pagado.</p>
+        <div class="fila margen-arriba">
+          <button type="button" class="boton primario" [disabled]="trabajando()" (click)="crearVersion()">Emitir versión nueva</button>
+          <button type="button" class="boton" (click)="cerrarCambio()">Volver</button>
+        </div>
+      </section>
+    }
 
     <div class="rejilla principal">
       <div class="columna">
@@ -136,7 +191,9 @@
                 <div class="separado"><sc-estado [valor]="pg.tipo" /><sc-estado [valor]="pg.estado" /></div>
                 <strong>{{ pg.valor | pesos }}</strong>
                 <span class="texto-chico texto-2">{{ pg.fechaPago | fecha: 'corta' }} · {{ pg.metodo | etiqueta }} @if (pg.referencia) { · {{ pg.referencia }} }</span>
-                @if (pg.evidenciaPendiente) { <span class="chip ambar">Comprobante pendiente</span> }
+                @if (pg.evidenciaPendiente && pg.estado === 'REGISTRADO') { <span class="chip ambar">Comprobante pendiente</span> }
+                @if (pg.estado === 'ANULADO' && pg.motivoAnulacion) { <span class="texto-chico texto-2">Anulado: {{ pg.motivoAnulacion }}</span> }
+                <sc-pago-acciones [pago]="pg" [puedeEditar]="puedePagar()" (cambio)="cargar()" />
               </div>
             } @empty {
               <p class="texto-2">Sin pagos registrados.</p>

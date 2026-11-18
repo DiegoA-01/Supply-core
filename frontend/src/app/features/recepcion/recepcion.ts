@@ -47,6 +47,13 @@ export class RecepcionOrden implements OnInit {
   protected readonly evidencia = signal<File | null>(null);
   protected readonly registrada = signal<Recepcion | null>(null);
   protected readonly trabajando = signal(false);
+  protected readonly cerrando = signal(false);
+  protected readonly motivoCierre = signal('');
+  /** Se puede cerrar cuando ya entró mercancía (parcial o total); lo cierran bodega y el jefe de compras. */
+  protected readonly puedeCerrar = computed(() => this.sesion.tieneRol(['ALMACENISTA', 'ADMIN_COMPRAS']) && !this.sesion.soloLectura()
+    && ['RECIBIDA_PARCIAL', 'RECIBIDA_TOTAL'].includes(this.resumen()?.estadoOrden ?? ''));
+  /** Cerrar con faltante (recepción parcial) exige un motivo. */
+  protected readonly cierraConFaltante = computed(() => this.resumen()?.estadoOrden === 'RECIBIDA_PARCIAL');
 
   protected readonly puedeRecibir = computed(() => {
     const e = this.resumen()?.estadoOrden;
@@ -135,6 +142,32 @@ export class RecepcionOrden implements OnInit {
         this.cargar();
       },
       error: e => this.avisos.error(e),
+    });
+  }
+
+  protected cerrarRecepcion(): void {
+    const o = this.orden();
+    const motivo = this.motivoCierre().trim();
+    if (!o?.id) {
+      return;
+    }
+    if (this.cierraConFaltante() && motivo.length < 5) {
+      this.avisos.ok('Cerrar con faltante exige el motivo (mínimo 5 caracteres).');
+      return;
+    }
+    this.trabajando.set(true);
+    this.ordenes.cerrarRecepcion(o.id, motivo).subscribe({
+      next: () => {
+        this.trabajando.set(false);
+        this.cerrando.set(false);
+        this.motivoCierre.set('');
+        this.avisos.ok('Recepción cerrada. Se evaluó al proveedor y la orden quedó cerrada.');
+        this.cargar();
+      },
+      error: e => {
+        this.trabajando.set(false);
+        this.avisos.error(e);
+      },
     });
   }
 

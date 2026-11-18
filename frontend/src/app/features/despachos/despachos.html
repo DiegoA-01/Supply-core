@@ -1,0 +1,157 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Despachos</p>
+    <div class="encabezado">
+      <div><h1>Despachos</h1>
+        <p>Salidas de mercancía a clientes o por consumo. En borrador no tocan el stock; al confirmar se descuenta, y al anular un despacho confirmado el stock vuelve.</p></div>
+      <div class="acciones">
+        @if (puedeArmar()) { <button type="button" class="boton primario" (click)="nuevo()"><span class="material-symbols-outlined">add</span> Nuevo despacho</button> }
+      </div>
+    </div>
+  </div>
+
+  @if (formulario() !== 'cerrado') {
+    <section class="tarjeta">
+      <h2>{{ formulario() === 'editar' ? 'Corregir borrador ' + detalle()?.consecutivo : 'Nuevo despacho' }}</h2>
+      <form class="formulario dos" (ngSubmit)="guardar()">
+        <div class="campo"><label for="bod">Bodega de salida</label>
+          <select id="bod" name="bod" class="entrada" [ngModel]="bodegaId()" (ngModelChange)="bodegaId.set($event)">
+            <option [ngValue]="null" disabled>Elige</option>
+            @for (b of bodegas(); track b.id) { <option [ngValue]="b.id">{{ b.nombre }}</option> }
+          </select></div>
+        <div class="campo"><label for="cli">Cliente (opcional)</label>
+          <input id="cli" name="cli" class="entrada" maxlength="200" [ngModel]="cliente()" (ngModelChange)="cliente.set($event)"></div>
+        <div class="campo"><label for="ref">Factura o ticket (opcional)</label>
+          <input id="ref" name="ref" class="entrada" maxlength="100" [ngModel]="referencia()" (ngModelChange)="referencia.set($event)"></div>
+        <div class="campo"><label for="obs">Observaciones (opcional)</label>
+          <input id="obs" name="obs" class="entrada" maxlength="500" [ngModel]="observaciones()" (ngModelChange)="observaciones.set($event)"></div>
+
+        <div class="campo ancho">
+          <span class="etiqueta-seccion">Productos</span>
+          @for (l of lineas(); track l; let i = $index) {
+            <div class="linea">
+              <div class="campo"><label [for]="'p' + i">Producto</label>
+                <input [id]="'p' + i" [name]="'p' + i" class="entrada" [attr.list]="'lista-' + i" autocomplete="off" placeholder="Código o nombre"
+                       [ngModel]="l.buscador.texto()" (ngModelChange)="l.buscador.escribir($event)">
+                <datalist [id]="'lista-' + i">@for (p of l.buscador.opciones(); track p.id) { <option [value]="l.buscador.etiqueta(p)"></option> }</datalist></div>
+              <div class="campo"><label [for]="'c' + i">Cantidad</label>
+                <input [id]="'c' + i" [name]="'c' + i" type="number" min="0" step="any" class="entrada num" [ngModel]="l.cantidad" (ngModelChange)="cambiarLinea(i, 'cantidad', $event)"></div>
+              <div class="campo"><label [for]="'u' + i">Unidad</label>
+                <select [id]="'u' + i" [name]="'u' + i" class="entrada" [ngModel]="unidadDe(l)" (ngModelChange)="cambiarLinea(i, 'unidadId', $event)">
+                  <option [ngValue]="null" disabled>Elige</option>
+                  @for (u of unidades(); track u.id) { <option [ngValue]="u.id">{{ u.codigo }}</option> }
+                </select></div>
+              <button type="button" class="boton chico" (click)="quitarLinea(i)" [disabled]="lineas().length === 1" aria-label="Quitar producto">
+                <span class="material-symbols-outlined">close</span></button>
+            </div>
+          }
+          <button type="button" class="boton chico" (click)="agregarLinea()"><span class="material-symbols-outlined">add</span> Agregar producto</button>
+        </div>
+
+        <div class="fila">
+          <button type="submit" class="boton primario" [disabled]="trabajando()">{{ trabajando() ? 'Guardando…' : 'Guardar borrador' }}</button>
+          <button type="button" class="boton" (click)="formulario.set('cerrado')">Cancelar</button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <div class="rejilla principal">
+    <section class="tarjeta">
+      <div class="filtros">
+        <div class="campo"><label for="ft">Buscar</label>
+          <input id="ft" type="search" class="entrada" placeholder="Consecutivo, cliente o ticket" [ngModel]="texto()" (ngModelChange)="texto.set($event)" (keyup.enter)="buscar(0)"></div>
+        <div class="campo"><label for="fe">Estado</label>
+          <select id="fe" class="entrada" [ngModel]="estado()" (ngModelChange)="estado.set($event); buscar(0)">
+            <option [ngValue]="null">Todos</option><option value="BORRADOR">Borrador</option><option value="CONFIRMADO">Confirmado</option><option value="ANULADO">Anulado</option>
+          </select></div>
+        <div class="campo"><label for="fb">Bodega</label>
+          <select id="fb" class="entrada" [ngModel]="bodegaFiltro()" (ngModelChange)="bodegaFiltro.set($event); buscar(0)">
+            <option [ngValue]="null">Todas</option>
+            @for (b of bodegas(); track b.id) { <option [ngValue]="b.id">{{ b.nombre }}</option> }
+          </select></div>
+      </div>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Despacho</th><th>Cliente</th><th>Fecha</th><th>Estado</th></tr></thead>
+          <tbody>
+            @for (d of pagina()?.contenido ?? []; track d.id) {
+              <tr class="seleccionable" [class.seleccionada]="detalle()?.id === d.id" (click)="abrir(d)">
+                <td><strong>{{ d.consecutivo }}</strong>@if (d.referenciaExterna) { <div class="texto-chico texto-2">{{ d.referenciaExterna }}</div> }</td>
+                <td>{{ d.cliente ?? '—' }}</td>
+                <td class="nowrap">{{ (d.confirmadoEn ?? d.creadoEn) | fecha: 'hora' }}</td>
+                <td><sc-estado [valor]="d.estado" /></td>
+              </tr>
+            } @empty {
+              <tr><td colspan="4" class="vacio">{{ pagina() ? 'No hay despachos con ese filtro.' : 'Cargando…' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (pagina(); as p) {
+        @if ((p.totalPaginas ?? 0) > 1) {
+          <div class="fila paginacion">
+            <button type="button" class="boton chico" [disabled]="numeroPagina() === 0" (click)="buscar(numeroPagina() - 1)">Anterior</button>
+            <span class="texto-chico texto-2">Página {{ numeroPagina() + 1 }} de {{ p.totalPaginas }}</span>
+            <button type="button" class="boton chico" [disabled]="numeroPagina() + 1 >= (p.totalPaginas ?? 0)" (click)="buscar(numeroPagina() + 1)">Siguiente</button>
+          </div>
+        }
+      }
+    </section>
+
+    @if (detalle(); as d) {
+      <section class="tarjeta">
+        <div class="fila titulo"><h2>{{ d.consecutivo }}</h2><sc-estado [valor]="d.estado" /></div>
+        <div class="pares">
+          <div class="par"><span>Bodega</span><span>{{ d.bodegaNombre }}</span></div>
+          <div class="par"><span>Cliente</span><span>{{ d.cliente ?? '—' }}</span></div>
+          <div class="par"><span>Factura o ticket</span><span>{{ d.referenciaExterna ?? '—' }}</span></div>
+          <div class="par"><span>Creado</span><span>{{ d.creadoEn | fecha: 'hora' }}</span></div>
+          @if (d.confirmadoEn) { <div class="par"><span>Confirmado</span><span>{{ d.confirmadoEn | fecha: 'hora' }}</span></div> }
+          @if (d.anuladoEn) { <div class="par"><span>Anulado</span><span>{{ d.anuladoEn | fecha: 'hora' }}</span></div> }
+          @if (d.observaciones) { <div class="par"><span>Observaciones</span><span>{{ d.observaciones }}</span></div> }
+        </div>
+
+        <h3>Productos</h3>
+        <table class="tabla">
+          <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Descuenta del stock</th></tr></thead>
+          <tbody>
+            @for (l of d.lineas ?? []; track l.id) {
+              <tr>
+                <td><strong>{{ l.productoCodigo }}</strong> <span class="texto-2">{{ l.productoNombre }}</span></td>
+                <td class="num">{{ l.cantidad | numero }} {{ l.unidadCodigo }}</td>
+                <td class="num">{{ l.cantidadBase == null ? '—' : (l.cantidadBase | numero) + ' ' + l.unidadProductoCodigo }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        @if (d.productosBajoMinimo?.length) {
+          <div class="aviso ambar margen-arriba"><span class="material-symbols-outlined">warning</span>
+            <div><strong>Quedaron bajo su mínimo</strong> @for (p of d.productosBajoMinimo; track p) { <div>{{ p }}</div> }</div></div>
+        }
+        @if (d.motivoAnulacion) { <div class="aviso margen-arriba"><span class="material-symbols-outlined">info</span>Anulado: {{ d.motivoAnulacion }}</div> }
+
+        @if (anulando()) {
+          <div class="anular margen-arriba">
+            <label for="motivo-desp">Motivo de la anulación (obligatorio, mínimo 5 caracteres)</label>
+            <input id="motivo-desp" class="entrada" maxlength="500" [ngModel]="motivo()" (ngModelChange)="motivo.set($event)" placeholder="Ej. El cliente devolvió todo">
+            <div class="fila">
+              <button type="button" class="boton peligro" [disabled]="trabajando()" (click)="anular()">Anular despacho</button>
+              <button type="button" class="boton" (click)="cancelarAnulacion()">Cancelar</button>
+            </div>
+          </div>
+        } @else {
+          <div class="fila margen-arriba">
+            @if (enBorrador() && puedeArmar()) {
+              <button type="button" class="boton primario" [disabled]="trabajando()" (click)="confirmar()">Confirmar y descontar stock</button>
+              <button type="button" class="boton" (click)="editar()">Corregir</button>
+            }
+            @if (d.estado !== 'ANULADO' && puedeAnular()) { <button type="button" class="boton peligro" (click)="anulando.set(true)">Anular</button> }
+          </div>
+          @if (d.estado === 'CONFIRMADO') { <p class="texto-chico texto-2">Un despacho confirmado ya no se edita. Si hubo un error, anúlalo y arma uno nuevo.</p> }
+        }
+      </section>
+    }
+  </div>
+</div>

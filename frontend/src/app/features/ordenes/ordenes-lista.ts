@@ -5,6 +5,7 @@ import { OrdenResumen } from '../../core/api/modelos';
 import { Estado } from '../../core/formato/etiquetas';
 import { FechaPipe, PesosPipe } from '../../core/formato/formato';
 import { OrdenesService } from '../../core/servicios/ordenes.service';
+import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 
 /** Lista de órdenes de compra vigentes. */
@@ -18,6 +19,9 @@ import { Avisos } from '../../core/ui/avisos';
         <div class="encabezado">
           <div><h1>Órdenes y pagos</h1><p>Una orden emitida no se edita: los cambios crean una versión nueva.</p></div>
           <div class="acciones pastillas">
+            @if (sesion.tieneRol(['COMPRADOR']) && !sesion.soloLectura()) {
+              <a class="boton chico" routerLink="/app/ordenes/directa"><span class="material-symbols-outlined">bolt</span> Orden directa</a>
+            }
             @for (e of estados; track e.texto) {
               <button type="button" class="pastilla" [class.activa]="estado() === e.valor" (click)="filtrar(e.valor)">{{ e.texto }}</button>
             }
@@ -49,6 +53,7 @@ import { Avisos } from '../../core/ui/avisos';
   `,
 })
 export class OrdenesLista implements OnInit {
+  protected readonly sesion = inject(SesionService);
   private readonly servicio = inject(OrdenesService);
   private readonly avisos = inject(Avisos);
 

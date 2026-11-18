@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION } from './core/navegacion/menu';
+import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS } from './core/navegacion/menu';
 import { empresaGuard, invitadoGuard, permisoGuard, plataformaGuard, proveedorGuard } from './core/sesion/guards';
 
 /**
@@ -78,6 +78,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/ordenes/ordenes-lista').then(m => m.OrdenesLista),
       },
       {
+        path: 'ordenes/directa',
+        title: 'Orden directa · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['COMPRADOR'], modulo: 'ORDENES_PAGOS' },
+        loadComponent: () => import('./features/ordenes/orden-directa').then(m => m.OrdenDirecta),
+      },
+      {
         path: 'ordenes/:id',
         title: 'Orden de compra · Supply-Core',
         canActivate: [permisoGuard],
@@ -97,6 +104,34 @@ export const routes: Routes = [
         canActivate: [permisoGuard],
         data: { roles: ROLES_ORDENES, modulo: 'RECEPCION' },
         loadComponent: () => import('./features/recepcion/recepcion').then(m => m.RecepcionOrden),
+      },
+      {
+        path: 'adjudicaciones',
+        title: 'Adjudicaciones · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: INTERNOS, modulo: 'RFQ_COTIZACIONES' },
+        loadComponent: () => import('./features/adjudicaciones/adjudicaciones').then(m => m.Adjudicaciones),
+      },
+      {
+        path: 'delegaciones',
+        title: 'Delegaciones · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: INTERNOS, modulo: 'COMPRAS' },
+        loadComponent: () => import('./features/adjudicaciones/delegaciones').then(m => m.Delegaciones),
+      },
+      {
+        path: 'pagos',
+        title: 'Pagos · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_PAGOS, modulo: 'ORDENES_PAGOS' },
+        loadComponent: () => import('./features/pagos/pagos').then(m => m.Pagos),
+      },
+      {
+        path: 'despachos',
+        title: 'Despachos · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_DESPACHOS, modulo: 'DESPACHOS' },
+        loadComponent: () => import('./features/despachos/despachos').then(m => m.Despachos),
       },
       {
         path: 'inventario/rotacion',

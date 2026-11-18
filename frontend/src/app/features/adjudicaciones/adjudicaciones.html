@@ -1,0 +1,82 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Adjudicaciones por aprobar</p>
+    <div class="encabezado"><div><h1>Adjudicaciones por aprobar</h1>
+      <p>Compras eligió una cotización y el monto necesita tu aprobación. Aquí ves solo las que le tocan a tu rol (o a uno que te delegaron), sin las que tú adjudicaste.</p></div></div>
+  </div>
+
+  @if (resultado(); as r) {
+    <div class="aviso" [class.verde]="r.estado === 'APROBADA'" [class.ambar]="r.estado === 'RECHAZADA'" role="status">
+      <span class="material-symbols-outlined">{{ r.estado === 'APROBADA' ? 'check_circle' : 'cancel' }}</span>
+      <div><strong>{{ r.rfqConsecutivo }} · {{ r.proveedorRazonSocial }}: {{ r.estado === 'APROBADA' ? 'aprobada' : 'rechazada' }}</strong>
+        @if (r.estado === 'APROBADA') { <div>El comprador ya puede emitir la orden desde el análisis de la RFQ.</div> }</div>
+    </div>
+  }
+
+  <div class="rejilla principal">
+    <section class="tarjeta sin-relleno">
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>RFQ</th><th>Proveedor</th><th class="num">Monto</th><th>Adjudicada</th></tr></thead>
+          <tbody>
+            @for (a of pagina()?.contenido ?? []; track a.id) {
+              <tr class="seleccionable" [class.seleccionada]="detalle()?.id === a.id" (click)="abrir(a)">
+                <td><strong>{{ a.rfqConsecutivo }}</strong></td>
+                <td>{{ a.proveedorRazonSocial }}@if (a.sigueRecomendacion === false) { <div class="texto-chico"><span class="chip ambar">Distinta a la recomendada</span></div> }</td>
+                <td class="num"><strong>{{ a.montoTotal | pesos }}</strong></td>
+                <td class="nowrap">{{ a.decididoEn | fecha: 'hora' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="4" class="vacio">{{ pagina() ? 'No tienes adjudicaciones por aprobar.' : 'Cargando…' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (pagina(); as p) {
+        @if ((p.totalPaginas ?? 0) > 1) {
+          <div class="fila paginacion">
+            <button type="button" class="boton chico" [disabled]="numeroPagina() === 0" (click)="cargar(numeroPagina() - 1)">Anterior</button>
+            <span class="texto-chico texto-2">Página {{ numeroPagina() + 1 }} de {{ p.totalPaginas }}</span>
+            <button type="button" class="boton chico" [disabled]="numeroPagina() + 1 >= (p.totalPaginas ?? 0)" (click)="cargar(numeroPagina() + 1)">Siguiente</button>
+          </div>
+        }
+      }
+    </section>
+
+    @if (detalle(); as a) {
+      <section class="tarjeta">
+        <div class="fila titulo"><h2>{{ a.rfqConsecutivo }}</h2><sc-estado [valor]="a.estado" /></div>
+        <div class="pares">
+          <div class="par"><span>Proveedor elegido</span><span>{{ a.proveedorRazonSocial }}</span></div>
+          <div class="par"><span>Monto total</span><span><strong>{{ a.montoTotal | pesos }}</strong></span></div>
+          <div class="par"><span>Adjudicada</span><span>{{ a.decididoEn | fecha: 'hora' }}</span></div>
+          <div class="par"><span>Quién la aprueba</span><span>
+            @if (politica(); as p) { {{ p.requiereAprobacion ? (p.politica?.rolAprobadorNombre ?? p.politica?.rolAprobador) : 'No requiere aprobación' }} } @else { … }
+          </span></div>
+        </div>
+
+        @if (a.sigueRecomendacion === false) {
+          <div class="aviso ambar"><span class="material-symbols-outlined">warning</span>
+            <div><strong>El comprador se apartó de la recomendación de la IA</strong><div>{{ a.justificacion }}</div></div></div>
+        } @else {
+          <p class="texto-chico texto-2">Es la cotización que recomendó el análisis.</p>
+        }
+        <p><a [routerLink]="['/app/cotizaciones', a.rfqId]">Ver el análisis completo de la RFQ</a></p>
+
+        @if (esMia()) {
+          <div class="aviso"><span class="material-symbols-outlined">shield</span>La adjudicaste tú: la aprueba otra persona (segregación de funciones).</div>
+        } @else if (puedeDecidir()) {
+          <div class="campo">
+            <label for="obs">Observaciones (obligatorias si la rechazas)</label>
+            <textarea id="obs" class="entrada" maxlength="500" [ngModel]="observaciones()" (ngModelChange)="observaciones.set($event)"
+                      placeholder="Ej. El precio está por encima del contrato vigente"></textarea>
+          </div>
+          <div class="fila">
+            <button type="button" class="boton primario" [disabled]="trabajando()" (click)="decidir(true)">Aprobar</button>
+            <button type="button" class="boton peligro" [disabled]="trabajando()" (click)="decidir(false)">Rechazar</button>
+          </div>
+        }
+      </section>
+    }
+  </div>
+</div>

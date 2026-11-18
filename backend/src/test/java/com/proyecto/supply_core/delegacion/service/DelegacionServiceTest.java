@@ -31,6 +31,7 @@ import com.proyecto.supply_core.common.exception.AccesoDenegadoException;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.delegacion.dto.DelegacionRequest;
+import com.proyecto.supply_core.delegacion.dto.DelegadoCandidato;
 import com.proyecto.supply_core.delegacion.entity.DelegacionAprobacion;
 import com.proyecto.supply_core.delegacion.enums.EstadoDelegacion;
 import com.proyecto.supply_core.delegacion.repository.DelegacionRepository;
@@ -119,6 +120,20 @@ class DelegacionServiceTest {
                 new DelegacionRequest(30L, hoy.minusDays(10), hoy.minusDays(1), null))));
         assertThrows(NoEncontradoException.class, () -> service.crear(new DelegacionRequest(99L, hoy, hoy, null)));
         verify(delegaciones, never()).save(any());
+    }
+
+    @Test
+    void losCandidatosSonLosInternosActivosYSoloLosVeQuienPuedeDelegar() {
+        when(usuarios.candidatosDeDelegacion(20L)).thenReturn(List.of(delegado));
+
+        List<DelegadoCandidato> candidatos = service.candidatos();
+
+        assertEquals(1, candidatos.size());
+        assertEquals(30L, candidatos.get(0).id());
+        assertEquals("Sofía", candidatos.get(0).nombre());
+
+        sesion(20L, "COMPRADOR");
+        assertEquals("SIN_ROL_APROBADOR", codigo(() -> service.candidatos()));
     }
 
     @Test

@@ -42,6 +42,15 @@ export class CotizacionesService {
   }
 
   /**
+   * Cancela la RFQ en borrador o abierta; la solicitud vuelve a quedar aprobada.
+   *
+   * @param id RFQ
+   */
+  cancelarRfq(id: number): Observable<Rfq> {
+    return this.http.post<Rfq>(api(`/api/rfqs/${id}/cancelar`), {});
+  }
+
+  /**
    * Cierra la RFQ antes de la fecha límite para analizar lo recibido.
    *
    * @param id RFQ abierta

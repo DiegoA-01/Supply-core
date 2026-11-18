@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  CorreoExportacion, Factura, FacturaNueva, LineaRecepcion, Orden, OrdenResumen, Pagina, Pago, PagosOrden, Recepcion, RegistrarPago, RegistrarRecepcion,
+  CorreoExportacion, EmitirDirecta, Factura, FacturaNueva, NuevaVersionOrden, OfertaContrato, LineaRecepcion, Orden, OrdenResumen, Pagina, Pago, PagosOrden, Recepcion, RegistrarPago, RegistrarRecepcion,
   ResumenRecepcion,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
@@ -129,6 +129,84 @@ export class OrdenesService {
     const datos = new FormData();
     datos.append('archivo', archivo);
     return this.http.post(api('/api/documentos'), datos, { params: parametros({ entidad, entidadId }) });
+  }
+
+  /**
+   * Pagos de todas las órdenes con filtros (administrativo, jefe de compras y auditoría).
+   *
+   * @param f      estado, sin comprobante, proveedor y rango de fechas de pago (ISO)
+   * @param pagina número de página desde 0
+   */
+  buscarPagos(f: { estado?: string | null; evidenciaPendiente?: boolean | null; proveedorId?: number | null; desde?: string | null; hasta?: string | null },
+      pagina: number): Observable<Pagina<Pago>> {
+    return this.http.get<Pagina<Pago>>(api('/api/pagos'), { params: parametros({ ...f, page: pagina, size: 20, sort: 'fechaPago,desc' }) });
+  }
+
+  /**
+   * Anula un pago registrado por error; deja de sumar al pagado de la orden.
+   *
+   * @param id     pago registrado
+   * @param motivo entre 5 y 500 caracteres
+   */
+  anularPago(id: number, motivo: string): Observable<Pago> {
+    return this.http.post<Pago>(api(`/api/pagos/${id}/anular`), { motivo });
+  }
+
+  /**
+   * Adjunta el comprobante del pago (PDF o imagen); solo se puede una vez.
+   *
+   * @param id      pago sin comprobante
+   * @param archivo comprobante
+   */
+  adjuntarComprobante(id: number, archivo: File): Observable<Pago> {
+    const datos = new FormData();
+    datos.append('archivo', archivo);
+    return this.http.post<Pago>(api(`/api/pagos/${id}/comprobante`), datos);
+  }
+
+  /** @param documentoId documento del comprobante; archivo para descargar */
+  comprobante(documentoId: number): Observable<Blob> {
+    return this.http.get(api(`/api/documentos/${documentoId}/contenido`), { responseType: 'blob' });
+  }
+
+  /**
+   * Cancela una orden que aún no se despacha; la solicitud vuelve a quedar aprobada y el proveedor recibe aviso.
+   *
+   * @param id          orden
+   * @param observacion motivo de la cancelación
+   */
+  cancelar(id: number, observacion: string): Observable<Orden> {
+    return this.http.post<Orden>(api(`/api/ordenes/${id}/cancelar`), { observacion });
+  }
+
+  /**
+   * Crea una versión nueva de una orden emitida (la emitida nunca se edita). La anterior queda REEMPLAZADA.
+   *
+   * @param id    versión vigente
+   * @param datos motivo y lo que cambia (entrega o cantidades)
+   */
+  nuevaVersion(id: number, datos: NuevaVersionOrden): Observable<Orden> {
+    return this.http.post<Orden>(api(`/api/ordenes/${id}/version`), datos);
+  }
+
+  /**
+   * Cierra la recepción de una orden y evalúa al proveedor.
+   *
+   * @param ordenId orden recibida (parcial o total)
+   * @param motivo  obligatorio si se cierra con faltante
+   */
+  cerrarRecepcion(ordenId: number, motivo: string): Observable<ResumenRecepcion> {
+    return this.http.post<ResumenRecepcion>(api(`/api/ordenes/${ordenId}/recepciones/cerrar`), { motivo: motivo || undefined });
+  }
+
+  /** @param solicitudId solicitud aprobada; contratos vigentes que cubren sus productos, con el total que calcula el backend */
+  ofertasContrato(solicitudId: number): Observable<OfertaContrato[]> {
+    return this.http.get<OfertaContrato[]>(api('/api/contratos/ofertas'), { params: parametros({ solicitudId }) });
+  }
+
+  /** @param datos solicitud, contrato, bodega y entrega; emite la orden al precio pactado, sin cotizar */
+  emitirDirecta(datos: EmitirDirecta): Observable<Orden> {
+    return this.http.post<Orden>(api('/api/ordenes/directa'), datos);
   }
 
   /** PDF de la orden (descarga). */

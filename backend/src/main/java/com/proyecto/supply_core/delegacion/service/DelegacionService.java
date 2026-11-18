@@ -19,6 +19,7 @@ import com.proyecto.supply_core.common.exception.AccesoDenegadoException;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.delegacion.dto.DelegacionRequest;
+import com.proyecto.supply_core.delegacion.dto.DelegadoCandidato;
 import com.proyecto.supply_core.delegacion.dto.DelegacionResponse;
 import com.proyecto.supply_core.delegacion.entity.DelegacionAprobacion;
 import com.proyecto.supply_core.delegacion.enums.EstadoDelegacion;
@@ -139,6 +140,25 @@ public class DelegacionService {
         auditoriaService.exito(AccionAuditoria.DELEGACION_REVOCAR, EntidadAuditada.DELEGACION, id,
                 "delegante=" + d.getDeleganteId() + "; delegado=" + d.getDelegadoId());
         return respuesta(List.of(d), LocalDate.now()).get(0);
+    }
+
+    /**
+     * Usuarios en quienes el usuario de la sesión puede delegar (internos y activos, menos él). Solo lo consulta quien
+     * tiene un rol que aprueba en alguna política activa, el mismo requisito que para delegar.
+     *
+     * @return id y nombre de cada candidato, por nombre
+     * @throws NegocioException si no tiene un rol que aprueba
+     */
+    @Transactional(readOnly = true)
+    public List<DelegadoCandidato> candidatos() {
+        UsuarioAutenticado sesion = SesionActual.usuario();
+        Set<String> aprobadores = politicaRepository.rolesAprobadoresActivos();
+        if (sesion.roles().stream().noneMatch(aprobadores::contains)) {
+            throw new NegocioException("SIN_ROL_APROBADOR",
+                    "Solo quien tiene un rol que aprueba en alguna política activa puede delegar");
+        }
+        return usuarioRepository.candidatosDeDelegacion(sesion.id()).stream()
+                .map(u -> new DelegadoCandidato(u.getId(), u.getNombreCompleto())).toList();
     }
 
     /**

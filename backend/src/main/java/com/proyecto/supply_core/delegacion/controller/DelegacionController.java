@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.delegacion.dto.DelegacionRequest;
+import com.proyecto.supply_core.delegacion.dto.DelegadoCandidato;
 import com.proyecto.supply_core.delegacion.dto.DelegacionResponse;
 import com.proyecto.supply_core.delegacion.service.DelegacionService;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
@@ -62,6 +63,16 @@ public class DelegacionController {
     @PatchMapping("/{id}/revocar")
     public DelegacionResponse revocar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return delegacionService.revocar(id);
+    }
+
+    /**
+     * Usuarios en quienes se puede delegar (solo id y nombre), para armar el formulario de delegación.
+     *
+     * @return candidatos por nombre
+     */
+    @GetMapping("/candidatos")
+    public List<DelegadoCandidato> candidatos() {
+        return delegacionService.candidatos();
     }
 
     /**

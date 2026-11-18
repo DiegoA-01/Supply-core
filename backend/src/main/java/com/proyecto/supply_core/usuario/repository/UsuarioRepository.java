@@ -105,6 +105,16 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     List<Usuario> findByActivoTrueAndRoles_Codigo(String codigoRol);
 
     /**
+     * Usuarios internos activos, sin contar al indicado: a ellos se les puede delegar una aprobación.
+     *
+     * @param excluidoId usuario que delega (no se ofrece a sí mismo)
+     * @return usuarios por nombre
+     */
+    @Query("select u from Usuario u where u.activo = true and u.proveedorId is null and u.id <> :excluidoId "
+            + "order by u.nombreCompleto")
+    List<Usuario> candidatosDeDelegacion(@Param("excluidoId") Long excluidoId);
+
+    /**
      * Búsqueda paginada con filtros opcionales ({@code null} = no filtrar).
      *
      * @param texto    coincidencia parcial en nombre o correo

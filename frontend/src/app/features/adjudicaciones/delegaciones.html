@@ -1,0 +1,82 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Delegaciones</p>
+    <div class="encabezado">
+      <div><h1>Delegación de aprobaciones</h1>
+        <p>Si te vas de vacaciones, deja a otra persona aprobar por ti durante unas fechas. Ella verá tus pendientes y podrá decidir.</p></div>
+      <div class="acciones">
+        @if (!sinPermiso() && !sesion.soloLectura()) { <button type="button" class="boton primario" (click)="nueva()"><span class="material-symbols-outlined">add</span> Delegar</button> }
+      </div>
+    </div>
+  </div>
+
+  @if (sinPermiso(); as m) {
+    <div class="aviso"><span class="material-symbols-outlined">info</span>{{ m }}</div>
+  }
+
+  @if (abierto()) {
+    <section class="tarjeta">
+      <h2>Nueva delegación</h2>
+      <form class="formulario dos" (ngSubmit)="guardar()">
+        <div class="campo"><label for="del">Delegar en</label>
+          <select id="del" name="del" class="entrada" [ngModel]="delegadoId()" (ngModelChange)="delegadoId.set($event)">
+            <option [ngValue]="null" disabled>Elige a una persona</option>
+            @for (c of candidatos(); track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
+          </select></div>
+        <div class="campo"><label for="mot">Motivo (opcional)</label>
+          <input id="mot" name="mot" class="entrada" maxlength="250" [ngModel]="motivo()" (ngModelChange)="motivo.set($event)" placeholder="Vacaciones"></div>
+        <div class="campo"><label for="des">Desde</label><input id="des" name="des" type="date" class="entrada" [ngModel]="desde()" (ngModelChange)="desde.set($event)"></div>
+        <div class="campo"><label for="has">Hasta</label><input id="has" name="has" type="date" class="entrada" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)"></div>
+        <div class="fila">
+          <button type="submit" class="boton primario" [disabled]="trabajando()">{{ trabajando() ? 'Guardando…' : 'Delegar' }}</button>
+          <button type="button" class="boton" (click)="abierto.set(false)">Cancelar</button>
+        </div>
+      </form>
+      <div class="aviso margen-arriba"><span class="material-symbols-outlined">shield</span>
+        Quien recibe la delegación no puede aprobar lo que tú mismo originaste. Cada delegación queda en la auditoría.</div>
+    </section>
+  }
+
+  <div class="rejilla dos">
+    <section class="tarjeta sin-relleno">
+      <h2 class="titulo-tabla">Las que di</h2>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Delegado</th><th>Vigencia</th><th>Estado</th><th></th></tr></thead>
+          <tbody>
+            @for (d of otorgadas() ?? []; track d.id) {
+              <tr>
+                <td><strong>{{ d.delegadoNombre }}</strong>@if (d.motivo) { <div class="texto-chico texto-2">{{ d.motivo }}</div> }</td>
+                <td class="nowrap">{{ d.vigenteDesde | fecha: 'corta' }} al {{ d.vigenteHasta | fecha: 'corta' }}</td>
+                <td><sc-estado [valor]="d.estado" />@if (d.estado === 'ACTIVA') { <div class="texto-chico texto-2">{{ d.vigente ? 'vigente hoy' : 'aún no empieza o ya terminó' }}</div> }</td>
+                <td class="num">@if (d.estado === 'ACTIVA' && !sesion.soloLectura()) { <button type="button" class="boton chico peligro" (click)="revocar(d)">Revocar</button> }</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="4" class="vacio">{{ otorgadas() ? 'No has delegado nada.' : 'Cargando…' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="tarjeta sin-relleno">
+      <h2 class="titulo-tabla">Las que recibí</h2>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Quién delegó</th><th>Vigencia</th><th>Estado</th></tr></thead>
+          <tbody>
+            @for (d of recibidas() ?? []; track d.id) {
+              <tr>
+                <td><strong>{{ d.deleganteNombre }}</strong>@if (d.motivo) { <div class="texto-chico texto-2">{{ d.motivo }}</div> }</td>
+                <td class="nowrap">{{ d.vigenteDesde | fecha: 'corta' }} al {{ d.vigenteHasta | fecha: 'corta' }}</td>
+                <td><sc-estado [valor]="d.estado" />@if (d.estado === 'ACTIVA' && d.vigente) { <div class="texto-chico"><a routerLink="/app/adjudicaciones">Ver sus pendientes</a></div> }</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="3" class="vacio">{{ recibidas() ? 'Nadie te ha delegado.' : 'Cargando…' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>

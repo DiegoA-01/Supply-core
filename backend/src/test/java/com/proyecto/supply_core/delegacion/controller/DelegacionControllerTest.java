@@ -43,6 +43,21 @@ class DelegacionControllerTest extends WebTestBase {
     }
 
     @Test
+    void losCandidatosSoloMuestranIdYNombreYExigenSesionInterna() throws Exception {
+        when(delegacionService.candidatos()).thenReturn(java.util.List.of(
+                new com.proyecto.supply_core.delegacion.dto.DelegadoCandidato(30L, "Sofía")));
+
+        mvc.perform(get("/api/delegaciones/candidatos").header(HttpHeaders.AUTHORIZATION, bearer("APROBADOR")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(30))
+                .andExpect(jsonPath("$[0].nombre").value("Sofía"))
+                .andExpect(jsonPath("$[0].correo").doesNotExist());
+        mvc.perform(get("/api/delegaciones/candidatos").header(HttpHeaders.AUTHORIZATION, bearerProveedor(40L)))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/delegaciones/candidatos")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void cualquierUsuarioInternoDelegaYSeValidanLosDatos() throws Exception {
         when(delegacionService.crear(any())).thenReturn(respuesta());
 
