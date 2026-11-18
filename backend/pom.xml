@@ -34,7 +34,7 @@
 		<poi.version>5.4.1</poi.version>
 		<pdfbox.version>3.0.5</pdfbox.version>
 		<openpdf.version>2.0.3</openpdf.version>
-		<swagger-core.version>2.2.55</swagger-core.version>
+		<swagger-core.version>3.0.0</swagger-core.version>
 	</properties>
 	<dependencyManagement>
 		<dependencies>
