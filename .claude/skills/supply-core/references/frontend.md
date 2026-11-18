@@ -29,6 +29,11 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 - Buscador de producto: escribe 2 letras y elige de la lista (consulta al backend, 15 resultados), sin cargar todo el catálogo.
 - Reorden sugerida y carga masiva ya estaban completas (revisar, luego aplicar todo o nada, errores por fila, plantilla).
 
+## Rotación de productos (2026-11-18, pedido del dueño del negocio)
+- Backend: `GET /api/reportes/rotacion?desde&hasta&categoriaId` (`RotacionService`, `RotacionController`). La base suma los movimientos; Java calcula. **Salida** = consumo interno + despachos − despachos anulados (no cuentan ajustes ni traslados). **Compra** = entradas por recepción − devoluciones. Por producto: salidas, comprado, consumo diario, días que alcanza el stock (stock × días ÷ salidas), fecha estimada de agotamiento, última salida y días sin salir, valor del stock y clase: ALTA (alcanza 30 días o menos), MEDIA, BAJA (más de 90), SIN_MOVIMIENTO (hay stock y no salió nada: dinero parado), AGOTADO (se movía y hoy no hay), SIN_ACTIVIDAD. "Por agotarse" = alcanza 15 días o menos. Período por defecto 90 días, máximo 366. Ven el reporte ADMIN_SISTEMA, ADMIN_COMPRAS, COMPRADOR, APROBADOR, ADMINISTRATIVO, AUDITOR y ALMACENISTA (módulo REPORTES). Prueba de fuga entre empresas en `AislamientoEmpresasTest`.
+- Frontend: `/app/inventario/rotacion` (menú "Rotación de productos"). Tablero con períodos rápidos (30 días a 12 meses u otras fechas) y categoría; KPIs (por agotarse, agotados, sin movimiento, dinero parado); barra de distribución por tipo de rotación; los que más y menos salen (barras); "se acaban pronto" con fecha estimada; "no rotan" con el dinero parado; tabla completa con búsqueda, filtro por tipo y orden por columna. La pantalla solo ordena, filtra, cuenta y dibuja.
+- Pendiente de esta pantalla: filtro por bodega y exportar a Excel (el backend aún no lo ofrece).
+
 ## Decisiones (2026-11-05)
 - **Una sola app SaaS con tres zonas**: `/app` (empresa, `empresaGuard`), `/portal` (rol PROVEEDOR, `proveedorGuard`), `/plataforma` (dueño con MFA, `plataformaGuard`). Cada pantalla se carga perezosa.
 - **Librería**: Angular Material solo para comportamiento (menús, avisos, tooltips); el aspecto sale de tokens CSS en `styles.scss` tomados del mockup (primario `#d93a0b`). PrimeNG descartado: v22 exige licencia comercial con clave.

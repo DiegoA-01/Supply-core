@@ -850,6 +850,31 @@ class AislamientoEmpresasTest {
     }
 
     @Test
+    void laRotacionSoloMuestraLosProductosYLasSalidasDeLaEmpresa() throws Exception {
+        // la empresa B consume 777 unidades de su producto; la A no debe ver nada de eso
+        jdbc.update("INSERT INTO movimiento_inventario (empresa_id, producto_id, bodega_origen_id, usuario_id, tipo, cantidad, "
+                + "stock_resultante, creado_en) VALUES (?, ?, ?, ?, 'SALIDA_CONSUMO', 777, 0, NOW())",
+                empresaB, productoB, bodegaB, usuarioB);
+
+        mvc.perform(get("/api/reportes/rotacion").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "ADMIN_SISTEMA")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].productoId").value(productoA))
+                .andExpect(jsonPath("$.items[0].salidas").value(0.0));
+        mvc.perform(get("/api/reportes/rotacion").header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "ADMIN_SISTEMA")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].productoId").value(productoB))
+                .andExpect(jsonPath("$.items[0].salidas").value(777.0))
+                .andExpect(jsonPath("$.items[0].diasSinSalida").value(0));
+        // una categoría de la otra empresa no devuelve nada
+        mvc.perform(get("/api/reportes/rotacion?categoriaId=" + categoriaB)
+                        .header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "ADMIN_SISTEMA")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isEmpty());
+    }
+
+    @Test
     void elEstadoDeCuentaDeUnProveedorDeOtraEmpresaEsNoEncontrado() throws Exception {
         mvc.perform(get("/api/reportes/proveedores/" + proveedorB + "/estado-cuenta")
                         .header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "AUDITOR")))

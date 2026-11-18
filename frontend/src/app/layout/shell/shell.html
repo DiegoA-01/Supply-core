@@ -27,7 +27,7 @@
               <span class="material-symbols-outlined candado">lock</span>
             </span>
           } @else {
-            <a class="opcion" [routerLink]="op.ruta" routerLinkActive="activa">
+            <a class="opcion" [routerLink]="op.ruta" routerLinkActive="activa" [routerLinkActiveOptions]="{ exact: !!op.exacta }">
               <span class="material-symbols-outlined">{{ op.icono }}</span>
               <span class="texto">{{ op.texto }}</span>
               @if (op.contador && contadores()[op.contador]) {

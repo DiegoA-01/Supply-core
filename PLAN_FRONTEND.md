@@ -46,6 +46,8 @@ Rutas sin uso: `/api/inventario/stock`, `/api/inventario/movimientos`.
 5. Reorden sugerida y su borrador (ya existe la llamada; verificar la pantalla completa).
 6. Carga masiva por Excel de productos (ya existe la llamada; verificar plantilla, errores por fila y confirmación).
 
+## Rotación de productos (pedido el 2026-11-18, hecho): reporte nuevo en el backend y tablero en el frontend; sin filtro por bodega ni Excel todavía
+
 ## Fase 4. Caja y pagos
 Rutas sin uso: `/api/despachos` (lista, detalle, confirmar, anular), `/api/pagos` (lista, detalle, anular, comprobante).
 1. Despachos de caja para CAJERO: lista, crear, confirmar, anular con motivo.

@@ -2020,6 +2020,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reportes/rotacion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["rotacion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reportes/proveedores": {
         parameters: {
             query?: never;
@@ -3725,16 +3741,16 @@ export interface components {
             /** @enum {string} */
             motivoRechazo?: "DANADO" | "NO_CUMPLE_ESPECIFICACION" | "VENCIDO" | "CANTIDAD_ERRADA" | "OTRO";
             observacionCalidad?: string;
-            motivoPresenteSiRechaza?: boolean;
             rechazoNoSuperaRecibido?: boolean;
+            motivoPresenteSiRechaza?: boolean;
         };
         RegistrarRecepcionRequest: {
             /** Format: int64 */
             bodegaId?: number;
             observaciones?: string;
             lineas: components["schemas"]["LineaRecepcionRequest"][];
-            conMovimiento?: boolean;
             lineasSinRepetir?: boolean;
+            conMovimiento?: boolean;
         };
         RecepcionResponse: {
             /** Format: int64 */
@@ -3984,8 +4000,8 @@ export interface components {
             /** Format: date */
             vigenteHasta: string;
             precios: components["schemas"]["PrecioRequest"][];
-            productosSinRepetir?: boolean;
             vigenciaEnOrden?: boolean;
+            productosSinRepetir?: boolean;
         };
         PrecioRequest: {
             /** Format: int64 */
@@ -4241,6 +4257,60 @@ export interface components {
             abiertaEn?: string;
             /** Format: date-time */
             cerradaEn?: string;
+        };
+        RotacionItem: {
+            /** Format: int64 */
+            productoId?: number;
+            codigo?: string;
+            nombre?: string;
+            categoria?: string;
+            unidad?: string;
+            stock?: number;
+            stockMinimo?: number;
+            salidas?: number;
+            comprado?: number;
+            consumoDiario?: number;
+            diasCobertura?: number;
+            /** Format: date */
+            fechaEstimadaAgotamiento?: string;
+            /** Format: date-time */
+            ultimaSalida?: string;
+            /** Format: int64 */
+            diasSinSalida?: number;
+            valorStock?: number;
+            /** @enum {string} */
+            clase?: "ALTA" | "MEDIA" | "BAJA" | "SIN_MOVIMIENTO" | "AGOTADO" | "SIN_ACTIVIDAD";
+            porAgotarse?: boolean;
+        };
+        RotacionResponse: {
+            /** Format: date */
+            desde?: string;
+            /** Format: date */
+            hasta?: string;
+            /** Format: int32 */
+            dias?: number;
+            resumen?: components["schemas"]["RotacionResumen"];
+            items?: components["schemas"]["RotacionItem"][];
+        };
+        RotacionResumen: {
+            /** Format: int32 */
+            productos?: number;
+            /** Format: int64 */
+            conSalidas?: number;
+            /** Format: int64 */
+            sinMovimiento?: number;
+            /** Format: int64 */
+            agotados?: number;
+            /** Format: int64 */
+            porAgotarse?: number;
+            valorInventario?: number;
+            valorSinMovimiento?: number;
+            /** Format: int32 */
+            diasRotacionAlta?: number;
+            /** Format: int32 */
+            diasRotacionBaja?: number;
+            /** Format: int32 */
+            diasPorAgotarse?: number;
         };
         ProveedorRanking: {
             /** Format: int32 */
@@ -8631,6 +8701,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CotizacionResponse"][];
+                };
+            };
+        };
+    };
+    rotacion: {
+        parameters: {
+            query?: {
+                desde?: string;
+                hasta?: string;
+                categoriaId?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["RotacionResponse"];
                 };
             };
         };

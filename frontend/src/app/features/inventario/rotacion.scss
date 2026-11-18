@@ -1,0 +1,39 @@
+.pastillas { display: flex; gap: 8px; flex-wrap: wrap; }
+.pastilla {
+  padding: 8px 16px; border: 1px solid #e0e0e0; border-radius: 999px; background: #fff; font: inherit; font-weight: 600; cursor: pointer;
+  &.activa { background: var(--sc-primario); border-color: var(--sc-primario); color: #fff; }
+  &:focus-visible { outline: 3px solid #f6b9a3; outline-offset: 2px; }
+}
+.filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin: 14px 0; .campo { min-width: 180px; } }
+.sin-margen { margin: 0; }
+h2 { display: flex; align-items: center; gap: 8px; margin-top: 0; }
+h3 { margin: 18px 0 6px; }
+.rejilla.dos { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start; }
+.rojo { color: var(--sc-rojo); }
+.ambar { color: var(--sc-ambar); }
+
+.vacio-grande { text-align: center; padding: 40px 20px; .material-symbols-outlined { font-size: 36px; color: var(--sc-primario); } }
+
+// Distribución: una barra partida por tipo de rotación
+.distribucion { display: flex; height: 18px; border-radius: 999px; overflow: hidden; background: #ececec; margin: 6px 0 14px; }
+.tramo { display: block; height: 100%; min-width: 4px; }
+.tramo.verde, .punto.verde { background: #2e9e5b; }
+.tramo.gris, .punto.gris { background: #a8a8a8; }
+.tramo.ambar, .punto.ambar { background: #e0a21b; }
+.tramo.rojo, .punto.rojo { background: #d6402a; }
+.leyenda { list-style: none; padding: 0; margin: 0 0 10px; display: grid; gap: 6px; li { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; } }
+.punto { display: inline-block; width: 11px; height: 11px; border-radius: 50%; flex: none; }
+
+// Barras horizontales
+.barra-fila { display: grid; grid-template-columns: minmax(120px, 1.2fr) minmax(80px, 1fr) auto; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid #f0f0f0; &:first-of-type { border-top: 0; } }
+.barra-texto { display: flex; flex-direction: column; min-width: 0; strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } }
+.barra-grafica { height: 10px; border-radius: 999px; background: #ececec; overflow: hidden; }
+.barra-relleno { display: block; height: 100%; border-radius: inherit; background: var(--sc-primario); &.suave { background: #a8a8a8; } }
+.barra-valor { font-weight: 700; white-space: nowrap; text-align: right; }
+
+.lista-simple { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.orden { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: inherit; cursor: pointer; &:hover { text-decoration: underline; } &:focus-visible { outline: 3px solid #f6b9a3; outline-offset: 2px; } }
+
+@media (max-width: 720px) {
+  .barra-fila { grid-template-columns: 1fr auto; .barra-grafica { grid-column: 1 / -1; order: 3; } }
+}
