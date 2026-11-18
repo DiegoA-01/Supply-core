@@ -1,0 +1,4 @@
+.rejilla.dos { grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); align-items: start; }
+.oferta { display: flex; flex-direction: column; gap: 12px; &.elegida { outline: 2px solid var(--sc-primario); } &.apagada { opacity: .75; } }
+.titulo { justify-content: space-between; h2 { margin: 0; } }
+.sin-margen { margin: 0; }

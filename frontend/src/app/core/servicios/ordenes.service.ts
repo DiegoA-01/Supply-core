@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  CorreoExportacion, Factura, FacturaNueva, LineaRecepcion, Orden, OrdenResumen, Pagina, Pago, PagosOrden, Recepcion, RegistrarPago, RegistrarRecepcion,
+  CorreoExportacion, EmitirDirecta, Factura, FacturaNueva, NuevaVersionOrden, OfertaContrato, LineaRecepcion, Orden, OrdenResumen, Pagina, Pago, PagosOrden, Recepcion, RegistrarPago, RegistrarRecepcion,
   ResumenRecepcion,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
@@ -167,6 +167,46 @@ export class OrdenesService {
   /** @param documentoId documento del comprobante; archivo para descargar */
   comprobante(documentoId: number): Observable<Blob> {
     return this.http.get(api(`/api/documentos/${documentoId}/contenido`), { responseType: 'blob' });
+  }
+
+  /**
+   * Cancela una orden que aún no se despacha; la solicitud vuelve a quedar aprobada y el proveedor recibe aviso.
+   *
+   * @param id          orden
+   * @param observacion motivo de la cancelación
+   */
+  cancelar(id: number, observacion: string): Observable<Orden> {
+    return this.http.post<Orden>(api(`/api/ordenes/${id}/cancelar`), { observacion });
+  }
+
+  /**
+   * Crea una versión nueva de una orden emitida (la emitida nunca se edita). La anterior queda REEMPLAZADA.
+   *
+   * @param id    versión vigente
+   * @param datos motivo y lo que cambia (entrega o cantidades)
+   */
+  nuevaVersion(id: number, datos: NuevaVersionOrden): Observable<Orden> {
+    return this.http.post<Orden>(api(`/api/ordenes/${id}/version`), datos);
+  }
+
+  /**
+   * Cierra la recepción de una orden y evalúa al proveedor.
+   *
+   * @param ordenId orden recibida (parcial o total)
+   * @param motivo  obligatorio si se cierra con faltante
+   */
+  cerrarRecepcion(ordenId: number, motivo: string): Observable<ResumenRecepcion> {
+    return this.http.post<ResumenRecepcion>(api(`/api/ordenes/${ordenId}/recepciones/cerrar`), { motivo: motivo || undefined });
+  }
+
+  /** @param solicitudId solicitud aprobada; contratos vigentes que cubren sus productos, con el total que calcula el backend */
+  ofertasContrato(solicitudId: number): Observable<OfertaContrato[]> {
+    return this.http.get<OfertaContrato[]>(api('/api/contratos/ofertas'), { params: parametros({ solicitudId }) });
+  }
+
+  /** @param datos solicitud, contrato, bodega y entrega; emite la orden al precio pactado, sin cotizar */
+  emitirDirecta(datos: EmitirDirecta): Observable<Orden> {
+    return this.http.post<Orden>(api('/api/ordenes/directa'), datos);
   }
 
   /** PDF de la orden (descarga). */

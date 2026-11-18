@@ -10,9 +10,24 @@
         <div class="acciones">
           <sc-estado [valor]="resumen()?.estadoOrden" />
           <span class="chip">Entrega {{ (resumen()?.recepciones?.length ?? 0) + 1 }}</span>
+          @if (puedeCerrar() && !cerrando()) { <button type="button" class="boton chico" (click)="cerrando.set(true)">Cerrar recepción</button> }
         </div>
       </div>
     </div>
+
+    @if (cerrando()) {
+      <section class="tarjeta">
+        <h2>Cerrar la recepción</h2>
+        <p class="texto-2">{{ cierraConFaltante() ? 'Falta mercancía por llegar: cerrarla deja la orden cerrada con faltante y evalúa al proveedor.' : 'Llegó todo lo pedido: se cierra la orden y se evalúa al proveedor.' }}
+          Después de cerrar no se registran más entregas.</p>
+        <div class="campo"><label for="mcierre">Motivo {{ cierraConFaltante() ? '(obligatorio)' : '(opcional)' }}</label>
+          <input id="mcierre" class="entrada" maxlength="500" [ngModel]="motivoCierre()" (ngModelChange)="motivoCierre.set($event)" placeholder="Ej. El proveedor no repondrá lo que falta"></div>
+        <div class="fila" style="margin-top:12px">
+          <button type="button" class="boton primario" [disabled]="trabajando()" (click)="cerrarRecepcion()">Cerrar recepción</button>
+          <button type="button" class="boton" (click)="cerrando.set(false)">Volver</button>
+        </div>
+      </section>
+    }
 
     <div class="rejilla principal">
       <div class="columna">

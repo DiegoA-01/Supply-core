@@ -1,0 +1,80 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / <a routerLink="/app/ordenes">Órdenes</a> / Orden directa</p>
+    <div class="encabezado"><div><h1>Orden directa por contrato</h1>
+      <p>Si ya hay un contrato vigente con precios pactados que cubre una solicitud aprobada, emites la orden sin pedir cotizaciones. El sistema revisa la cobertura, el tope y lo aprobado.</p></div></div>
+  </div>
+
+  <section class="tarjeta">
+    <div class="campo">
+      <label for="sol">Solicitud aprobada</label>
+      <select id="sol" class="entrada" [ngModel]="solicitudId()" (ngModelChange)="elegirSolicitud($event)">
+        <option [ngValue]="null">Elige una solicitud</option>
+        @for (s of solicitudes() ?? []; track s.id) { <option [ngValue]="s.id">{{ s.consecutivo }} · requerida el {{ s.fechaRequerida | fecha }}</option> }
+      </select>
+      @if (solicitudes() && !solicitudes()!.length) { <span class="ayuda">No hay solicitudes aprobadas esperando cotización.</span> }
+    </div>
+  </section>
+
+  @if (buscando()) { <section class="tarjeta"><p class="texto-2">Buscando contratos…</p></section> }
+
+  @if (ofertas(); as lista) {
+    @if (solicitudId() && !buscando()) {
+      @if (!lista.length) {
+        <section class="tarjeta"><div class="aviso"><span class="material-symbols-outlined">info</span>
+          Ningún contrato vigente cubre esta solicitud. Se cotiza normalmente: abre una RFQ.</div></section>
+      } @else {
+        <div class="rejilla dos">
+          @for (o of lista; track o.contratoId) {
+            <article class="tarjeta oferta" [class.elegida]="elegido() === o.contratoId" [class.apagada]="!o.puedeEmitirse">
+              <div class="fila titulo"><h2>{{ o.proveedorRazonSocial }}</h2>
+                @if (o.puedeEmitirse) { <span class="chip verde">Se puede emitir</span> } @else { <span class="chip rojo">No se puede emitir</span> }</div>
+              <p class="texto-chico texto-2 sin-margen">Contrato {{ o.numero }} · vigente hasta {{ o.vigenteHasta | fecha }}</p>
+              @if (motivoNo(o); as m) { <div class="aviso ambar"><span class="material-symbols-outlined">warning</span>{{ m }}</div> }
+              <table class="tabla">
+                <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Precio pactado</th><th class="num">Subtotal</th></tr></thead>
+                <tbody>
+                  @for (l of o.lineas ?? []; track l.productoId) {
+                    <tr>
+                      <td>{{ l.productoNombre }}@if (l.excedeTope) { <div class="texto-chico"><span class="chip rojo">Pasa el tope</span></div> }</td>
+                      <td class="num">{{ l.cantidad | numero }}</td>
+                      <td class="num">{{ l.precioUnitario | pesos }}</td>
+                      <td class="num">{{ l.subtotal | pesos }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+              <div class="pares">
+                <div class="par"><span>Subtotal</span><span>{{ o.subtotal | pesos }}</span></div>
+                <div class="par"><span>Impuestos</span><span>{{ o.impuestos | pesos }}</span></div>
+                <div class="par"><span>Total</span><span><strong>{{ o.total | pesos }}</strong></span></div>
+                <div class="par"><span>Aprobado en la solicitud</span><span>{{ o.montoAprobado | pesos }}</span></div>
+              </div>
+              <button type="button" class="boton" [class.primario]="elegido() === o.contratoId" [disabled]="!o.puedeEmitirse"
+                      (click)="elegido.set(o.contratoId ?? null)">{{ elegido() === o.contratoId ? 'Elegido' : 'Elegir este contrato' }}</button>
+            </article>
+          }
+        </div>
+
+        @if (oferta()?.puedeEmitirse) {
+          <section class="tarjeta">
+            <h2>Entrega</h2>
+            <form class="formulario dos" (ngSubmit)="emitir()">
+              <div class="campo"><label for="bod">Bodega de destino</label>
+                <select id="bod" name="bod" class="entrada" [ngModel]="bodegaId()" (ngModelChange)="elegirBodega($event)">
+                  <option [ngValue]="null" disabled>Elige</option>
+                  @for (b of bodegas(); track b.id) { <option [ngValue]="b.id">{{ b.nombre }}</option> }
+                </select></div>
+              <div class="campo"><label for="lug">Lugar de entrega</label>
+                <input id="lug" name="lug" class="entrada" maxlength="250" [ngModel]="lugar()" (ngModelChange)="lugar.set($event)"></div>
+              <div class="campo"><label for="fec">Fecha de entrega esperada</label>
+                <input id="fec" name="fec" type="date" class="entrada" [ngModel]="fecha()" (ngModelChange)="fecha.set($event)"></div>
+              <div class="fila"><button type="submit" class="boton primario" [disabled]="trabajando()">{{ trabajando() ? 'Emitiendo…' : 'Emitir orden al precio pactado' }}</button></div>
+            </form>
+            <p class="texto-chico texto-2">La orden emitida no se edita: si algo cambia, se crea una versión nueva con motivo.</p>
+          </section>
+        }
+      }
+    }
+  }
+</div>

@@ -54,7 +54,7 @@ Rutas sin uso: `/api/despachos` (lista, detalle, confirmar, anular), `/api/pagos
 2. Pagos: lista, registrar (ya existe dentro de la orden), anular con motivo, descargar el comprobante.
 3. Estado de cuenta del proveedor (existe; verificar la exportación).
 
-## Fase 5. Decisiones y órdenes
+## Fase 5. Decisiones y órdenes — hecha el 2026-11-18 (con un endpoint nuevo en el backend: candidatos de delegación)
 Rutas sin uso: `/api/adjudicaciones/pendientes`, `/adjudicaciones/{id}`, `/adjudicaciones/{id}/decision`, `/api/ordenes/directa`, `/api/politicas-aprobacion/aplicable`. Verificar: `/api/ordenes/{id}/cancelar`, `/version`, `/recepciones/cerrar`, `/api/rfqs/{id}/cancelar`.
 1. Bandeja de adjudicaciones pendientes con decisión (la justificación es obligatoria si se aparta de la recomendación de la IA).
 2. Orden directa (sin RFQ) con la política aplicable mostrada antes de enviar.

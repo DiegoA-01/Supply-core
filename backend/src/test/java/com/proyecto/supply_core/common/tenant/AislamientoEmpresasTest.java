@@ -875,6 +875,29 @@ class AislamientoEmpresasTest {
     }
 
     @Test
+    void losCandidatosDeDelegacionSoloSonLosUsuariosDeLaMismaEmpresa() throws Exception {
+        Long otroDeA = usuarioInternoDeA("candidato.delegacion@a.com", "COMPRADOR");
+        crearPoliticaSolicitud(empresaA, "ADMIN_COMPRAS", "0", "1000000");      // sin una política que apruebe no se puede delegar
+        try {
+            mvc.perform(get("/api/delegaciones/candidatos")
+                            .header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "ADMIN_COMPRAS")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.id == " + otroDeA + ")]").isNotEmpty())   // un usuario de su empresa sí
+                    .andExpect(jsonPath("$[?(@.id == " + usuarioB + ")]").isEmpty())     // uno de la otra empresa no
+                    .andExpect(jsonPath("$[?(@.id == " + usuarioA + ")]").isEmpty());    // y no se ofrece a sí mismo
+            // la empresa B no tiene ninguna política que apruebe: no puede ver candidatos
+            mvc.perform(get("/api/delegaciones/candidatos")
+                            .header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "ADMIN_COMPRAS")))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("SIN_ROL_APROBADOR"));
+        } finally {
+            jdbc.update("UPDATE politica_aprobacion SET activo = 0 WHERE empresa_id = ?", empresaA);
+            jdbc.update("DELETE FROM usuario_rol WHERE usuario_id = ?", otroDeA);
+            jdbc.update("DELETE FROM usuario WHERE id = ?", otroDeA);
+        }
+    }
+
+    @Test
     void elEstadoDeCuentaDeUnProveedorDeOtraEmpresaEsNoEncontrado() throws Exception {
         mvc.perform(get("/api/reportes/proveedores/" + proveedorB + "/estado-cuenta")
                         .header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "AUDITOR")))

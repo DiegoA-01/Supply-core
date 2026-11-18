@@ -40,6 +40,12 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 - `<sc-pago-acciones>` se usa en `/app/pagos` y en el detalle de la orden. `BuscadorProducto` pasó a `core/ui/buscador-producto.ts` (lo usan movimientos y despachos).
 - Estado de cuenta del proveedor: ya está en Reportes; el backend no tiene exportación de él, así que no hay botón de Excel.
 
+## Decisiones y órdenes (2026-11-18, fase 5 de `PLAN_FRONTEND.md`)
+- `/app/adjudicaciones`: bandeja de adjudicaciones por aprobar (las de mi rol o de uno delegado, sin las que yo adjudiqué). Muestra RFQ, proveedor, monto, si se apartó de la recomendación de la IA (con su justificación) y qué rol aprueba (`/api/politicas-aprobacion/aplicable`). Aprobar o rechazar; rechazar exige motivo. La ven todos los roles internos con el módulo RFQ_COTIZACIONES (un delegado puede no tener un rol de aprobador).
+- `/app/delegaciones`: delegaciones que di y las que recibí; delegar a otra persona por fechas y revocar. Backend nuevo: `GET /api/delegaciones/candidatos` (solo id y nombre de los usuarios internos activos, menos uno mismo; solo quien tiene un rol que aprueba en alguna política activa), porque los aprobadores no pueden listar usuarios. Prueba de fuga entre empresas en `AislamientoEmpresasTest`.
+- `/app/ordenes/directa` (COMPRADOR): elige una solicitud aprobada, ve los contratos vigentes que la cubren (cobertura, tope, lo aprobado y totales calculados por el backend) y emite la orden al precio pactado. Enlace "Orden directa" en la lista de órdenes. La ruta va antes de `ordenes/:id`.
+- Orden: el COMPRADOR cancela (con motivo) o crea una versión nueva (motivo y cambios de entrega o cantidades; manda solo lo que cambió) mientras no esté despachada. Recepción: ALMACENISTA y ADMIN_COMPRAS cierran la recepción (el motivo es obligatorio si queda faltante). RFQ: el COMPRADOR la cancela en borrador o abierta.
+
 ## Decisiones (2026-11-05)
 - **Una sola app SaaS con tres zonas**: `/app` (empresa, `empresaGuard`), `/portal` (rol PROVEEDOR, `proveedorGuard`), `/plataforma` (dueño con MFA, `plataformaGuard`). Cada pantalla se carga perezosa.
 - **Librería**: Angular Material solo para comportamiento (menús, avisos, tooltips); el aspecto sale de tokens CSS en `styles.scss` tomados del mockup (primario `#d93a0b`). PrimeNG descartado: v22 exige licencia comercial con clave.

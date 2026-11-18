@@ -2692,6 +2692,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/delegaciones/candidatos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["candidatos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cotizaciones/{cotizacionId}/extraccion": {
         parameters: {
             query?: never;
@@ -4645,6 +4661,11 @@ export interface components {
             totalElementos?: number;
             /** Format: int32 */
             totalPaginas?: number;
+        };
+        DelegadoCandidato: {
+            /** Format: int64 */
+            id?: number;
+            nombre?: string;
         };
         ContratoResumenResponse: {
             /** Format: int64 */
@@ -9644,6 +9665,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["DelegacionResponse"][];
+                };
+            };
+        };
+    };
+    candidatos: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DelegadoCandidato"][];
                 };
             };
         };

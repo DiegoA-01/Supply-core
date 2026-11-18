@@ -60,6 +60,7 @@ const ETIQUETAS: Record<string, [string, Tono]> = {
   MOROSA: ['En mora', 'ambar'],
   SUSPENDIDA: ['Suspendida', 'rojo'],
   CONFIRMADO: ['Confirmado', 'verde'],
+  REVOCADA: ['Revocada', 'gris'],
   // Movimientos de inventario
   ENTRADA_COMPRA: ['Entrada por compra', 'verde'],
   SALIDA_CONSUMO: ['Salida por consumo', 'ambar'],

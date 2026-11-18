@@ -1,12 +1,13 @@
 import { LowerCasePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, of } from 'rxjs';
 
-import { Factura, FacturaNueva, Orden, OrdenLinea, PagosOrden, RegistrarPago, ResumenRecepcion } from '../../core/api/modelos';
+import { Bodega, Factura, FacturaNueva, NuevaVersionOrden, Orden, OrdenLinea, PagosOrden, RegistrarPago, ResumenRecepcion } from '../../core/api/modelos';
 import { Estado, EtiquetaPipe } from '../../core/formato/etiquetas';
 import { FechaPipe, NumeroPipe, PesosPipe } from '../../core/formato/formato';
+import { CotizacionesService } from '../../core/servicios/cotizaciones.service';
 import { OrdenesService } from '../../core/servicios/ordenes.service';
 import { iso } from '../../core/servicios/reportes.service';
 import { Avisos, descargar } from '../../core/ui/avisos';
@@ -25,6 +26,8 @@ import { SesionService } from '../../core/sesion/sesion.service';
 })
 export class OrdenDetalle implements OnInit {
   private readonly servicio = inject(OrdenesService);
+  private readonly cotizaciones = inject(CotizacionesService);
+  private readonly router = inject(Router);
   private readonly avisos = inject(Avisos);
   protected readonly sesion = inject(SesionService);
 
@@ -43,6 +46,19 @@ export class OrdenDetalle implements OnInit {
   /** Factura vigente (la última no anulada). */
   protected readonly factura = computed(() => this.facturas().find(f => f.estado !== 'ANULADA') ?? null);
   protected readonly enRevision = computed(() => this.factura()?.estado === 'EN_REVISION');
+  /** Compras puede cancelar o crear una versión nueva mientras la orden no se haya despachado. */
+  protected readonly puedeCambiar = computed(() => {
+    const e = this.orden()?.estado;
+    return this.sesion.tieneRol(['COMPRADOR']) && !this.sesion.soloLectura()
+      && (e === 'EMITIDA' || e === 'ACEPTADA_PROVEEDOR' || e === 'EN_PREPARACION' || e === 'RECHAZADA_PROVEEDOR');
+  });
+  protected readonly panelCambio = signal<'ninguno' | 'cancelar' | 'version'>('ninguno');
+  protected readonly motivoCambio = signal('');
+  protected readonly bodegas = signal<Bodega[]>([]);
+  protected readonly versionBodega = signal<number | null>(null);
+  protected readonly versionLugar = signal('');
+  protected readonly versionFecha = signal('');
+  protected readonly versionCantidades = signal<Record<number, number>>({});
   protected readonly puedeRecruzar = computed(() => this.sesion.tieneRol(['ADMINISTRATIVO']) && !this.sesion.soloLectura());
   protected readonly puedeAprobar = computed(() => this.sesion.tieneRol(['ADMIN_COMPRAS']) && !this.sesion.soloLectura());
   protected readonly puedePagar = computed(() => this.sesion.tieneRol(['ADMINISTRATIVO']) && !this.sesion.soloLectura());
@@ -195,6 +211,103 @@ export class OrdenDetalle implements OnInit {
         this.motivo.set('');
         this.avisos.ok(mensaje);
         this.cargar();
+      },
+      error: e => {
+        this.trabajando.set(false);
+        this.avisos.error(e);
+      },
+    });
+  }
+
+  /** @param panel qué se abre: cancelar la orden o crear una versión nueva */
+  protected abrirCambio(panel: 'cancelar' | 'version'): void {
+    const o = this.orden();
+    if (!o) {
+      return;
+    }
+    this.motivoCambio.set('');
+    this.panelCambio.set(panel);
+    if (panel === 'version') {
+      this.versionBodega.set(o.bodegaDestinoId ?? null);
+      this.versionLugar.set(o.lugarEntrega ?? '');
+      this.versionFecha.set(o.fechaEntregaEsperada ?? '');
+      this.versionCantidades.set(Object.fromEntries((o.lineas ?? []).map(l => [l.id!, l.cantidad ?? 0])));
+      if (!this.bodegas().length) {
+        this.cotizaciones.bodegas().subscribe({ next: l => this.bodegas.set(l), error: () => undefined });
+      }
+    }
+  }
+
+  protected cerrarCambio(): void {
+    this.panelCambio.set('ninguno');
+    this.motivoCambio.set('');
+  }
+
+  /** @param lineaId línea; @param valor nueva cantidad */
+  protected cambiarCantidad(lineaId: number, valor: number): void {
+    this.versionCantidades.update(c => ({ ...c, [lineaId]: valor }));
+  }
+
+  protected cancelarOrden(): void {
+    const o = this.orden();
+    const motivo = this.motivoCambio().trim();
+    if (!o?.id) {
+      return;
+    }
+    if (motivo.length < 5) {
+      this.avisos.ok('Escribe el motivo de la cancelación (mínimo 5 caracteres).');
+      return;
+    }
+    this.trabajando.set(true);
+    this.servicio.cancelar(o.id, motivo).subscribe({
+      next: r => {
+        this.trabajando.set(false);
+        this.cerrarCambio();
+        this.avisos.ok(`Orden ${r.consecutivo} cancelada. La solicitud vuelve a quedar aprobada y el proveedor recibe aviso.`);
+        this.cargar();
+      },
+      error: e => {
+        this.trabajando.set(false);
+        this.avisos.error(e);
+      },
+    });
+  }
+
+  /** Manda solo lo que cambió: la orden emitida nunca se edita, se crea una versión nueva con motivo. */
+  protected crearVersion(): void {
+    const o = this.orden();
+    const motivo = this.motivoCambio().trim();
+    if (!o?.id) {
+      return;
+    }
+    if (motivo.length < 5) {
+      this.avisos.ok('Escribe el motivo de la versión nueva (mínimo 5 caracteres).');
+      return;
+    }
+    const cantidades = (o.lineas ?? []).filter(l => this.versionCantidades()[l.id!] !== l.cantidad)
+      .map(l => ({ lineaId: l.id!, cantidad: this.versionCantidades()[l.id!]! }));
+    if (cantidades.some(c => !(c.cantidad > 0))) {
+      this.avisos.ok('Cada cantidad debe ser mayor que cero.');
+      return;
+    }
+    const datos: NuevaVersionOrden = {
+      motivo,
+      bodegaDestinoId: this.versionBodega() !== o.bodegaDestinoId ? (this.versionBodega() ?? undefined) : undefined,
+      lugarEntrega: this.versionLugar().trim() !== (o.lugarEntrega ?? '') ? this.versionLugar().trim() : undefined,
+      fechaEntregaEsperada: this.versionFecha() !== (o.fechaEntregaEsperada ?? '') ? this.versionFecha() : undefined,
+      cantidades: cantidades.length ? cantidades : undefined,
+    };
+    if (!datos.bodegaDestinoId && !datos.lugarEntrega && !datos.fechaEntregaEsperada && !datos.cantidades) {
+      this.avisos.ok('No cambiaste nada: modifica la entrega o alguna cantidad.');
+      return;
+    }
+    this.trabajando.set(true);
+    this.servicio.nuevaVersion(o.id, datos).subscribe({
+      next: r => {
+        this.trabajando.set(false);
+        this.cerrarCambio();
+        this.avisos.ok(`Versión ${r.version} de la orden ${r.consecutivo} emitida. La anterior quedó reemplazada.`);
+        void this.router.navigate(['/app/ordenes', r.id]);
       },
       error: e => {
         this.trabajando.set(false);

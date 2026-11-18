@@ -46,6 +46,7 @@ export class AnalisisRfq implements OnInit {
   protected readonly orden = signal({ bodegaDestinoId: 0, lugarEntrega: '', fechaEntregaEsperada: '' });
 
   protected readonly esComprador = computed(() => this.sesion.tieneRol(['COMPRADOR']) && !this.sesion.soloLectura());
+  protected readonly puedeCancelarRfq = computed(() => this.esComprador() && ['BORRADOR', 'ABIERTA'].includes(this.rfq()?.estado ?? ''));
   protected readonly leidasPorIa = computed(() => this.cotizaciones().filter(c => c.origen === 'ARCHIVO'));
   protected readonly puedeVerLectura = computed(() => this.sesion.tieneRol(['COMPRADOR', 'ADMIN_COMPRAS', 'AUDITOR']));
   protected readonly puedeEditarLectura = computed(() => this.sesion.tieneRol(['COMPRADOR', 'ADMIN_COMPRAS']) && !this.sesion.soloLectura());
@@ -87,6 +88,25 @@ export class AnalisisRfq implements OnInit {
         this.trabajando.set(false);
         this.rfq.set(r);
         this.avisos.ok(accion === 'abrir' ? `Invitaciones enviadas a ${r.invitados?.length ?? 0} proveedores.` : 'RFQ cerrada: ya puedes calcular el análisis.');
+      },
+      error: e => {
+        this.trabajando.set(false);
+        this.avisos.error(e);
+      },
+    });
+  }
+
+  /** Cancela la RFQ (en borrador o abierta); la solicitud vuelve a quedar aprobada. */
+  protected cancelarRfq(): void {
+    if (!window.confirm('¿Cancelar esta RFQ? La solicitud vuelve a quedar aprobada y los proveedores invitados dejan de poder cotizar.')) {
+      return;
+    }
+    this.trabajando.set(true);
+    this.servicio.cancelarRfq(this.id()).subscribe({
+      next: r => {
+        this.trabajando.set(false);
+        this.rfq.set(r);
+        this.avisos.ok('RFQ cancelada. La solicitud quedó aprobada para cotizarla de nuevo.');
       },
       error: e => {
         this.trabajando.set(false);

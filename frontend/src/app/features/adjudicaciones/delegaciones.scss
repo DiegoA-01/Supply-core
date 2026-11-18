@@ -1,0 +1,5 @@
+.nowrap { white-space: nowrap; }
+.titulo-tabla { padding: 16px 20px; margin: 0; border-bottom: 1px solid var(--sc-borde); }
+.margen-arriba { margin-top: 14px; }
+.rejilla.dos { grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start; }
+.aviso { margin: 12px 0; }

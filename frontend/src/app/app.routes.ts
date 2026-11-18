@@ -78,6 +78,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/ordenes/ordenes-lista').then(m => m.OrdenesLista),
       },
       {
+        path: 'ordenes/directa',
+        title: 'Orden directa · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['COMPRADOR'], modulo: 'ORDENES_PAGOS' },
+        loadComponent: () => import('./features/ordenes/orden-directa').then(m => m.OrdenDirecta),
+      },
+      {
         path: 'ordenes/:id',
         title: 'Orden de compra · Supply-Core',
         canActivate: [permisoGuard],
@@ -97,6 +104,20 @@ export const routes: Routes = [
         canActivate: [permisoGuard],
         data: { roles: ROLES_ORDENES, modulo: 'RECEPCION' },
         loadComponent: () => import('./features/recepcion/recepcion').then(m => m.RecepcionOrden),
+      },
+      {
+        path: 'adjudicaciones',
+        title: 'Adjudicaciones · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: INTERNOS, modulo: 'RFQ_COTIZACIONES' },
+        loadComponent: () => import('./features/adjudicaciones/adjudicaciones').then(m => m.Adjudicaciones),
+      },
+      {
+        path: 'delegaciones',
+        title: 'Delegaciones · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: INTERNOS, modulo: 'COMPRAS' },
+        loadComponent: () => import('./features/adjudicaciones/delegaciones').then(m => m.Delegaciones),
       },
       {
         path: 'pagos',
