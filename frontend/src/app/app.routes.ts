@@ -1,0 +1,188 @@
+import { Routes } from '@angular/router';
+
+import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION } from './core/navegacion/menu';
+import { empresaGuard, invitadoGuard, permisoGuard, plataformaGuard, proveedorGuard } from './core/sesion/guards';
+
+/**
+ * Una sola aplicación con tres zonas: {@code /app} (empresa), {@code /portal} (proveedor) y {@code /plataforma}
+ * (dueño). Cada pantalla se carga solo cuando se abre.
+ */
+export const routes: Routes = [
+  { path: '', pathMatch: 'full', redirectTo: 'ingreso' },
+  {
+    path: 'ingreso',
+    canActivate: [invitadoGuard],
+    title: 'Ingresar · Supply-Core',
+    loadComponent: () => import('./features/ingreso/ingreso').then(m => m.Ingreso),
+  },
+  {
+    path: 'recuperar',
+    canActivate: [invitadoGuard],
+    title: 'Recuperar contraseña · Supply-Core',
+    loadComponent: () => import('./features/ingreso/recuperar').then(m => m.Recuperar),
+  },
+  {
+    path: 'app',
+    canActivate: [empresaGuard],
+    loadComponent: () => import('./layout/shell/shell').then(m => m.Shell),
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'inicio' },
+      { path: 'inicio', title: 'Inicio · Supply-Core', loadComponent: () => import('./features/inicio/inicio').then(m => m.Inicio) },
+      {
+        path: 'solicitudes/nueva',
+        title: 'Nueva solicitud · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['SOLICITANTE'], modulo: 'COMPRAS' },
+        loadComponent: () => import('./features/solicitudes/solicitud-form').then(m => m.SolicitudForm),
+      },
+      {
+        path: 'solicitudes/:id/editar',
+        title: 'Editar solicitud · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['SOLICITANTE'], modulo: 'COMPRAS' },
+        loadComponent: () => import('./features/solicitudes/solicitud-form').then(m => m.SolicitudForm),
+      },
+      {
+        path: 'solicitudes',
+        title: 'Solicitudes · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: INTERNOS, modulo: 'COMPRAS' },
+        loadComponent: () => import('./features/solicitudes/aprobaciones').then(m => m.Aprobaciones),
+      },
+      {
+        path: 'cotizaciones',
+        title: 'Cotizaciones con IA · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_RFQ, modulo: 'RFQ_COTIZACIONES' },
+        loadComponent: () => import('./features/cotizaciones/rfq-lista').then(m => m.RfqLista),
+      },
+      {
+        path: 'cotizaciones/nueva',
+        title: 'Nueva RFQ · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['COMPRADOR'], modulo: 'RFQ_COTIZACIONES' },
+        loadComponent: () => import('./features/cotizaciones/rfq-nueva').then(m => m.RfqNueva),
+      },
+      {
+        path: 'cotizaciones/:rfqId',
+        title: 'Análisis de cotizaciones · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_RFQ, modulo: 'RFQ_COTIZACIONES' },
+        loadComponent: () => import('./features/cotizaciones/analisis').then(m => m.AnalisisRfq),
+      },
+      {
+        path: 'ordenes',
+        title: 'Órdenes y pagos · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_ORDENES, modulo: 'ORDENES_PAGOS' },
+        loadComponent: () => import('./features/ordenes/ordenes-lista').then(m => m.OrdenesLista),
+      },
+      {
+        path: 'ordenes/:id',
+        title: 'Orden de compra · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_ORDENES, modulo: 'ORDENES_PAGOS' },
+        loadComponent: () => import('./features/ordenes/orden-detalle').then(m => m.OrdenDetalle),
+      },
+      {
+        path: 'recepcion',
+        title: 'Recepción · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_ORDENES, modulo: 'RECEPCION' },
+        loadComponent: () => import('./features/recepcion/recepcion-lista').then(m => m.RecepcionLista),
+      },
+      {
+        path: 'recepcion/:ordenId',
+        title: 'Recibir mercancía · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_ORDENES, modulo: 'RECEPCION' },
+        loadComponent: () => import('./features/recepcion/recepcion').then(m => m.RecepcionOrden),
+      },
+      {
+        path: 'inventario/rotacion',
+        title: 'Rotación de productos · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_ROTACION, modulo: 'REPORTES' },
+        loadComponent: () => import('./features/inventario/rotacion').then(m => m.RotacionProductos),
+      },
+      {
+        path: 'inventario/movimientos',
+        title: 'Movimientos de stock · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: INTERNOS, modulo: 'INVENTARIO' },
+        loadComponent: () => import('./features/inventario/movimientos').then(m => m.Movimientos),
+      },
+      {
+        path: 'inventario',
+        title: 'Productos y stock · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { modulo: 'INVENTARIO' },
+        loadComponent: () => import('./features/inventario/inventario').then(m => m.Inventario),
+      },
+      {
+        path: 'proveedores',
+        title: 'Proveedores · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_PROVEEDORES, modulo: 'PROVEEDORES' },
+        loadComponent: () => import('./features/proveedores/proveedores').then(m => m.Proveedores),
+      },
+      {
+        path: 'reportes',
+        title: 'Reportes · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_REPORTES, modulo: 'REPORTES' },
+        loadComponent: () => import('./features/reportes/reportes').then(m => m.Reportes),
+      },
+      {
+        path: 'auditoria',
+        title: 'Auditoría · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['AUDITOR', 'ADMIN_SISTEMA'], modulo: 'AUDITORIA', titulo: 'Auditoría' },
+        loadComponent: () => import('./features/pendiente/pendiente').then(m => m.Pendiente),
+      },
+      {
+        path: 'configuracion/notificaciones',
+        title: 'Avisos y correos · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['ADMIN_SISTEMA'] },
+        loadComponent: () => import('./features/configuracion/notificaciones-config').then(m => m.NotificacionesConfig),
+      },
+      {
+        path: 'usuarios',
+        title: 'Usuarios y roles · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['ADMIN_SISTEMA', 'AUDITOR'] },
+        loadComponent: () => import('./features/usuarios/usuarios').then(m => m.Usuarios),
+      },
+      { path: 'perfil', title: 'Mi perfil · Supply-Core', loadComponent: () => import('./features/perfil/perfil').then(m => m.Perfil) },
+    ],
+  },
+  {
+    path: 'portal',
+    canActivate: [proveedorGuard],
+    loadComponent: () => import('./layout/portal-shell/portal-shell').then(m => m.PortalShell),
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'cotizaciones' },
+      { path: 'cotizaciones', title: 'Cotizaciones · Portal', loadComponent: () => import('./features/portal/portal-rfqs').then(m => m.PortalRfqs) },
+      { path: 'cotizaciones/:rfqId', title: 'Cotizar · Portal', loadComponent: () => import('./features/portal/portal-cotizar').then(m => m.PortalCotizar) },
+      { path: 'ordenes', title: 'Órdenes · Portal', loadComponent: () => import('./features/portal/portal-ordenes').then(m => m.PortalOrdenes) },
+    ],
+  },
+  {
+    path: 'plataforma/ingreso',
+    title: 'Consola del dueño · Supply-Core',
+    loadComponent: () => import('./features/plataforma/ingreso-plataforma').then(m => m.IngresoPlataforma),
+  },
+  {
+    path: 'plataforma',
+    canActivate: [plataformaGuard],
+    loadComponent: () => import('./layout/plataforma-shell/plataforma-shell').then(m => m.PlataformaShell),
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'empresas' },
+      { path: 'empresas', title: 'Empresas · Plataforma', loadComponent: () => import('./features/plataforma/empresas').then(m => m.Empresas) },
+      { path: 'planes', title: 'Planes y módulos · Plataforma', loadComponent: () => import('./features/plataforma/planes').then(m => m.Planes) },
+      { path: 'auditoria', title: 'Auditoría global · Plataforma', loadComponent: () => import('./features/plataforma/auditoria-global').then(m => m.AuditoriaGlobal) },
+    ],
+  },
+  { path: '**', redirectTo: 'ingreso' },
+];

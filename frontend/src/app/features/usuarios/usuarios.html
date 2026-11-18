@@ -1,0 +1,144 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Usuarios y roles</p>
+    <div class="encabezado">
+      <div>
+        <h1>Usuarios y roles</h1>
+        <p>Los empleados de tu empresa y lo que cada uno puede hacer. Desactivar no borra su historial.</p>
+      </div>
+      @if (puedeEditar()) {
+        <div class="acciones">
+          <button type="button" class="boton primario" (click)="nuevo()"><span class="material-symbols-outlined">person_add</span> Nuevo usuario</button>
+        </div>
+      }
+    </div>
+  </div>
+
+  <section class="tarjeta filtros">
+    <div class="campo crece">
+      <label for="buscar">Buscar</label>
+      <input id="buscar" type="search" class="entrada" placeholder="Nombre o correo" [ngModel]="texto()" (ngModelChange)="texto.set($event)" (keyup.enter)="cargar()">
+    </div>
+    <div class="campo">
+      <label for="rol">Rol</label>
+      <select id="rol" class="entrada" [ngModel]="rol()" (ngModelChange)="rol.set($event); cargar()">
+        <option [ngValue]="null">Todos</option>
+        @for (r of roles(); track r.codigo) { <option [ngValue]="r.codigo">{{ r.nombre }}</option> }
+      </select>
+    </div>
+    <div class="campo">
+      <label for="estado">Estado</label>
+      <select id="estado" class="entrada" [ngModel]="activo()" (ngModelChange)="activo.set($event); cargar()">
+        <option [ngValue]="true">Activos</option>
+        <option [ngValue]="false">Inactivos</option>
+        <option [ngValue]="null">Todos</option>
+      </select>
+    </div>
+    <button type="button" class="boton" (click)="cargar()">Buscar</button>
+  </section>
+
+  <div class="rejilla" [class.principal]="panel().tipo !== 'ninguno'">
+    <section class="tarjeta sin-relleno" [class.compacta]="panel().tipo !== 'ninguno'">
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Usuario</th><th>Roles</th><th class="oculto-movil">Centro de costo</th><th class="oculto-movil">Último acceso</th><th>Estado</th>@if (puedeEditar()) { <th></th> }</tr></thead>
+          <tbody>
+            @for (u of lista() ?? []; track u.id) {
+              <tr [class.seleccionada]="editando()?.id === u.id">
+                <td><strong>{{ u.nombreCompleto }}</strong><span class="sub">{{ u.correo }}</span></td>
+                <td><div class="roles">@for (r of u.roles ?? []; track r) { <span class="chip">{{ nombre(r) }}</span> }</div></td>
+                <td class="oculto-movil">{{ centro(u.centroCostoId) }}</td>
+                <td class="oculto-movil">{{ u.ultimoAcceso ? (u.ultimoAcceso | fecha: 'hora') : 'Nunca' }}</td>
+                <td><span class="chip" [class.verde]="u.activo">{{ u.activo ? 'Activo' : 'Inactivo' }}</span>
+                  @if (u.mfaActivo) { <span class="chip chico" title="Tiene segundo factor activo">MFA</span> }</td>
+                @if (puedeEditar()) {
+                  <td class="num">
+                    <div class="fila fin">
+                      @if (!u.proveedorId) { <button type="button" class="boton chico" (click)="editar(u)">Editar</button> }
+                      <button type="button" class="boton chico" (click)="abrirClave(u)" title="Restablecer contraseña" aria-label="Restablecer contraseña">
+                        <span class="material-symbols-outlined">key</span></button>
+                      @if (u.mfaActivo && u.id !== sesion.usuario()?.id) {
+                        <button type="button" class="boton chico" (click)="reiniciarMfa(u)" title="Reiniciar segundo factor" aria-label="Reiniciar segundo factor">
+                          <span class="material-symbols-outlined">phonelink_erase</span></button>
+                      }
+                      @if (u.id !== sesion.usuario()?.id) {
+                        <button type="button" class="boton chico" [class.peligro]="u.activo" (click)="cambiarEstado(u)">{{ u.activo ? 'Desactivar' : 'Activar' }}</button>
+                      }
+                    </div>
+                  </td>
+                }
+              </tr>
+            } @empty {
+              <tr><td colspan="6" class="vacio">{{ lista() ? 'No hay usuarios con este filtro.' : 'Cargando…' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    @switch (panel().tipo) {
+      @case ('clave') {
+        <section class="tarjeta">
+          <h2>Restablecer contraseña</h2>
+          <p class="texto-2">Para {{ $any(panel()).usuario.nombreCompleto }}. Entrégale la contraseña por un canal seguro; luego puede cambiarla en su perfil.</p>
+          <div class="campo">
+            <label for="clave">Contraseña nueva</label>
+            <div class="con-ojo">
+              <input id="clave" class="entrada" [type]="verClave() ? 'text' : 'password'" autocomplete="new-password" [ngModel]="claveNueva()" (ngModelChange)="claveNueva.set($event)">
+              <button type="button" class="ojo" (click)="verClave.set(!verClave())" [attr.aria-label]="verClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="verClave()">
+                <span class="material-symbols-outlined">{{ verClave() ? 'visibility_off' : 'visibility' }}</span></button>
+            </div>
+            <span class="ayuda">Entre 8 y 72 caracteres, con al menos una letra y un número.</span>
+          </div>
+          <div class="fila margen">
+            <button type="button" class="boton primario" [disabled]="trabajando()" (click)="guardarClave()">Guardar contraseña</button>
+            <button type="button" class="boton" (click)="panel.set({ tipo: 'ninguno' })">Cancelar</button>
+          </div>
+        </section>
+      }
+      @case ('ninguno') {}
+      @default {
+        <section class="tarjeta">
+          <h2>{{ editando() ? 'Editar usuario' : 'Nuevo usuario' }}</h2>
+          <form [formGroup]="form" (ngSubmit)="guardar()" class="formulario">
+            <div class="campo"><label for="nom">Nombre completo</label><input id="nom" class="entrada" formControlName="nombreCompleto"></div>
+            <div class="campo"><label for="cor">Correo</label><input id="cor" type="email" class="entrada" formControlName="correo">
+              @if (form.controls.correo.invalid && form.controls.correo.touched) { <span class="error">Escribe un correo válido.</span> }</div>
+            @if (!editando()) {
+              <div class="campo">
+                <label for="pw">Contraseña inicial</label>
+                <div class="con-ojo">
+                  <input id="pw" class="entrada" [type]="verClave() ? 'text' : 'password'" formControlName="password" autocomplete="new-password">
+                  <button type="button" class="ojo" (click)="verClave.set(!verClave())" [attr.aria-label]="verClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="verClave()">
+                    <span class="material-symbols-outlined">{{ verClave() ? 'visibility_off' : 'visibility' }}</span></button>
+                </div>
+                <span class="ayuda" [class.error]="form.controls.password.invalid && form.controls.password.touched">Entre 8 y 72 caracteres, con al menos una letra y un número.</span>
+              </div>
+            }
+            <fieldset class="campo grupo-roles">
+              <legend>Roles</legend>
+              @for (r of asignables(); track r.codigo) {
+                <label class="rol-opcion">
+                  <input type="checkbox" [checked]="form.controls.roles.value.includes(r.codigo!)" (change)="alternarRol(r.codigo!)">
+                  <span><strong>{{ r.nombre }}</strong>@if (r.descripcion) { <span class="sub">{{ r.descripcion }}</span> }</span>
+                </label>
+              }
+            </fieldset>
+            <div class="campo">
+              <label for="cc">Centro de costo</label>
+              <select id="cc" class="entrada" formControlName="centroCostoId">
+                <option [ngValue]="null">Sin centro de costo</option>
+                @for (c of centros(); track c.id) { <option [ngValue]="c.id">{{ c.codigo }} · {{ c.nombre }}</option> }
+              </select>
+              <span class="ayuda">Obligatorio para quien hace solicitudes: el gasto se carga a ese centro.</span>
+            </div>
+            <div class="fila">
+              <button type="submit" class="boton primario" [disabled]="trabajando()">{{ editando() ? 'Guardar cambios' : 'Crear usuario' }}</button>
+              <button type="button" class="boton" (click)="panel.set({ tipo: 'ninguno' })">Cancelar</button>
+            </div>
+          </form>
+        </section>
+      }
+    }
+  </div>
+</div>

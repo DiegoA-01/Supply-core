@@ -1,0 +1,26 @@
+.oferta {
+  display: grid; grid-template-columns: auto minmax(160px, 1.4fr) minmax(100px, 1fr) auto auto auto;
+  align-items: center; gap: 16px;
+}
+.posicion { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #efefef; font-weight: 700; }
+.posicion.primera { background: var(--sc-primario); color: #fff; }
+.oferta-texto { display: flex; flex-direction: column; gap: 2px; min-width: 0; strong { font-size: 17px; } }
+.puntaje { display: flex; flex-direction: column; gap: 6px; }
+.score { font-size: 22px; }
+.monto { display: flex; flex-direction: column; align-items: flex-end; strong { font-size: 19px; white-space: nowrap; } }
+
+.vacio-analisis { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 40px 20px; }
+.grande { font-size: 36px; color: var(--sc-primario); }
+
+.titulo-seccion { display: flex; align-items: center; gap: 8px; font-size: 18px; margin: 8px 0 0; }
+h3 { display: flex; align-items: center; gap: 8px; }
+.alerta { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-top: 1px solid #f0f0f0;
+  &:first-of-type { border-top: 0; } div { display: flex; flex-direction: column; } }
+.titulo { justify-content: space-between; margin-bottom: 8px; h3 { margin: 0; } }
+.margen-arriba { margin-top: 16px; }
+
+@media (max-width: 860px) {
+  .oferta { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .puntaje { grid-column: 2 / -1; }
+  .monto { align-items: flex-start; grid-column: 2; }
+}

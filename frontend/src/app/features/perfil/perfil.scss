@@ -1,0 +1,9 @@
+.rejilla.dos { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); align-items: start; }
+h3 { font-size: 15px; margin: 18px 0 8px; }
+.roles { display: flex; flex-wrap: wrap; gap: 6px; }
+.ayuda { display: flex; align-items: center; gap: 6px; .material-symbols-outlined { font-size: 18px; } }
+.ayuda.ok { color: var(--sc-verde); }
+
+.clave-mfa { display: block; margin: 8px 0; font-size: 15px; word-break: break-all; }
+.codigo { font-size: 22px; letter-spacing: .3em; text-align: center; }
+.margen-arriba { margin-top: 16px; }

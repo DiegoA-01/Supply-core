@@ -1,0 +1,119 @@
+<section class="tarjeta">
+  <div class="fila titulo">
+    <h3><span class="material-symbols-outlined">description</span>{{ cotizacion().proveedorRazonSocial }}</h3>
+    @if (proceso(); as p) { <sc-estado [valor]="p.estado" /> }
+  </div>
+
+  @if (sinLectura()) {
+    <p class="texto-2">Esta cotización no tiene lectura con IA (se recibió por formulario o aún no se procesa).</p>
+  } @else if (proceso(); as p) {
+    <p class="texto-chico texto-2">
+      @if (p.modelo) { Leído con {{ p.modelo }} · }
+      {{ p.intentos ?? 0 }} intento(s)
+      @if (p.umbralConfianza != null) { · se pide revisión bajo {{ umbral(p) }} % de confianza }
+    </p>
+
+    @if (enCurso()) {
+      <div class="aviso"><span class="material-symbols-outlined">hourglass_top</span>La IA está leyendo el archivo. Esta pantalla se actualiza sola.</div>
+    }
+    @if (p.estado === 'ERROR') {
+      <div class="aviso rojo"><span class="material-symbols-outlined">error</span>
+        <div><strong>No se pudo leer el archivo</strong><div>{{ p.error }}</div></div></div>
+    }
+
+    @for (a of alertas(); track a.texto) {
+      <div class="aviso ambar">
+        <span class="material-symbols-outlined">warning</span>
+        <div>
+          @if (a.codigo === 'TOTAL_NO_CUADRA') {
+            <strong>El total del documento no cuadra con los renglones</strong>
+          } @else if (a.codigo) {
+            <strong>{{ a.codigo }}</strong>
+          }
+          <div>{{ a.texto }}</div>
+          @if (a.codigo === 'TOTAL_NO_CUADRA') {
+            <div class="texto-chico texto-2">Revisa cantidades y precios contra el archivo del proveedor. Cuando corrijas o confirmes los datos, el sistema vuelve a comparar.</div>
+          }
+        </div>
+      </div>
+    }
+
+    @if (total(); as t) {
+      <div class="par-total">
+        <span>Total impreso en el documento (copiado por la IA)</span>
+        <strong>{{ t.valorConfirmado ?? t.valorExtraido }}</strong>
+      </div>
+    }
+
+    @if (campos().length) {
+      <div class="fila filtro">
+        <strong>{{ pendientes().length }} dato(s) por confirmar de {{ campos().length }}</strong>
+        @if (pendientes().length) {
+          <label class="check"><input type="checkbox" [ngModel]="soloPendientes()" (ngModelChange)="soloPendientes.set($event)"> Ver solo los pendientes</label>
+        }
+      </div>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Línea</th><th>Dato</th><th>Leído</th><th class="num">Confianza</th><th>Valor correcto</th>@if (puedeEditar()) { <th></th> }</tr></thead>
+          <tbody>
+            @for (c of visibles(); track c.id) {
+              <tr [class.pendiente]="c.pendiente">
+                <td>{{ linea(c) }}</td>
+                <td>{{ nombre(c) }}@if (c.critico) { <span class="chip chico ambar">Crítico</span> }</td>
+                <td>{{ c.valorExtraido ?? '—' }}</td>
+                <td class="num">{{ confianza(c) }}</td>
+                <td>
+                  @if (puedeEditar()) {
+                    <input class="entrada chica" [attr.aria-label]="nombre(c) + ' de ' + linea(c)" [ngModel]="borrador(c)" (ngModelChange)="escribir(c, $event)">
+                  } @else {
+                    {{ c.valorConfirmado ?? '—' }}
+                  }
+                </td>
+                @if (puedeEditar()) {
+                  <td><button type="button" class="boton chico" [class.primario]="c.pendiente" [disabled]="trabajando()" (click)="confirmar(c)">
+                    {{ c.pendiente ? 'Confirmar' : 'Guardar' }}</button></td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+
+    @if (puedeEditar()) {
+      <div class="fila margen-arriba">
+        <button type="button" class="boton" [disabled]="trabajando() || enCurso()" (click)="reintentar()">
+          <span class="material-symbols-outlined">refresh</span> Leer de nuevo con IA</button>
+        <button type="button" class="boton" [disabled]="trabajando()" (click)="alternarDigitacion()">
+          <span class="material-symbols-outlined">edit_note</span> {{ digitando() ? 'Cancelar digitación' : 'Digitar a mano' }}</button>
+      </div>
+    }
+
+    @if (digitando()) {
+      <div class="digitar">
+        <p class="texto-chico texto-2">Reemplaza lo que leyó la IA. Escribe lo que dice el documento; el sistema calcula los totales.</p>
+        <div class="tabla-contenedor">
+          <table class="tabla">
+            <thead><tr><th>Producto</th><th>Cantidad</th><th>Unidad</th><th>Factor</th><th>Precio unitario</th><th>Desc. %</th><th>IVA %</th></tr></thead>
+            <tbody>
+              @for (f of filas(); track f.rfqLineaId; let i = $index) {
+                <tr>
+                  <td>{{ f.producto }}</td>
+                  <td><input class="entrada chica" type="number" min="0" step="any" [attr.aria-label]="'Cantidad de ' + f.producto" [ngModel]="f.cantidadOfertada" (ngModelChange)="cambiarFila(i, 'cantidadOfertada', $event)"></td>
+                  <td><input class="entrada chica" [attr.aria-label]="'Unidad de ' + f.producto" [ngModel]="f.unidadOfertada" (ngModelChange)="cambiarFila(i, 'unidadOfertada', $event)"></td>
+                  <td><input class="entrada chica" type="number" min="0" step="any" [attr.aria-label]="'Factor de ' + f.producto" [ngModel]="f.factorConversion" (ngModelChange)="cambiarFila(i, 'factorConversion', $event)"></td>
+                  <td><input class="entrada chica" type="number" min="0" step="any" [attr.aria-label]="'Precio de ' + f.producto" [ngModel]="f.precioUnitarioOfertado" (ngModelChange)="cambiarFila(i, 'precioUnitarioOfertado', $event)"></td>
+                  <td><input class="entrada chica" type="number" min="0" max="100" step="any" [attr.aria-label]="'Descuento de ' + f.producto" [ngModel]="f.descuentoPct" (ngModelChange)="cambiarFila(i, 'descuentoPct', $event)"></td>
+                  <td><input class="entrada chica" type="number" min="0" max="100" step="any" [attr.aria-label]="'IVA de ' + f.producto" [ngModel]="f.impuestoPct" (ngModelChange)="cambiarFila(i, 'impuestoPct', $event)"></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="fila margen-arriba"><button type="button" class="boton primario" [disabled]="trabajando()" (click)="guardarDigitacion()">Guardar precios digitados</button></div>
+      </div>
+    }
+  } @else {
+    <p class="texto-2">Cargando…</p>
+  }
+</section>

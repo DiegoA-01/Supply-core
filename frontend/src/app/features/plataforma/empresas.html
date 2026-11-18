@@ -1,0 +1,120 @@
+<div class="pagina">
+  <div class="encabezado">
+    <div><h1>Empresas clientes</h1><p>Tú activas la empresa, su plan y sus módulos. Sus datos de compra no los ves.</p></div>
+    <div class="acciones">
+      <input type="search" class="entrada buscar" placeholder="Buscar por nombre, NIT o código" aria-label="Buscar empresa"
+             [ngModel]="busqueda()" (ngModelChange)="busqueda.set($event)">
+      <button type="button" class="boton primario" (click)="creando.set(!creando())"><span class="material-symbols-outlined">add</span> Nueva empresa</button>
+    </div>
+  </div>
+
+  @if (creando()) {
+    <section class="tarjeta">
+      <h2>Nueva empresa</h2>
+      <form [formGroup]="nueva" (ngSubmit)="crear()" class="formulario dos">
+        <div class="campo"><label for="rs">Razón social</label><input id="rs" class="entrada" formControlName="razonSocial"></div>
+        <div class="campo"><label for="nit">NIT</label><input id="nit" class="entrada" formControlName="nit"></div>
+        <div class="campo"><label for="cod">Código de ingreso</label><input id="cod" class="entrada" formControlName="codigoPublico" placeholder="Ferretería Centro">
+          <span class="ayuda">Lo escriben sus usuarios al ingresar. Puede llevar espacios, mayúsculas y números; no lleva / \ ? # %.</span></div>
+        <div class="campo"><label for="plan">Plan</label>
+          <select id="plan" class="entrada" formControlName="planCodigo">
+            <option value="" disabled>Elige</option>
+            @for (p of planes(); track p.id) { <option [value]="p.codigo">{{ p.nombre }}</option> }
+          </select></div>
+        <div class="campo"><label for="est">Estado inicial</label>
+          <select id="est" class="entrada" formControlName="estadoInicial"><option value="PRUEBA">En prueba</option><option value="ACTIVA">Activa</option></select></div>
+        <div class="campo"><label for="an">Nombre del administrador</label><input id="an" class="entrada" formControlName="adminNombre"></div>
+        <div class="campo"><label for="ac">Correo del administrador</label><input id="ac" type="email" class="entrada" formControlName="adminCorreo"></div>
+        <div class="campo"><label for="ap">Contraseña inicial</label>
+          <div class="con-ojo">
+            <input id="ap" [type]="verClave() ? 'text' : 'password'" class="entrada" formControlName="adminPassword" autocomplete="new-password">
+            <button type="button" class="ojo" (click)="verClave.set(!verClave())"
+                    [attr.aria-label]="verClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="verClave()">
+              <span class="material-symbols-outlined">{{ verClave() ? 'visibility_off' : 'visibility' }}</span>
+            </button>
+          </div></div>
+        <div class="fila"><button type="submit" class="boton primario" [disabled]="trabajando()">Crear empresa</button>
+          <button type="button" class="boton" (click)="creando.set(false)">Cancelar</button></div>
+      </form>
+    </section>
+  }
+
+  <div class="rejilla kpis">
+    <div class="tarjeta kpi"><div class="etiqueta">Activas</div><div class="valor">{{ conteo().activas }}</div><div class="nota">pagando su suscripción</div></div>
+    <div class="tarjeta kpi"><div class="etiqueta">En prueba</div><div class="valor">{{ conteo().prueba }}</div><div class="nota">periodo de prueba</div></div>
+    <div class="tarjeta kpi"><div class="etiqueta">En mora</div><div class="valor peligro">{{ conteo().mora }}</div><div class="nota">solo lectura</div></div>
+    <div class="tarjeta kpi"><div class="etiqueta">Suspendidas</div><div class="valor">{{ conteo().suspendidas }}</div><div class="nota">sin acceso, datos conservados</div></div>
+  </div>
+
+  <div class="rejilla principal">
+    <section class="tarjeta sin-relleno">
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Empresa</th><th>Plan</th><th>Estado</th><th class="oculto-movil">Cliente desde</th></tr></thead>
+          <tbody>
+            @for (e of filtradas(); track e.id) {
+              <tr class="seleccionable" [class.seleccionada]="detalle()?.empresa?.id === e.id" (click)="abrir(e)">
+                <td><strong>{{ e.razonSocial }}</strong></td>
+                <td>{{ e.planNombre ?? e.plan }}</td>
+                <td><sc-estado [valor]="e.estado" /></td>
+                <td class="oculto-movil">{{ e.creadoEn | fecha }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="4" class="vacio">{{ empresas() ? 'No hay empresas con esa búsqueda.' : 'Cargando…' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    @if (detalle(); as d) {
+      <section class="tarjeta">
+        <div class="fila titulo"><h2>{{ d.empresa?.razonSocial }}</h2><sc-estado [valor]="d.empresa?.estado" /></div>
+        <div class="pares">
+          <div class="par"><span>Razón social</span><span>{{ d.empresa?.razonSocial }}</span></div>
+          <div class="par"><span>NIT</span><span>{{ d.empresa?.nit }}</span></div>
+          <div class="par"><span>Código de ingreso</span><span>{{ d.empresa?.codigoPublico }}</span></div>
+          <div class="par"><span>Plan</span>
+            <span class="cambio-plan">
+              <select class="entrada chica" aria-label="Plan de la empresa" [ngModel]="planElegido() ?? d.empresa?.plan" (ngModelChange)="planElegido.set($event)">
+                @for (p of planes(); track p.id) { <option [value]="p.codigo">{{ p.nombre }}</option> }
+              </select>
+              @if (planElegido() && planElegido() !== d.empresa?.plan) {
+                <button type="button" class="boton chico primario" [disabled]="trabajando()" (click)="cambiarPlan()">Cambiar</button>
+              }
+            </span></div>
+          <div class="par"><span>Cliente desde</span><span>{{ d.empresa?.creadoEn | fecha }}</span></div>
+          @if (d.administrador; as a) {
+            <div class="par"><span>Administrador</span><span>{{ a.nombre }}</span></div>
+            <div class="par"><span>Correo del administrador</span><span>{{ a.correo }}</span></div>
+          }
+          @if (d.empresa?.motivoEstado) { <div class="par"><span>Motivo del estado</span><span>{{ d.empresa?.motivoEstado }}</span></div> }
+        </div>
+
+        <h3>Módulos</h3>
+        @for (m of d.modulos ?? []; track m.codigo) {
+          <div class="modulo">
+            <div><strong>{{ m.nombre }}</strong>
+              <span class="texto-chico texto-2">{{ m.enPlan ? 'Incluido en el plan' : 'Fuera del plan' }}@if (m.excepcion) { · excepción }</span></div>
+            <button type="button" class="interruptor" role="switch" [attr.aria-checked]="activo(m.codigo!, m.activo)"
+                    [attr.aria-label]="m.nombre" [class.encendido]="activo(m.codigo!, m.activo)" (click)="alternar(m.codigo!, m.activo)">
+              <span></span>
+            </button>
+          </div>
+        }
+        <div class="fila margen-arriba">
+          <button type="button" class="boton primario" [disabled]="!hayCambios() || trabajando()" (click)="guardarModulos()">Guardar módulos</button>
+          @if (d.empresa?.estado === 'SUSPENDIDA') {
+            <button type="button" class="boton" (click)="cambiarEstado('ACTIVA')">Reactivar</button>
+          } @else {
+            <button type="button" class="boton peligro" (click)="cambiarEstado('SUSPENDIDA')">Suspender</button>
+          }
+        </div>
+        <div class="aviso margen-arriba">
+          <span class="material-symbols-outlined">shield</span>
+          Los usuarios y roles de esta empresa los maneja su administrador. Cada cambio queda en la auditoría global.
+        </div>
+      </section>
+    }
+  </div>
+</div>

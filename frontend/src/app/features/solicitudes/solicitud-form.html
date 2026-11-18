@@ -1,0 +1,113 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / <a routerLink="/app/solicitudes">Solicitudes</a> / {{ guardada()?.consecutivo ?? 'Nueva' }}</p>
+    <div class="encabezado">
+      <div>
+        <h1>{{ guardada() ? guardada()!.consecutivo : 'Nueva solicitud de compra' }}</h1>
+        <p>Pide lo que necesitas. Se carga al centro de costo de tu usuario y la aprueba quien corresponda según el monto.</p>
+      </div>
+      @if (guardada(); as s) { <div class="acciones"><sc-estado [valor]="s.estado" /></div> }
+    </div>
+  </div>
+
+  @if (devueltaCon(); as obs) {
+    <div class="aviso ambar"><span class="material-symbols-outlined">undo</span>
+      <div><strong>Te la devolvieron para ajustarla</strong>{{ obs }}</div></div>
+  }
+
+  <div class="rejilla principal">
+    <div class="columna">
+      <section class="tarjeta">
+        <h2>Productos</h2>
+        @if (editable()) {
+          <div class="buscador-productos">
+            <span class="material-symbols-outlined">search</span>
+            <input type="search" class="entrada" placeholder="Busca por código o nombre (mínimo 2 letras)" aria-label="Buscar producto"
+                   [ngModel]="busqueda()" (ngModelChange)="buscar($event)">
+            @if (resultados().length) {
+              <ul class="resultados" role="listbox">
+                @for (p of resultados(); track p.id) {
+                  <li><button type="button" (click)="agregar(p)">
+                    <strong>{{ p.nombre }}</strong>
+                    <span class="texto-chico texto-2">{{ p.codigo }} · {{ p.unidadMedida?.codigo }} · stock {{ p.stockTotal | numero }}</span>
+                  </button></li>
+                }
+              </ul>
+            }
+          </div>
+        }
+        <div class="tabla-contenedor">
+          <table class="tabla lineas">
+            <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Costo de referencia</th>@if (editable()) { <th></th> }</tr></thead>
+            <tbody>
+              @for (l of lineas(); track l.producto.id; let i = $index) {
+                <tr>
+                  <td><strong>{{ l.producto.nombre }}</strong><span class="sub">{{ l.producto.codigo }}</span></td>
+                  <td class="num">
+                    @if (editable()) {
+                      <span class="cantidad"><input type="number" min="0.0001" step="any" class="entrada num" [attr.aria-label]="'Cantidad de ' + l.producto.nombre"
+                             [ngModel]="l.cantidad" (ngModelChange)="cambiarCantidad(i, $event)"> {{ l.producto.unidadMedida?.codigo }}</span>
+                    } @else { {{ l.cantidad | numero }} {{ l.producto.unidadMedida?.codigo }} }
+                  </td>
+                  <td class="num">{{ l.producto.costoReferencia ? (l.producto.costoReferencia | pesos) : 'sin costo' }}</td>
+                  @if (editable()) {
+                    <td class="num"><button type="button" class="boton chico peligro" (click)="quitar(i)" [attr.aria-label]="'Quitar ' + l.producto.nombre">
+                      <span class="material-symbols-outlined">delete</span></button></td>
+                  }
+                </tr>
+              } @empty {
+                <tr><td colspan="4" class="vacio">Busca un producto arriba para agregarlo.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="tarjeta">
+        <h2>Detalles</h2>
+        <div class="formulario">
+          <div class="campo">
+            <label for="motivo">Justificación</label>
+            <textarea id="motivo" class="entrada" maxlength="500" [disabled]="!editable()" placeholder="Para qué se necesita y por qué ahora"
+                      [ngModel]="motivo()" (ngModelChange)="motivo.set($event); sinGuardar.set(true)"></textarea>
+          </div>
+          <div class="campo corto">
+            <label for="fecha">Fecha requerida</label>
+            <input id="fecha" type="date" class="entrada" [min]="hoy" [disabled]="!editable()" [ngModel]="fecha()" (ngModelChange)="fecha.set($event); sinGuardar.set(true)">
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="columna">
+      <section class="tarjeta">
+        <h2>Monto estimado</h2>
+        @if (guardada()?.montoEstimado != null) {
+          <div class="monto">{{ guardada()!.montoEstimado | pesos }}</div>
+          @if (guardada()!.montoIncompleto) { <p class="texto-chico aviso ambar">Algún producto no tiene costo de referencia: el monto está incompleto.</p> }
+        } @else {
+          <p class="texto-2">El sistema lo calcula con el costo de referencia de cada producto al enviarla a aprobación, y con él decide quién aprueba y si cabe en el presupuesto.</p>
+        }
+
+        @if (excede(); as mensaje) {
+          <div class="aviso ambar margen"><span class="material-symbols-outlined">warning</span><div>{{ mensaje }}</div></div>
+          <div class="campo margen">
+            <label for="just">Justificación para enviarla igual</label>
+            <textarea id="just" class="entrada" [ngModel]="justificacion()" (ngModelChange)="justificacion.set($event)"></textarea>
+          </div>
+        }
+
+        @if (editable()) {
+          <button type="button" class="boton primario bloque margen" [disabled]="trabajando()" (click)="excede() ? enviar() : guardar(true)">
+            {{ excede() ? 'Enviar con justificación' : 'Enviar a aprobación' }}</button>
+          @if (!excede()) {
+            <button type="button" class="boton bloque margen" [disabled]="trabajando()" (click)="guardar()">Guardar borrador</button>
+          }
+          <p class="texto-chico texto-2">Al enviarla ya no se puede editar, salvo que te la devuelvan.</p>
+        } @else {
+          <a class="boton bloque margen" routerLink="/app/solicitudes">Volver a solicitudes</a>
+        }
+      </section>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,7 @@
+.titulo-tabla { padding: 16px 20px; border-bottom: 1px solid var(--sc-borde); }
+.margen { margin-top: 12px; }
+.proveedores { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; margin-top: 12px; }
+.proveedor { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--sc-borde); border-radius: 10px; cursor: pointer;
+  input { margin-top: 3px; accent-color: var(--sc-primario); } > span { display: flex; flex-direction: column; } }
+.proveedor.marcado { border-color: #f0b9a4; background: #fff8f5; }
+.error { color: var(--sc-rojo); }

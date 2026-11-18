@@ -1,0 +1,79 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Mi perfil</p>
+    <div class="encabezado"><div><h1>Mi perfil</h1><p>Tus datos y tu contraseña. Tu nombre, correo y roles los cambia el administrador de tu empresa.</p></div></div>
+  </div>
+
+  <div class="rejilla dos">
+    <section class="tarjeta">
+      <h2>Tus datos</h2>
+      @if (perfil(); as p) {
+        <div class="pares">
+          <div class="par"><span>Nombre</span><span>{{ p.nombreCompleto }}</span></div>
+          <div class="par"><span>Correo</span><span>{{ p.correo }}</span></div>
+          <div class="par"><span>Empresa</span><span>{{ sesion.empresa()?.razonSocial }}</span></div>
+          <div class="par"><span>Último acceso</span><span>{{ p.ultimoAcceso | fecha: 'hora' }}</span></div>
+        </div>
+        <h3>Roles</h3>
+        <div class="roles">@for (r of p.roles ?? []; track r) { <span class="chip naranja">{{ rol(r) }}</span> }</div>
+      } @else {
+        <p class="cargando">Cargando…</p>
+      }
+    </section>
+
+    <section class="tarjeta">
+      <h2>Segundo factor (MFA)</h2>
+      @if (perfil(); as p) {
+        @if (p.mfaActivo) {
+          <div class="aviso verde"><span class="material-symbols-outlined">verified_user</span>Activo: al ingresar te pedimos el código de tu app autenticadora.</div>
+          <p class="texto-chico texto-2">Si cambiaste de celular, pídele a tu administrador que reinicie tu segundo factor.</p>
+        } @else if (mfa(); as m) {
+          <p class="texto-2">En Google Authenticator, Microsoft Authenticator o similar, agrega una cuenta con esta clave:</p>
+          <code class="clave-mfa">{{ m.secretoMfa }}</code>
+          @if (m.otpauthUri) { <a [href]="m.otpauthUri" class="texto-chico">Abrir en mi app (en el celular)</a> }
+          <div class="campo margen-arriba">
+            <label for="cmfa">Código de 6 dígitos</label>
+            <input id="cmfa" class="entrada codigo" inputmode="numeric" maxlength="6" autocomplete="one-time-code" [ngModel]="codigoMfa()" (ngModelChange)="codigoMfa.set($event)" name="cmfa">
+          </div>
+          <div class="fila margen-arriba">
+            <button type="button" class="boton primario" [disabled]="trabajando()" (click)="activarMfa()">Activar</button>
+            <button type="button" class="boton" (click)="mfa.set(null)">Cancelar</button>
+          </div>
+        } @else {
+          <p class="texto-2">Protege tu cuenta con un código que cambia cada 30 segundos. Es obligatorio para el administrador de la empresa.</p>
+          <button type="button" class="boton primario" [disabled]="trabajando()" (click)="configurarMfa()">Configurar segundo factor</button>
+        }
+      } @else {
+        <p class="cargando">Cargando…</p>
+      }
+    </section>
+
+    <section class="tarjeta">
+      <h2>Cambiar contraseña</h2>
+      <form class="formulario" (ngSubmit)="cambiar()">
+        <div class="campo">
+          <label for="actual">Contraseña actual</label>
+          <div class="con-ojo">
+            <input id="actual" name="actual" class="entrada" [type]="verClave() ? 'text' : 'password'" autocomplete="current-password" [ngModel]="actual()" (ngModelChange)="actual.set($event)">
+            <button type="button" class="ojo" (click)="verClave.set(!verClave())" [attr.aria-label]="verClave() ? 'Ocultar contraseñas' : 'Mostrar contraseñas'" [attr.aria-pressed]="verClave()">
+              <span class="material-symbols-outlined">{{ verClave() ? 'visibility_off' : 'visibility' }}</span></button>
+          </div>
+        </div>
+        <div class="campo">
+          <label for="nueva">Contraseña nueva</label>
+          <input id="nueva" name="nueva" class="entrada" [type]="verClave() ? 'text' : 'password'" autocomplete="new-password" [ngModel]="nueva()" (ngModelChange)="nueva.set($event)">
+          <span class="ayuda" [class.ok]="claveValida()">
+            <span class="material-symbols-outlined">{{ claveValida() ? 'check_circle' : 'radio_button_unchecked' }}</span>
+            Entre 8 y 72 caracteres, con al menos una letra y un número.</span>
+        </div>
+        <div class="campo">
+          <label for="confirma">Repite la contraseña nueva</label>
+          <input id="confirma" name="confirma" class="entrada" [type]="verClave() ? 'text' : 'password'" autocomplete="new-password" [ngModel]="confirmacion()" (ngModelChange)="confirmacion.set($event)">
+          @if (confirmacion() && !coinciden()) { <span class="error">No coincide con la contraseña nueva.</span> }
+        </div>
+        <button type="submit" class="boton primario" [disabled]="trabajando()">Cambiar contraseña</button>
+        <p class="texto-chico texto-2">El botón del ojo muestra las tres contraseñas para que revises que estén bien escritas.</p>
+      </form>
+    </section>
+  </div>
+</div>

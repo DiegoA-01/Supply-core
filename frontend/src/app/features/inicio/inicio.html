@@ -1,0 +1,136 @@
+<div class="pagina">
+  <div class="encabezado">
+    <div>
+      <h1>{{ saludo() }}</h1>
+      <p>Resumen de {{ mesActual }} · {{ sesion.empresa()?.razonSocial }}</p>
+    </div>
+    @if (puedeReportes()) {
+      <div class="acciones pastillas">
+        <button type="button" class="pastilla" [class.activa]="periodo() === 'mes'" (click)="cambiarPeriodo('mes')">Este mes</button>
+        <button type="button" class="pastilla" [class.activa]="periodo() === 'trimestre'" (click)="cambiarPeriodo('trimestre')">Trimestre</button>
+        <button type="button" class="pastilla" [class.activa]="periodo() === 'anio'" (click)="cambiarPeriodo('anio')">Año</button>
+      </div>
+    }
+    @if (sesion.tieneRol(['SOLICITANTE']) && sesion.tieneModulo('COMPRAS') && !sesion.soloLectura()) {
+      <a class="boton primario" routerLink="/app/solicitudes/nueva"><span class="material-symbols-outlined">add</span> Nueva solicitud</a>
+    }
+  </div>
+
+  <div class="rejilla kpis">
+    @if (puedeReportes()) {
+      <div class="tarjeta kpi">
+        <div class="etiqueta">Gasto comprometido</div>
+        <div class="valor">{{ gastoPeriodo()?.total | pesos }}</div>
+        <div class="nota">{{ gastoPeriodo()?.ordenes ?? 0 }} órdenes vigentes, con impuesto</div>
+      </div>
+    }
+    @if (puedeOrdenes()) {
+      <a class="tarjeta kpi enlace-tarjeta" routerLink="/app/ordenes">
+        <div class="etiqueta">Órdenes en curso</div>
+        <div class="valor">{{ enCurso()?.total ?? '—' }}</div>
+        <div class="nota">{{ enCurso()?.despachadas ?? 0 }} despachadas, por recibir</div>
+      </a>
+    }
+    @if (porAprobar(); as lista) {
+      <a class="tarjeta kpi enlace-tarjeta" routerLink="/app/solicitudes">
+        <div class="etiqueta">Solicitudes por aprobar</div>
+        <div class="valor">{{ lista.length }}</div>
+        <div class="nota">@if (demoradas() > 0) { <span class="rojo">{{ demoradas() }} con más de 24 h</span> en espera } @else { al día }</div>
+      </a>
+    }
+    @if (bajoMinimo(); as lista) {
+      <a class="tarjeta kpi enlace-tarjeta" routerLink="/app/inventario">
+        <div class="etiqueta">Productos bajo el mínimo</div>
+        <div class="valor" [class.peligro]="lista.length > 0">{{ lista.length }}</div>
+        <div class="nota">{{ sinExistencias() }} sin existencias</div>
+      </a>
+    }
+  </div>
+
+  <div class="rejilla principal">
+    <div class="columna">
+      @if (puedeReportes()) {
+        <section class="tarjeta">
+          <div class="tarjeta-cabecera">
+            <h2>Gasto por mes <span class="texto-2 texto-chico">Órdenes vigentes, con impuesto</span></h2>
+            <a class="boton chico" routerLink="/app/reportes">Ver reporte</a>
+          </div>
+          @if (gastoMeses()?.porMes?.length) {
+            <div class="grafico" role="img" aria-label="Gasto por mes de los últimos seis meses">
+              @for (b of barras(); track b.etiqueta) {
+                <div class="columna-grafico">
+                  <span class="cifra">{{ b.total | compacto }}</span>
+                  <div class="barra-vertical" [class.actual]="b.actual && b.total > 0" [class.cero]="b.total === 0" [style.height.%]="b.alto"></div>
+                  <span class="mes">{{ b.etiqueta }}</span>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="vacio">Aún no hay órdenes en los últimos seis meses.</p>
+          }
+        </section>
+      }
+
+      <section class="tarjeta">
+        <div class="tarjeta-cabecera">
+          <h2>Requiere tu atención @if (atencion().length) { <span class="chip ambar">{{ atencion().length }} pendientes</span> }</h2>
+        </div>
+        @for (a of atencion(); track a.titulo + a.tipo) {
+          <div class="atencion">
+            <span class="chip" [class]="'chip ' + a.tono">{{ a.tipo }}</span>
+            <div class="atencion-texto"><strong>{{ a.titulo }}</strong><span>{{ a.detalle }}</span></div>
+            @if (a.ruta) {
+              <a class="boton chico" [routerLink]="a.ruta">{{ a.accion }}</a>
+            } @else if (sesion.tieneRol(['ADMIN_COMPRAS'])) {
+              <button type="button" class="boton chico" (click)="habilitar(a.proveedorId)">{{ a.accion }}</button>
+            }
+          </div>
+        } @empty {
+          <p class="vacio">No tienes pendientes. Todo al día.</p>
+        }
+      </section>
+    </div>
+
+    <div class="columna">
+      @if (puedeReportes()) {
+        <section class="tarjeta">
+          <h2>Gasto por categoría</h2>
+          @for (c of categorias(); track c.nombre) {
+            <div class="categoria">
+              <div class="separado"><span>{{ c.nombre }}</span><strong>{{ c.total | compacto }}</strong></div>
+              <div class="barra"><span [style.width.%]="c.ancho"></span></div>
+            </div>
+          } @empty {
+            <p class="vacio">Sin gasto en este periodo.</p>
+          }
+        </section>
+      }
+
+      @if (porReponer() > 0) {
+        <section class="tarjeta suave">
+          <h2><span class="material-symbols-outlined">auto_awesome</span> Reorden sugerida</h2>
+          <p class="texto-2">{{ porReponer() === 1 ? '1 producto cruzó' : porReponer() + ' productos cruzaron' }} su mínimo. El sistema calcula cuánto pedir hasta el máximo, descontando lo que ya viene en camino.</p>
+          <div class="fila">
+            <a class="boton chico" routerLink="/app/inventario">Ver sugerencia</a>
+            <span class="texto-chico texto-2">Tú decides si se envía.</span>
+          </div>
+        </section>
+      }
+
+      @if (puedeReportes()) {
+        <section class="tarjeta">
+          <h2>Mejores proveedores</h2>
+          @for (p of ranking(); track p.proveedorId) {
+            <div class="proveedor">
+              <span class="posicion">{{ p.posicion }}</span>
+              <div class="proveedor-texto"><strong>{{ p.razonSocial }}</strong><span>{{ p.ordenes }} órdenes en el periodo</span></div>
+              <strong class="score">{{ p.score | puntaje }}</strong>
+            </div>
+          } @empty {
+            <p class="vacio">Sin órdenes en el periodo.</p>
+          }
+        </section>
+      }
+    </div>
+  </div>
+</div>

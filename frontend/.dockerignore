@@ -1,0 +1,14 @@
+node_modules
+dist
+.angular
+tmp
+out-tsc
+npm-debug.log
+.vscode
+.idea
+README.md
+proxy.conf.json
+.env
+.env.*
+Dockerfile
+.dockerignore

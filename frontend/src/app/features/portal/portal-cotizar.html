@@ -1,0 +1,95 @@
+<div class="pagina">
+  @if (rfq(); as r) {
+    <div>
+      <p class="migas"><a routerLink="/portal/cotizaciones">Cotizaciones</a> / {{ r.consecutivo }}</p>
+      <div class="encabezado">
+        <div><h1>{{ r.consecutivo }}</h1><p>Cierra el {{ r.fechaLimite | fecha: 'hora' }}. @if (r.condiciones) { {{ r.condiciones }} }</p></div>
+        <div class="acciones"><sc-estado [valor]="r.estado" />@if (cotizacion(); as c) { <sc-estado [valor]="c.estado" /> }</div>
+      </div>
+    </div>
+
+    <div class="rejilla principal">
+      <div class="columna">
+        <section class="tarjeta sin-relleno">
+          <div class="tabla-contenedor">
+            <table class="tabla cotizar">
+              <thead><tr><th>Producto pedido</th><th class="num">Cantidad</th><th class="num">Tu precio unitario</th><th class="num">Impuesto %</th></tr></thead>
+              <tbody>
+                @for (l of r.lineas; track l.id) {
+                  <tr>
+                    <td><strong>{{ l.productoNombre }}</strong><span class="sub">{{ l.especificaciones || l.productoCodigo }}</span></td>
+                    <td class="num">{{ l.cantidad | numero }} {{ l.unidadCodigo }}</td>
+                    <td class="num">
+                      <input type="number" min="0" step="0.01" class="entrada num precio" [attr.aria-label]="'Precio de ' + l.productoNombre"
+                             [disabled]="!editable()" [ngModel]="oferta(l.id).precio" (ngModelChange)="cambiar(l.id, 'precio', $event)">
+                    </td>
+                    <td class="num">
+                      <input type="number" min="0" max="100" class="entrada num impuesto" [attr.aria-label]="'Impuesto de ' + l.productoNombre"
+                             [disabled]="!editable()" [ngModel]="oferta(l.id).impuesto" (ngModelChange)="cambiar(l.id, 'impuesto', +$event)">
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="tarjeta">
+          <h2>Condiciones</h2>
+          <div class="formulario dos">
+            <div class="campo"><label for="plazo">Plazo de entrega (días)</label>
+              <input id="plazo" type="number" min="0" class="entrada" [disabled]="!editable()" [ngModel]="plazo()" (ngModelChange)="plazo.set($event); sinGuardar.set(true)"></div>
+            <div class="campo"><label for="pago">Condiciones de pago</label>
+              <select id="pago" class="entrada" [disabled]="!editable()" [ngModel]="condiciones()" (ngModelChange)="condiciones.set($event); sinGuardar.set(true)">
+                @for (c of ['Contado', 'A 15 días', 'A 30 días', 'A 60 días']; track c) { <option [value]="c">{{ c }}</option> }
+                @if (!['Contado', 'A 15 días', 'A 30 días', 'A 60 días'].includes(condiciones())) { <option [value]="condiciones()">{{ condiciones() }}</option> }
+              </select></div>
+            <div class="campo"><label for="validez">Vigencia de la oferta</label>
+              <input id="validez" type="date" class="entrada" [disabled]="!editable()" [ngModel]="validez()" (ngModelChange)="validez.set($event); sinGuardar.set(true)"></div>
+            <div class="campo"><label for="garantia">Garantía (meses)</label>
+              <input id="garantia" type="number" min="0" class="entrada" [disabled]="!editable()" [ngModel]="garantia()" (ngModelChange)="garantia.set($event); sinGuardar.set(true)"></div>
+          </div>
+          <div class="campo margen-arriba"><label for="notas">Notas para el comprador</label>
+            <textarea id="notas" class="entrada" placeholder="Opcional" [disabled]="!editable()" [ngModel]="notas()" (ngModelChange)="notas.set($event)"></textarea></div>
+        </section>
+      </div>
+
+      <div class="columna">
+        <section class="tarjeta">
+          <h2>Tu total</h2>
+          @if (cotizacion(); as c) {
+            <div class="pares">
+              <div class="par"><span>Subtotal</span><span>{{ c.subtotal | pesos }}</span></div>
+              <div class="par"><span>Impuestos</span><span>{{ c.impuestos | pesos }}</span></div>
+              <div class="par total"><span>Total</span><span>{{ c.total | pesos }}</span></div>
+            </div>
+            @if (sinGuardar() && editable()) { <p class="texto-chico aviso ambar">Cambiaste precios: guarda el borrador para ver el total actualizado.</p> }
+          } @else {
+            <p class="texto-2">Escribe tus precios y guarda el borrador: el sistema calcula el subtotal, el IVA y el total.</p>
+          }
+          @if (editable()) {
+            <button type="button" class="boton primario bloque margen-arriba" [disabled]="trabajando()" (click)="guardar(true)">Enviar cotización</button>
+            <button type="button" class="boton bloque margen-arriba" [disabled]="trabajando()" (click)="guardar()">Guardar borrador</button>
+            <p class="texto-chico texto-2">Una vez enviada no podrás editarla. El comprador verá tu oferta cuando cierre la fecha.</p>
+          } @else if (enviada()) {
+            <p class="aviso verde margen-arriba">Cotización enviada el {{ cotizacion()?.enviadoEn | fecha: 'hora' }}.</p>
+          } @else {
+            <p class="aviso margen-arriba">La RFQ ya no recibe cotizaciones.</p>
+          }
+        </section>
+
+        @if (editable()) {
+          <label class="tarjeta archivo">
+            <span class="material-symbols-outlined">auto_awesome</span>
+            <strong>¿Ya tienes tu cotización en un archivo?</strong>
+            <span class="texto-chico texto-2">Sube Excel, PDF o una foto. La IA llena los campos y tú revisas antes de enviar.</span>
+            <span class="boton chico">Subir archivo</span>
+            <input type="file" accept=".xlsx,.xls,.docx,.pdf,image/*" (change)="subirArchivo($event)">
+          </label>
+        }
+      </div>
+    </div>
+  } @else {
+    <p class="cargando">Cargando…</p>
+  }
+</div>

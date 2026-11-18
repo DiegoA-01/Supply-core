@@ -1,0 +1,167 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Inventario</p>
+    <div class="encabezado">
+      <div>
+        <h1>Productos y stock</h1>
+        <p>El stock solo cambia con recepciones, ajustes con motivo y traslados.</p>
+      </div>
+      <div class="acciones">
+        @if (conReporte()) {
+          <a class="boton" routerLink="/app/inventario/rotacion"><span class="material-symbols-outlined">trending_up</span> Rotación</a>
+        }
+        <a class="boton" routerLink="/app/inventario/movimientos"><span class="material-symbols-outlined">swap_horiz</span> Movimientos y bodegas</a>
+        <button type="button" class="boton" (click)="exportar()"><span class="material-symbols-outlined">download</span> Exportar Excel</button>
+        <button type="button" class="boton" (click)="exportarPorCorreo()"><span class="material-symbols-outlined">mail</span> Enviarme el Excel</button>
+        @if (esAdminCompras()) {
+          <button type="button" class="boton" (click)="abrir('carga')"><span class="material-symbols-outlined">upload</span> Carga masiva (Excel)</button>
+          <button type="button" class="boton primario" (click)="abrir('nuevo')"><span class="material-symbols-outlined">add</span> Nuevo producto</button>
+        }
+      </div>
+    </div>
+  </div>
+
+  @if (panel() === 'carga') {
+    <section class="tarjeta">
+      <div class="tarjeta-cabecera"><h2>Carga masiva de productos</h2><button type="button" class="boton chico" (click)="bajarPlantilla()">Bajar plantilla</button></div>
+      <p class="texto-2">Primero se revisa el archivo; si no hay errores, se aplica todo junto (todo o nada).</p>
+      <div class="fila">
+        <input type="file" accept=".xlsx" (change)="elegirArchivo($event)" aria-label="Archivo de Excel">
+        <button type="button" class="boton" [disabled]="!archivo() || trabajando()" (click)="cargarExcel(true)">Revisar</button>
+        <button type="button" class="boton primario" [disabled]="!carga() || !!carga()?.errores?.length || !!carga()?.aplicado || trabajando()" (click)="cargarExcel(false)">Aplicar</button>
+      </div>
+      @if (carga(); as c) {
+        <div class="aviso margen-arriba" [class.rojo]="c.errores?.length" [class.verde]="!c.errores?.length">
+          {{ c.filas }} filas · {{ c.creados }} por crear · {{ c.actualizados }} por actualizar · {{ c.categoriasCreadas }} categorías nuevas
+          @if (c.errores?.length) { · {{ c.errores!.length }} errores: corrígelos y vuelve a revisar. }
+        </div>
+        @for (e of c.errores ?? []; track $index) {
+          <p class="texto-chico error-fila">Fila {{ e.fila }}: {{ e.mensaje }}</p>
+        }
+      }
+    </section>
+  }
+
+  @if (panel() === 'nuevo') {
+    <section class="tarjeta">
+      <h2>Nuevo producto</h2>
+      <form [formGroup]="nuevo" (ngSubmit)="crearProducto()" class="formulario dos">
+        <div class="campo"><label for="codigo">Código</label><input id="codigo" class="entrada" formControlName="codigo"></div>
+        <div class="campo"><label for="nombre">Nombre</label><input id="nombre" class="entrada" formControlName="nombre"></div>
+        <div class="campo"><label for="cat">Categoría</label>
+          <select id="cat" class="entrada" formControlName="categoriaId">
+            <option [ngValue]="0" disabled>Elige</option>
+            @for (c of categorias(); track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
+          </select></div>
+        <div class="campo"><label for="uni">Unidad</label>
+          <select id="uni" class="entrada" formControlName="unidadMedidaId">
+            <option [ngValue]="0" disabled>Elige</option>
+            @for (u of unidades(); track u.id) { <option [ngValue]="u.id">{{ u.nombre }} ({{ u.codigo }})</option> }
+          </select></div>
+        <div class="campo"><label for="min">Stock mínimo</label><input id="min" type="number" min="0" class="entrada num" formControlName="stockMinimo"></div>
+        <div class="campo"><label for="max">Stock máximo</label><input id="max" type="number" min="0" class="entrada num" formControlName="stockMaximo"></div>
+        <div class="campo"><label for="costo">Costo de referencia</label><input id="costo" type="number" min="0" class="entrada num" formControlName="costoReferencia"></div>
+        <div class="fila fin"><button type="submit" class="boton primario" [disabled]="trabajando()">Crear producto</button>
+          <button type="button" class="boton" (click)="panel.set('ninguno')">Cancelar</button></div>
+      </form>
+      <p class="texto-chico texto-2">El producto nace con stock 0: el stock entra con una recepción o un ajuste con motivo.</p>
+    </section>
+  }
+
+  <div class="rejilla kpis">
+    <div class="tarjeta kpi">
+      <div class="etiqueta">Productos activos</div>
+      <div class="valor">{{ resumen()?.productos ?? filas()?.length ?? '—' }}</div>
+      <div class="nota">en {{ categorias().length }} categorías</div>
+    </div>
+    <div class="tarjeta kpi">
+      <div class="etiqueta">Bajo el mínimo</div>
+      <div class="valor" [class.peligro]="totalBajo() > 0">{{ totalBajo() }}</div>
+      <div class="nota">{{ sinExistencias() }} sin existencias</div>
+    </div>
+    @if (resumen(); as r) {
+      <div class="tarjeta kpi">
+        <div class="etiqueta">Valor del inventario</div>
+        <div class="valor">{{ r.valorTotal | pesos }}</div>
+        <div class="nota">stock × último costo de compra</div>
+      </div>
+    }
+  </div>
+
+  @if (porReponer().length) {
+    <section class="tarjeta suave">
+      <div class="tarjeta-cabecera">
+        <h2><span class="material-symbols-outlined">auto_awesome</span> Reorden sugerida</h2>
+        <button type="button" class="boton chico" (click)="abrir('reorden')">{{ panel() === 'reorden' ? 'Ocultar' : 'Revisar' }}</button>
+      </div>
+      <p>
+        Para llegar al máximo de cada producto bajo el mínimo, el sistema resta lo que ya hay y lo que viene en camino.
+        @if (ejemplo(); as e) {
+          Ejemplo: {{ e.nombre }} necesita {{ e.stockMaximo | numero }} − {{ e.stockActual | numero }} en stock − {{ e.enOrdenes | numero }} en órdenes − {{ e.enSolicitudes | numero }} ya solicitado = <strong>{{ e.cantidadSugerida | numero }} {{ e.unidad }}</strong>.
+        }
+        Solo sugiere: la solicitud la envías tú.
+      </p>
+      @if (panel() === 'reorden') {
+        <div class="tabla-contenedor">
+          <table class="tabla">
+            <thead><tr><th>Producto</th><th class="num">Stock</th><th class="num">Máximo</th><th class="num">En órdenes</th><th class="num">Ya solicitado</th><th class="num">Sugerido</th><th>Contrato</th></tr></thead>
+            <tbody>
+              @for (s of porReponer(); track s.productoId) {
+                <tr>
+                  <td><strong>{{ s.nombre }}</strong><span class="sub">{{ s.codigo }}</span></td>
+                  <td class="num">{{ s.stockActual | numero }}</td>
+                  <td class="num">{{ s.sinMaximo ? 'sin máximo' : (s.stockMaximo | numero) }}</td>
+                  <td class="num">{{ s.enOrdenes | numero }}</td>
+                  <td class="num">{{ s.enSolicitudes | numero }}</td>
+                  <td class="num negrita">{{ s.cantidadSugerida | numero }} {{ s.unidad }}</td>
+                  <td>{{ s.contratoSugerido?.proveedorRazonSocial ?? '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (esSolicitante()) {
+          <button type="button" class="boton primario margen-arriba" [disabled]="trabajando()" (click)="crearBorrador()">Crear borrador de solicitud</button>
+        } @else {
+          <p class="texto-chico texto-2">El borrador lo crea un usuario con rol SOLICITANTE.</p>
+        }
+      }
+    </section>
+  }
+
+  <section class="tarjeta sin-relleno">
+    <div class="filtros">
+      <div class="pastillas">
+        <button type="button" class="pastilla" [class.activa]="!soloBajo()" (click)="filtrarBajo(false)">Todos</button>
+        <button type="button" class="pastilla" [class.activa]="soloBajo()" (click)="filtrarBajo(true)">Bajo el mínimo · {{ totalBajo() }}</button>
+      </div>
+      <select class="entrada categoria" aria-label="Categoría" [ngModel]="categoriaId()" (ngModelChange)="filtrarCategoria($event)">
+        <option [ngValue]="null">Todas las categorías</option>
+        @for (c of categorias(); track c.id) { <option [ngValue]="c.id">{{ c.nombre }}</option> }
+      </select>
+    </div>
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead>
+          <tr><th>Producto</th><th class="oculto-movil">Categoría</th><th class="oculto-movil">Stock vs. máximo</th><th class="num">Stock</th><th class="num">Mínimo</th>
+            @if (resumen()) { <th class="num">Valor</th> }<th>Estado</th></tr>
+        </thead>
+        <tbody>
+          @for (f of filas() ?? []; track f.productoId) {
+            <tr>
+              <td><strong>{{ f.nombre }}</strong><span class="sub">{{ f.codigo }} · {{ f.unidad }}</span></td>
+              <td class="oculto-movil">{{ f.categoria }}</td>
+              <td class="oculto-movil"><div class="barra ancha"><span [style.width.%]="ancho(f)"></span></div></td>
+              <td class="num negrita">{{ f.stock | numero }}</td>
+              <td class="num">{{ f.stockMinimo | numero }}</td>
+              @if (resumen()) { <td class="num">{{ f.valor | pesos }}</td> }
+              <td><span class="chip" [class]="'chip ' + estado(f).tono">{{ estado(f).texto }}</span></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="vacio">{{ filas() ? 'No hay productos con este filtro.' : 'Cargando…' }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

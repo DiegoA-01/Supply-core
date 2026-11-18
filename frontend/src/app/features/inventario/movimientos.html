@@ -1,0 +1,169 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / <a routerLink="/app/inventario">Inventario</a> / Movimientos de stock</p>
+    <div class="encabezado">
+      <div><h1>Movimientos de stock</h1>
+        <p>El stock solo cambia por movimientos: recepciones, salidas, ajustes con motivo y traslados. Aquí ves dónde está cada producto y todo lo que pasó.</p></div>
+      <div class="acciones">
+        @if (puedeRegistrar()) {
+          <button type="button" class="boton primario" (click)="abrirRegistro()"><span class="material-symbols-outlined">add</span> Registrar movimiento</button>
+        }
+      </div>
+    </div>
+  </div>
+
+  @if (resultado(); as r) {
+    <div class="aviso" [class.ambar]="r.bajoStockMinimo" [class.verde]="!r.bajoStockMinimo" role="status">
+      <span class="material-symbols-outlined">{{ r.bajoStockMinimo ? 'warning' : 'check_circle' }}</span>
+      <div>
+        <strong>{{ r.movimiento?.productoCodigo }} · {{ r.movimiento?.tipo | etiqueta }}: {{ r.movimiento?.cantidad | numero }}</strong>
+        <div>Stock total del producto en todas las bodegas: {{ r.stockTotalProducto | numero }}
+          @if (r.bajoStockMinimo) { · <strong>quedó por debajo del mínimo</strong>, conviene reponer }</div>
+      </div>
+    </div>
+  }
+
+  @if (registrando()) {
+    <section class="tarjeta">
+      <h2>Registrar movimiento</h2>
+      <form class="formulario dos" (ngSubmit)="registrar()">
+        <div class="campo"><label for="tipo">Qué pasó</label>
+          <select id="tipo" name="tipo" class="entrada" [ngModel]="tipo()" (ngModelChange)="cambiarTipo($event)">
+            @for (t of tiposManuales; track t) { <option [value]="t">{{ t | etiqueta }}</option> }
+          </select></div>
+        <div class="campo"><label for="prod">Producto</label>
+          <input id="prod" name="prod" class="entrada" list="productos-form" autocomplete="off" placeholder="Escribe código o nombre"
+                 [ngModel]="formProducto.texto()" (ngModelChange)="formProducto.escribir($event)">
+          <datalist id="productos-form">
+            @for (p of formProducto.opciones(); track p.id) { <option [value]="formProducto.etiqueta(p)"></option> }
+          </datalist></div>
+        @if (usaOrigen()) {
+          <div class="campo"><label for="origen">Bodega de origen</label>
+            <select id="origen" name="origen" class="entrada" [ngModel]="origen()" (ngModelChange)="origen.set($event)">
+              <option [ngValue]="null" disabled>Elige</option>
+              @for (b of bodegas(); track b.id) { <option [ngValue]="b.id">{{ b.nombre }}</option> }
+            </select></div>
+        }
+        @if (usaDestino()) {
+          <div class="campo"><label for="destino">Bodega de destino</label>
+            <select id="destino" name="destino" class="entrada" [ngModel]="destino()" (ngModelChange)="destino.set($event)">
+              <option [ngValue]="null" disabled>Elige</option>
+              @for (b of bodegas(); track b.id) { <option [ngValue]="b.id">{{ b.nombre }}</option> }
+            </select></div>
+        }
+        <div class="campo"><label for="cant">Cantidad</label>
+          <input id="cant" name="cant" type="number" min="0" step="any" class="entrada num" [ngModel]="cantidad()" (ngModelChange)="cantidad.set($event)">
+          <span class="ayuda">En la unidad del producto.</span></div>
+        <div class="campo ancho"><label for="motivo">Motivo {{ exigeMotivo() ? '(obligatorio)' : '(opcional)' }}</label>
+          <input id="motivo" name="motivo" class="entrada" maxlength="250" [ngModel]="motivo()" (ngModelChange)="motivo.set($event)"
+                 placeholder="Ej. Conteo físico: faltan 3 unidades en el estante B"></div>
+        <div class="fila">
+          <button type="submit" class="boton primario" [disabled]="trabajando()">{{ trabajando() ? 'Guardando…' : 'Registrar' }}</button>
+          <button type="button" class="boton" (click)="registrando.set(false)">Cancelar</button>
+        </div>
+      </form>
+      <div class="aviso margen-arriba"><span class="material-symbols-outlined">shield</span>
+        Las entradas por compra solo las crea la recepción de mercancía. Cada movimiento queda en la auditoría y no se puede borrar.</div>
+    </section>
+  }
+
+  <div class="pastillas" role="tablist">
+    <button type="button" role="tab" class="pastilla" [class.activa]="vista() === 'stock'" [attr.aria-selected]="vista() === 'stock'" (click)="abrirVista('stock')">Existencias por bodega</button>
+    <button type="button" role="tab" class="pastilla" [class.activa]="vista() === 'kardex'" [attr.aria-selected]="vista() === 'kardex'" (click)="abrirVista('kardex')">Kardex (movimientos)</button>
+  </div>
+
+  @if (vista() === 'stock') {
+    <section class="tarjeta">
+      <div class="filtros">
+        <div class="campo"><label for="bs">Bodega</label>
+          <select id="bs" class="entrada" [ngModel]="bodegaStock()" (ngModelChange)="filtrarBodegaStock($event)">
+            <option [ngValue]="null">Todas</option>
+            @for (b of bodegas(); track b.id) { <option [ngValue]="b.id">{{ b.nombre }}</option> }
+          </select></div>
+        <div class="campo"><label for="ts">Producto</label>
+          <input id="ts" type="search" class="entrada" placeholder="Código o nombre" [ngModel]="textoStock()" (ngModelChange)="textoStock.set($event)"></div>
+      </div>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Producto</th><th>Bodega</th><th class="num">Existencia</th><th>Unidad</th></tr></thead>
+          <tbody>
+            @for (s of filas(); track s.productoId + '-' + s.bodegaId) {
+              <tr>
+                <td><strong>{{ s.productoCodigo }}</strong> <span class="texto-2">{{ s.productoNombre }}</span></td>
+                <td>{{ s.bodegaNombre }}</td>
+                <td class="num">{{ s.cantidad | numero }}</td>
+                <td>{{ s.unidad }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="4" class="vacio">{{ existencias() ? 'No hay existencias con ese filtro.' : 'Cargando…' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  } @else {
+    <section class="tarjeta">
+      <div class="filtros">
+        <div class="campo"><label for="kp">Producto</label>
+          <input id="kp" class="entrada" list="productos-kardex" autocomplete="off" placeholder="Código o nombre"
+                 [ngModel]="filtroProducto.texto()" (ngModelChange)="filtroProducto.escribir($event)">
+          <datalist id="productos-kardex">
+            @for (p of filtroProducto.opciones(); track p.id) { <option [value]="filtroProducto.etiqueta(p)"></option> }
+          </datalist></div>
+        <div class="campo"><label for="kb">Bodega</label>
+          <select id="kb" class="entrada" [ngModel]="bodegaKardex()" (ngModelChange)="bodegaKardex.set($event)">
+            <option [ngValue]="null">Todas</option>
+            @for (b of bodegas(); track b.id) { <option [ngValue]="b.id">{{ b.nombre }}</option> }
+          </select></div>
+        <div class="campo"><label for="kt">Tipo</label>
+          <select id="kt" class="entrada" [ngModel]="tipoKardex()" (ngModelChange)="tipoKardex.set($event)">
+            <option [ngValue]="null">Todos</option>
+            @for (t of tiposFiltro; track t) { <option [value]="t">{{ t | etiqueta }}</option> }
+          </select></div>
+        <div class="campo"><label for="kd">Desde</label>
+          <input id="kd" type="date" class="entrada" [ngModel]="desde()" (ngModelChange)="desde.set($event)"></div>
+        <div class="campo"><label for="kh">Hasta</label>
+          <input id="kh" type="date" class="entrada" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)"></div>
+      </div>
+      <div class="fila">
+        <button type="button" class="boton primario" (click)="buscar(0)">Buscar</button>
+        <button type="button" class="boton" (click)="limpiarFiltros()">Limpiar</button>
+        <span class="separador"></span>
+        <button type="button" class="boton" (click)="exportarExcel()" [title]="filtroProducto.id() ? '' : 'Elige un producto'">
+          <span class="material-symbols-outlined">download</span> Excel</button>
+        <button type="button" class="boton" (click)="exportarPorCorreo()" [title]="filtroProducto.id() ? '' : 'Elige un producto'">
+          <span class="material-symbols-outlined">mail</span> Enviarme el Excel</button>
+      </div>
+
+      <div class="tabla-contenedor margen-arriba">
+        <table class="tabla">
+          <thead><tr><th>Fecha</th><th>Movimiento</th><th>Producto</th><th>Origen → destino</th><th class="num">Cantidad</th><th class="num">Saldo</th><th>Motivo</th></tr></thead>
+          <tbody>
+            @for (m of pagina()?.contenido ?? []; track m.id) {
+              <tr>
+                <td class="nowrap">{{ m.creadoEn | fecha: 'hora' }}</td>
+                <td><sc-estado [valor]="m.tipo" />@if (m.referenciaTipo) { <div class="texto-chico texto-2">{{ m.referenciaTipo | etiqueta }} #{{ m.referenciaId }}</div> }</td>
+                <td><strong>{{ m.productoCodigo }}</strong> <span class="texto-2">{{ m.productoNombre }}</span></td>
+                <td>{{ m.bodegaOrigenNombre ?? '—' }} → {{ m.bodegaDestinoNombre ?? '—' }}</td>
+                <td class="num">{{ m.cantidad | numero }}</td>
+                <td class="num">{{ m.stockResultante | numero }}@if (m.stockResultanteDestino != null) { <div class="texto-chico texto-2">destino: {{ m.stockResultanteDestino | numero }}</div> }</td>
+                <td>{{ m.motivo ?? '—' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="7" class="vacio">{{ pagina() ? 'No hay movimientos con ese filtro.' : 'Cargando…' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (pagina(); as p) {
+        @if ((p.totalPaginas ?? 0) > 1) {
+          <div class="fila paginacion">
+            <button type="button" class="boton chico" [disabled]="numeroPagina() === 0" (click)="buscar(numeroPagina() - 1)">Anterior</button>
+            <span class="texto-chico texto-2">Página {{ numeroPagina() + 1 }} de {{ p.totalPaginas }} · {{ p.totalElementos }} movimientos</span>
+            <button type="button" class="boton chico" [disabled]="numeroPagina() + 1 >= (p.totalPaginas ?? 0)" (click)="buscar(numeroPagina() + 1)">Siguiente</button>
+          </div>
+        }
+      }
+    </section>
+  }
+</div>

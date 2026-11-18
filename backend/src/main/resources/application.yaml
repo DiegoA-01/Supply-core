@@ -1,0 +1,97 @@
+spring:
+  application:
+    name: supply-core
+
+  # Secretos locales (fuera de git). Ver application-local.example.yaml
+  config:
+    import: optional:classpath:application-local.yaml
+
+  datasource:
+    # DB_URL permite apuntar a otro servidor (Docker, producción); sin ella, MySQL local
+    url: ${DB_URL:jdbc:mysql://localhost:3306/supply_core?createDatabaseIfNotExist=true&serverTimezone=America/Bogota&useUnicode=true&characterEncoding=utf8}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none                 # el esquema lo maneja Flyway, nunca Hibernate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 50   # carga relaciones LAZY por lotes (evita N+1 en listados)
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+    # Las migraciones corren con su propio usuario (dueño del esquema); la aplicación usa DB_USER, que en producción no
+    # puede modificar ni borrar la auditoría. Sin FLYWAY_USER usan las mismas credenciales (desarrollo). Ver backend/sql/permisos.sql
+    user: ${FLYWAY_USER:${DB_USER:root}}
+    password: ${FLYWAY_PASSWORD:${DB_PASSWORD:}}
+
+  data:
+    web:
+      pageable:
+        max-page-size: 100           # nadie puede pedir 1.000.000 de filas por página
+
+  servlet:
+    multipart:
+      max-file-size: 10MB            # igual a app.storage.tamano-maximo-bytes
+      max-request-size: 11MB
+
+app:
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:4200}
+  jwt:
+    secret: ${JWT_SECRET:}            # ≥ 32 caracteres; vacío = aleatorio (solo desarrollo)
+    expiracion-minutos: ${JWT_EXPIRACION_MINUTOS:15}   # JWT corto; la sesión se renueva con el refresh token
+  sesion:
+    refresh-dias: ${REFRESH_DIAS:7}                    # vigencia del refresh token
+    max-intentos: ${LOGIN_MAX_INTENTOS:5}              # fallos seguidos que bloquean la cuenta
+    bloqueo-minutos: ${LOGIN_BLOQUEO_MINUTOS:15}       # duración del bloqueo
+    limite-por-minuto: ${RATE_LIMITE_POR_MINUTO:20}    # peticiones/min por IP a login, refresh y registro
+    cache-segundos: ${SESION_CACHE_SEGUNDOS:15}        # cuánto se recuerda si un usuario sigue activo (corte de JWT)
+    recuperacion-minutos: ${RECUPERACION_MINUTOS:30}   # vigencia del token para restablecer una clave olvidada
+    mfa-admin-obligatorio: ${MFA_ADMIN_OBLIGATORIO:true}  # ADMIN_SISTEMA siempre entra con segundo factor (TOTP)
+  storage:
+    ruta: ${STORAGE_RUTA:./almacenamiento}   # archivos de documentos (fuera de la BD y de git)
+    tamano-maximo-bytes: 10485760             # 10 MB
+  ia:
+    proveedor: ${IA_PROVEEDOR:ninguno}       # ninguno | ollama | claude | gemini
+    umbral-confianza: 0.80                   # dato crítico con menos confianza => revisión humana
+    claude:
+      api-key: ${ANTHROPIC_API_KEY:}         # va en application-local.yaml o variable de entorno
+      modelo: claude-opus-5-5
+    gemini:
+      api-key: ${GEMINI_API_KEY:}            # clave de Google AI Studio (aistudio.google.com); solo en variable de entorno
+      modelo: ${GEMINI_MODELO:gemini-2.5-flash}
+      timeout-segundos: 180
+    ollama:
+      url: ${OLLAMA_URL:http://localhost:11434}
+      modelo: ${OLLAMA_MODELO:qwen2.5vl:3b}
+      timeout-segundos: 600                  # en CPU un modelo local puede tardar minutos
+  admin:
+    email: ${ADMIN_EMAIL:admin@supplycore.local}
+    password: ${ADMIN_PASSWORD:}      # solo se usa si aún no existe un ADMIN_SISTEMA
+  plataforma:
+    admin-correo: ${PLATAFORMA_ADMIN_CORREO:dueno@supplycore.local}
+    admin-password: ${PLATAFORMA_ADMIN_PASSWORD:}   # 12 a 72 caracteres; solo se usa si aún no hay usuario de plataforma
+    cache-segundos: ${PLATAFORMA_CACHE_SEGUNDOS:30} # cuánto se recuerda la suscripción y los módulos de una empresa
+
+# Solo la salud de la aplicación; ningún otro endpoint de actuator queda expuesto
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

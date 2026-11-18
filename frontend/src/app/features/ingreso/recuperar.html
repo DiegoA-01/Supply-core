@@ -1,0 +1,51 @@
+<div class="pantalla">
+  <section class="caja tarjeta">
+    <div class="marca"><img src="logo.svg" alt="" width="32" height="32"><span>Supply-Core</span></div>
+
+    @switch (paso()) {
+      @case ('pedir') {
+        <h1>Recupera tu contraseña</h1>
+        <p class="texto-2">Escribe el código de tu empresa y tu correo. Te enviamos un código de un solo uso.</p>
+        <form class="formulario" (ngSubmit)="pedir()">
+          <div class="campo"><label for="empresa">Código de empresa</label>
+            <input id="empresa" name="empresa" class="entrada" autocomplete="organization" [ngModel]="empresa()" (ngModelChange)="empresa.set($event)"></div>
+          <div class="campo"><label for="correo">Correo</label>
+            <input id="correo" name="correo" type="email" class="entrada" autocomplete="username" [ngModel]="correo()" (ngModelChange)="correo.set($event)"></div>
+          @if (error(); as e) { <div class="aviso rojo" role="alert"><span class="material-symbols-outlined">error</span>{{ e }}</div> }
+          <button type="submit" class="boton primario bloque" [disabled]="enviando()">{{ enviando() ? 'Enviando…' : 'Enviarme el código' }}</button>
+        </form>
+      }
+      @case ('cambiar') {
+        <h1>Revisa tu correo</h1>
+        <div class="aviso"><span class="material-symbols-outlined">mail</span>{{ aviso() }}</div>
+        <p class="texto-2">Pega el código que llegó y elige tu contraseña nueva. El código vence pronto y sirve una sola vez.</p>
+        <form class="formulario" (ngSubmit)="cambiar()">
+          <div class="campo"><label for="token">Código de recuperación</label>
+            <input id="token" name="token" class="entrada" autocomplete="one-time-code" [ngModel]="token()" (ngModelChange)="token.set($event)"></div>
+          <div class="campo"><label for="nueva">Contraseña nueva</label>
+            <div class="con-ojo">
+              <input id="nueva" name="nueva" class="entrada" [type]="verClave() ? 'text' : 'password'" autocomplete="new-password" [ngModel]="nueva()" (ngModelChange)="nueva.set($event)">
+              <button type="button" class="ojo" (click)="verClave.set(!verClave())" [attr.aria-label]="verClave() ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="verClave()">
+                <span class="material-symbols-outlined">{{ verClave() ? 'visibility_off' : 'visibility' }}</span></button>
+            </div>
+            <span class="ayuda" [class.ok]="claveValida()">
+              <span class="material-symbols-outlined">{{ claveValida() ? 'check_circle' : 'radio_button_unchecked' }}</span>
+              Entre 8 y 72 caracteres, con al menos una letra y un número.</span></div>
+          <div class="campo"><label for="confirma">Repite la contraseña nueva</label>
+            <input id="confirma" name="confirma" class="entrada" [type]="verClave() ? 'text' : 'password'" autocomplete="new-password" [ngModel]="confirmacion()" (ngModelChange)="confirmacion.set($event)">
+            @if (confirmacion() && !coinciden()) { <span class="error">No coincide con la contraseña nueva.</span> }</div>
+          @if (error(); as e) { <div class="aviso rojo" role="alert"><span class="material-symbols-outlined">error</span>{{ e }}</div> }
+          <button type="submit" class="boton primario bloque" [disabled]="enviando()">{{ enviando() ? 'Guardando…' : 'Cambiar contraseña' }}</button>
+          <button type="button" class="enlace" (click)="paso.set('pedir')">No me llegó, pedir otro</button>
+        </form>
+      }
+      @case ('listo') {
+        <h1>Contraseña actualizada</h1>
+        <div class="aviso verde"><span class="material-symbols-outlined">check_circle</span>Ya puedes ingresar. Cerramos las sesiones que tenías abiertas.</div>
+        <a routerLink="/ingreso" class="boton primario bloque">Ir al ingreso</a>
+      }
+    }
+
+    @if (paso() !== 'listo') { <a routerLink="/ingreso" class="texto-chico volver">Volver al ingreso</a> }
+  </section>
+</div>

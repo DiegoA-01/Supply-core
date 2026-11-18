@@ -1,0 +1,21 @@
+# Copia este archivo como application-local.yaml (misma carpeta) y pon tus valores.
+# application-local.yaml está en .gitignore; este ejemplo sí se sube al repositorio.
+DB_USER: root
+DB_PASSWORD: cambia-esto
+# --- Producción: dos usuarios de MySQL (ver backend/sql/permisos.sql) ---
+# DB_USER: supply_app                  # la aplicación: sin UPDATE ni DELETE sobre la auditoría y los históricos
+# DB_PASSWORD: otra-clave-larga
+# FLYWAY_USER: supply_migrator         # solo las migraciones: dueño del esquema
+# FLYWAY_PASSWORD: una-clave-larga
+# JWT_SECRET: una-cadena-aleatoria-de-al-menos-32-caracteres
+# ADMIN_EMAIL: admin@supplycore.local
+# ADMIN_PASSWORD: Clave1234   # solo se usa la primera vez, si no hay ADMIN_SISTEMA
+# PLATAFORMA_ADMIN_CORREO: dueno@supplycore.local
+# PLATAFORMA_ADMIN_PASSWORD: una-clave-larga-de-12-o-mas-caracteres   # dueño del software; vincula su app de autenticación en el primer login
+# --- IA para leer cotizaciones (paso 13) ---
+# IA_PROVEEDOR: ninguno          # ninguno | ollama | claude | gemini
+# GEMINI_API_KEY: ...           # de aistudio.google.com (la suscripción Gemini Plus de la app NO sirve para la API)
+# GEMINI_MODELO: gemini-2.5-flash
+# OLLAMA_URL: http://localhost:11434
+# OLLAMA_MODELO: qwen2.5vl:3b    # instalar con: ollama pull qwen2.5vl:3b
+# ANTHROPIC_API_KEY: sk-ant-...  # de console.anthropic.com (créditos de API, no la suscripción de Claude)

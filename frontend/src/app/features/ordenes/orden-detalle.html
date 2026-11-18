@@ -1,0 +1,204 @@
+<div class="pagina">
+  @if (orden(); as o) {
+    <div>
+      <p class="migas"><a routerLink="/app/inicio">Inicio</a> / <a routerLink="/app/ordenes">Órdenes</a> / {{ o.consecutivo }}</p>
+      <div class="encabezado">
+        <div>
+          <h1>{{ o.consecutivo }} · {{ o.proveedorRazonSocial }}</h1>
+          <p>Versión {{ o.version }} · emitida el {{ o.creadoEn | fecha }} · entrega en {{ o.bodegaDestinoNombre }}</p>
+        </div>
+        <div class="acciones">
+          <sc-estado [valor]="o.estado" />
+          @if (factura(); as f) { <span class="chip" [class.ambar]="f.estado === 'EN_REVISION'" [class.verde]="f.estado !== 'EN_REVISION'">Factura {{ f.estado | etiqueta | lowercase }}</span> }
+          <button type="button" class="boton chico" (click)="descargarPdf()"><span class="material-symbols-outlined">download</span> PDF</button>
+          <button type="button" class="boton chico" (click)="enviarPorCorreo()"><span class="material-symbols-outlined">mail</span> Enviar por correo</button>
+          @if (sesion.tieneModulo('RECEPCION') && (o.estado === 'DESPACHADA' || o.estado === 'RECIBIDA_PARCIAL')) {
+            <a class="boton chico" [routerLink]="['/app/recepcion', o.id]">Ver recepción</a>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="rejilla principal">
+      <div class="columna">
+        @if (factura(); as f) {
+          <section class="tarjeta">
+            <div class="separado cabecera">
+              <h2>Cruce de tres vías <sc-estado [valor]="f.estado" /></h2>
+              @if (tolerancia() !== undefined) { <span class="texto-chico texto-2">Tolerancia de la empresa: {{ tolerancia() | numero }} %</span> }
+            </div>
+            <div class="tres-vias">
+              <div class="via"><span class="texto-chico texto-2">1 · Orden de compra</span><strong>{{ o.total | pesos }}</strong><span class="texto-chico texto-2">Lo que se pidió</span></div>
+              <div class="via"><span class="texto-chico texto-2">2 · Recibido y aceptado</span><strong>{{ f.esperadoTotal | pesos }}</strong><span class="texto-chico texto-2">Lo que de verdad entró</span></div>
+              <div class="via destacada"><span class="texto-chico texto-2">3 · Factura {{ f.numero }}</span><strong>{{ f.total | pesos }}</strong><span class="texto-chico texto-2">Lo que cobra el proveedor</span></div>
+            </div>
+
+            @if (puedeRecruzar() && (f.estado === 'CUADRADA' || f.estado === 'EN_REVISION')) {
+              <div class="fila margen-arriba">
+                <button type="button" class="boton chico" [disabled]="trabajando()" (click)="recruzar()">
+                  <span class="material-symbols-outlined">sync</span> Cruzar de nuevo con lo recibido</button>
+              </div>
+            }
+            @if (enRevision()) {
+              <div class="aviso ambar">
+                <span class="material-symbols-outlined">warning</span>
+                <div><strong>Diferencia de {{ f.diferencia | pesos }}</strong>Supera la tolerancia: la factura no cuadra con lo recibido.</div>
+              </div>
+              @if (puedeAprobar()) {
+                <div class="campo margen-arriba">
+                  <label for="motivo">Motivo para aprobarla o anularla (obligatorio)</label>
+                  <textarea id="motivo" class="entrada" [ngModel]="motivo()" (ngModelChange)="motivo.set($event)"
+                            placeholder="Ej. El proveedor ajustó el flete acordado por teléfono"></textarea>
+                </div>
+                <div class="fila margen-arriba">
+                  <button type="button" class="boton primario" [disabled]="trabajando()" (click)="aprobarFactura()">Aprobar factura con motivo</button>
+                  <button type="button" class="boton peligro" [disabled]="trabajando()" (click)="anularFactura()">Anular y pedir nota crédito</button>
+                </div>
+                <p class="texto-chico texto-2">Quien registró la factura no puede aprobarla.</p>
+              } @else {
+                <p class="texto-chico texto-2">Compras (ADMIN_COMPRAS) decide si la aprueba o la anula.</p>
+              }
+            } @else if (f.motivoAprobacion) {
+              <p class="texto-chico">Aprobada con motivo: {{ f.motivoAprobacion }}</p>
+            }
+          </section>
+        } @else {
+          <section class="tarjeta">
+            <h2>Cruce de tres vías</h2>
+            @if (puedeFacturar()) {
+              <p class="texto-2">Copia los datos tal como vienen en la factura del proveedor. El sistema la compara con lo que de verdad se recibió.</p>
+              <div class="formulario dos">
+                <div class="campo"><label for="fnum">Número de factura</label>
+                  <input id="fnum" class="entrada" maxlength="60" [ngModel]="facturaNueva().numero" (ngModelChange)="cambiarFactura('numero', $event)" placeholder="FV-20418"></div>
+                <div class="campo"><label for="ffecha">Fecha de la factura</label>
+                  <input id="ffecha" type="date" class="entrada" [ngModel]="facturaNueva().fechaFactura" (ngModelChange)="cambiarFactura('fechaFactura', $event)"></div>
+                <div class="campo"><label for="fsub">Subtotal</label>
+                  <input id="fsub" type="number" min="0" step="0.01" class="entrada num" [ngModel]="facturaNueva().subtotal" (ngModelChange)="cambiarFactura('subtotal', +$event)"></div>
+                <div class="campo"><label for="fimp">Impuestos</label>
+                  <input id="fimp" type="number" min="0" step="0.01" class="entrada num" [ngModel]="facturaNueva().impuestos" (ngModelChange)="cambiarFactura('impuestos', +$event)"></div>
+                <div class="campo"><label for="ftot">Total</label>
+                  <input id="ftot" type="number" min="0" step="0.01" class="entrada num" [ngModel]="facturaNueva().total" (ngModelChange)="cambiarFactura('total', +$event)">
+                  <span class="ayuda">El sistema verifica que el total sea subtotal + impuestos.</span></div>
+                <div class="campo"><label for="farch">Archivo (opcional)</label>
+                  <input id="farch" type="file" accept="application/pdf,image/*" (change)="elegirFactura($event)"></div>
+              </div>
+              <button type="button" class="boton primario margen-arriba" [disabled]="trabajando()" (click)="registrarFactura()">Registrar factura</button>
+            } @else {
+              <p class="texto-2">Aún no hay factura del proveedor para esta orden. Cuando tesorería la registre, el sistema la compara con lo recibido.</p>
+            }
+          </section>
+        }
+
+        <section class="tarjeta sin-relleno">
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead><tr><th>Producto</th><th class="num">Pedido</th><th class="num">Recibido</th><th class="num">Precio</th><th class="num">Subtotal pedido</th></tr></thead>
+              <tbody>
+                @for (l of o.lineas; track l.id) {
+                  <tr>
+                    <td><strong>{{ l.productoNombre }}</strong><span class="sub">{{ l.productoCodigo }} · IVA {{ l.impuestoPct | numero }} %</span></td>
+                    <td class="num">{{ l.cantidad | numero }} {{ l.unidad }}</td>
+                    <td class="num">
+                      @if (avance(l); as a) {
+                        {{ a.aceptado | numero }}
+                        @if ((a.faltante ?? 0) > 0) { <span class="chip ambar">faltan {{ a.faltante | numero }}</span> }
+                        @if ((a.excedentePendiente ?? 0) > 0) { <span class="chip">+{{ a.excedentePendiente | numero }} en revisión</span> }
+                      } @else { — }
+                    </td>
+                    <td class="num">{{ l.precioUnitario | pesos }}</td>
+                    <td class="num">{{ l.subtotal | pesos }}</td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot>
+                <tr><td colspan="4" class="num texto-2">Subtotal · Impuestos</td><td class="num">{{ o.subtotal | pesos }} · {{ o.impuestos | pesos }}</td></tr>
+                <tr><td colspan="4" class="num">Total de la orden</td><td class="num">{{ o.total | pesos }}</td></tr>
+              </tfoot>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <div class="columna">
+        <section class="tarjeta">
+          <h2>Pagos</h2>
+          @if (pagos(); as p) {
+            <div class="pares">
+              <div class="par"><span>Total de la orden</span><span>{{ p.total | pesos }}</span></div>
+              <div class="par"><span>Pagado</span><span>{{ p.pagado | pesos }}</span></div>
+              <div class="par"><span>Saldo</span><span>{{ p.saldo | pesos }}</span></div>
+              @if (sesion.empresa()?.topeAnticipoPct; as tope) {
+                <div class="par"><span>Tope de anticipos</span><span>{{ tope | numero }} % del total</span></div>
+              }
+            </div>
+            @for (pg of p.pagos; track pg.id) {
+              <div class="pago">
+                <div class="separado"><sc-estado [valor]="pg.tipo" /><sc-estado [valor]="pg.estado" /></div>
+                <strong>{{ pg.valor | pesos }}</strong>
+                <span class="texto-chico texto-2">{{ pg.fechaPago | fecha: 'corta' }} · {{ pg.metodo | etiqueta }} @if (pg.referencia) { · {{ pg.referencia }} }</span>
+                @if (pg.evidenciaPendiente) { <span class="chip ambar">Comprobante pendiente</span> }
+              </div>
+            } @empty {
+              <p class="texto-2">Sin pagos registrados.</p>
+            }
+          }
+
+          @if (puedePagar()) {
+            @if (!mostrarPago()) {
+              <button type="button" class="boton bloque margen-arriba" (click)="mostrarPago.set(true)">Registrar pago</button>
+            } @else {
+              <div class="formulario margen-arriba">
+                <div class="campo">
+                  <label for="tipo">Tipo</label>
+                  <select id="tipo" class="entrada" [ngModel]="pago().tipo" (ngModelChange)="cambiarPago('tipo', $event)">
+                    <option value="ANTICIPO">Anticipo (antes de recibir)</option>
+                    <option value="PAGO_FINAL">Pago final (factura cuadrada o aprobada)</option>
+                  </select>
+                </div>
+                <div class="campo">
+                  <label for="metodo">Método</label>
+                  <select id="metodo" class="entrada" [ngModel]="pago().metodo" (ngModelChange)="cambiarPago('metodo', $event)">
+                    @for (m of ['TRANSFERENCIA', 'CONSIGNACION', 'CHEQUE', 'EFECTIVO', 'TARJETA', 'OTRO']; track m) { <option [value]="m">{{ m | etiqueta }}</option> }
+                  </select>
+                </div>
+                <div class="campo">
+                  <label for="valor">Valor pagado</label>
+                  <input id="valor" type="number" min="0" step="0.01" class="entrada num" [ngModel]="pago().valor" (ngModelChange)="cambiarPago('valor', +$event)">
+                </div>
+                <div class="campo">
+                  <label for="fechaPago">Fecha</label>
+                  <input id="fechaPago" type="date" class="entrada" [ngModel]="pago().fechaPago" (ngModelChange)="cambiarPago('fechaPago', $event)">
+                </div>
+                <div class="campo">
+                  <label for="ref">Referencia</label>
+                  <input id="ref" class="entrada" [ngModel]="pago().referencia" (ngModelChange)="cambiarPago('referencia', $event)" placeholder="TR-88231">
+                </div>
+                <div class="fila">
+                  <button type="button" class="boton primario" [disabled]="trabajando()" (click)="registrarPago()">Registrar</button>
+                  <button type="button" class="boton" (click)="mostrarPago.set(false)">Cancelar</button>
+                </div>
+                <p class="texto-chico texto-2">Solo se registra: Supply-Core no mueve dinero. El sistema valida el tope de anticipos y que el pago final no supere lo que falta.</p>
+              </div>
+            }
+          }
+        </section>
+
+        <section class="tarjeta">
+          <h2>Recorrido de la orden</h2>
+          <ol class="recorrido">
+            @for (c of o.historial; track $index) {
+              <li><span class="marca-paso"><span class="material-symbols-outlined">check</span></span>
+                <div><strong>{{ c.estado | etiqueta }}</strong><span class="texto-chico texto-2">{{ c.fecha | fecha: 'hora' }}@if (c.observacion) { · {{ c.observacion }} }</span></div></li>
+            }
+            @if (factura(); as f) {
+              <li><span class="marca-paso" [class.pendiente]="f.estado === 'EN_REVISION'"><span class="material-symbols-outlined">{{ f.estado === 'EN_REVISION' ? 'priority_high' : 'check' }}</span></span>
+                <div><strong>Factura {{ f.estado | etiqueta | lowercase }}</strong><span class="texto-chico texto-2">{{ f.creadoEn | fecha: 'hora' }}</span></div></li>
+            }
+          </ol>
+        </section>
+      </div>
+    </div>
+  } @else {
+    <p class="cargando">Cargando…</p>
+  }
+</div>
