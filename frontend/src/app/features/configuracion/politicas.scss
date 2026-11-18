@@ -1,0 +1,6 @@
+.cabecera { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--sc-borde); h2 { margin: 0; } }
+.sin-margen { margin: 0; }
+.inactivo td { opacity: .6; }
+.fin { justify-content: flex-end; }
+.margen-arriba { margin-top: 14px; }
+.aviso { margin: 12px 0; }

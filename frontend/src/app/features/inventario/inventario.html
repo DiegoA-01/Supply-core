@@ -15,6 +15,7 @@
         <button type="button" class="boton" (click)="exportarPorCorreo()"><span class="material-symbols-outlined">mail</span> Enviarme el Excel</button>
         @if (esAdminCompras()) {
           <button type="button" class="boton" (click)="abrir('carga')"><span class="material-symbols-outlined">upload</span> Carga masiva (Excel)</button>
+          <button type="button" class="boton" (click)="abrir('inactivos')">Inactivos</button>
           <button type="button" class="boton primario" (click)="abrir('nuevo')"><span class="material-symbols-outlined">add</span> Nuevo producto</button>
         }
       </div>
@@ -44,7 +45,7 @@
 
   @if (panel() === 'nuevo') {
     <section class="tarjeta">
-      <h2>Nuevo producto</h2>
+      <h2>{{ editandoId() ? 'Editar producto' : 'Nuevo producto' }}</h2>
       <form [formGroup]="nuevo" (ngSubmit)="crearProducto()" class="formulario dos">
         <div class="campo"><label for="codigo">Código</label><input id="codigo" class="entrada" formControlName="codigo"></div>
         <div class="campo"><label for="nombre">Nombre</label><input id="nombre" class="entrada" formControlName="nombre"></div>
@@ -61,10 +62,30 @@
         <div class="campo"><label for="min">Stock mínimo</label><input id="min" type="number" min="0" class="entrada num" formControlName="stockMinimo"></div>
         <div class="campo"><label for="max">Stock máximo</label><input id="max" type="number" min="0" class="entrada num" formControlName="stockMaximo"></div>
         <div class="campo"><label for="costo">Costo de referencia</label><input id="costo" type="number" min="0" class="entrada num" formControlName="costoReferencia"></div>
-        <div class="fila fin"><button type="submit" class="boton primario" [disabled]="trabajando()">Crear producto</button>
+        <div class="fila fin"><button type="submit" class="boton primario" [disabled]="trabajando()">{{ editandoId() ? 'Guardar cambios' : 'Crear producto' }}</button>
           <button type="button" class="boton" (click)="panel.set('ninguno')">Cancelar</button></div>
       </form>
-      <p class="texto-chico texto-2">El producto nace con stock 0: el stock entra con una recepción o un ajuste con motivo.</p>
+      <p class="texto-chico texto-2">{{ editandoId() ? 'El stock no se cambia aquí: solo cambia con recepciones, ajustes con motivo y traslados.' : 'El producto nace con stock 0: el stock entra con una recepción o un ajuste con motivo.' }}</p>
+    </section>
+  }
+
+  @if (panel() === 'inactivos') {
+    <section class="tarjeta">
+      <h2>Productos inactivos</h2>
+      <p class="texto-2">Dejaron de ofrecerse, pero su historial se conserva. Al activarlos vuelven a aparecer en solicitudes y cotizaciones.</p>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Producto</th><th>Categoría</th><th class="num">Stock</th><th></th></tr></thead>
+          <tbody>
+            @for (p of inactivos() ?? []; track p.id) {
+              <tr><td><strong>{{ p.nombre }}</strong><span class="sub">{{ p.codigo }}</span></td><td>{{ p.categoria?.nombre }}</td><td class="num">{{ p.stockTotal | numero }}</td>
+                <td class="num"><button type="button" class="boton chico primario" (click)="activar(p)">Activar</button></td></tr>
+            } @empty {
+              <tr><td colspan="4" class="vacio">{{ inactivos() ? 'No hay productos inactivos.' : 'Cargando…' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
     </section>
   }
 
@@ -144,7 +165,7 @@
       <table class="tabla">
         <thead>
           <tr><th>Producto</th><th class="oculto-movil">Categoría</th><th class="oculto-movil">Stock vs. máximo</th><th class="num">Stock</th><th class="num">Mínimo</th>
-            @if (resumen()) { <th class="num">Valor</th> }<th>Estado</th></tr>
+            @if (resumen()) { <th class="num">Valor</th> }<th>Estado</th>@if (esAdminCompras()) { <th></th> }</tr>
         </thead>
         <tbody>
           @for (f of filas() ?? []; track f.productoId) {
@@ -156,9 +177,15 @@
               <td class="num">{{ f.stockMinimo | numero }}</td>
               @if (resumen()) { <td class="num">{{ f.valor | pesos }}</td> }
               <td><span class="chip" [class]="'chip ' + estado(f).tono">{{ estado(f).texto }}</span></td>
+              @if (esAdminCompras()) {
+                <td class="num"><div class="fila fin">
+                  <button type="button" class="boton chico" (click)="editar(f)">Editar</button>
+                  <button type="button" class="boton chico peligro" (click)="desactivar(f)">Desactivar</button>
+                </div></td>
+              }
             </tr>
           } @empty {
-            <tr><td colspan="7" class="vacio">{{ filas() ? 'No hay productos con este filtro.' : 'Cargando…' }}</td></tr>
+            <tr><td colspan="9" class="vacio">{{ filas() ? 'No hay productos con este filtro.' : 'Cargando…' }}</td></tr>
           }
         </tbody>
       </table>

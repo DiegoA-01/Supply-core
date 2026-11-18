@@ -2,7 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { CargaMasiva, Categoria, InventarioItem, InventarioResumen, SugerenciaReorden, UnidadMedida } from '../../core/api/modelos';
+import { CargaMasiva, Categoria, InventarioItem, InventarioResumen, Producto, SugerenciaReorden, UnidadMedida } from '../../core/api/modelos';
 import { NumeroPipe, PesosPipe } from '../../core/formato/formato';
 import { InventarioService } from '../../core/servicios/inventario.service';
 import { iso } from '../../core/servicios/reportes.service';
@@ -34,10 +34,13 @@ export class Inventario implements OnInit {
   protected readonly sugerencias = signal<SugerenciaReorden[]>([]);
   protected readonly categoriaId = signal<number | null>(null);
   protected readonly soloBajo = signal(false);
-  protected readonly panel = signal<'ninguno' | 'carga' | 'nuevo' | 'reorden'>('ninguno');
+  protected readonly panel = signal<'ninguno' | 'carga' | 'nuevo' | 'reorden' | 'inactivos'>('ninguno');
   protected readonly archivo = signal<File | null>(null);
   protected readonly carga = signal<CargaMasiva | null>(null);
   protected readonly trabajando = signal(false);
+  /** Producto que se está editando ({@code null} = el formulario crea uno nuevo). */
+  protected readonly editandoId = signal<number | null>(null);
+  protected readonly inactivos = signal<Producto[] | null>(null);
 
   protected readonly conReporte = computed(() => this.sesion.tieneRol(['AUDITOR', 'ADMIN_COMPRAS', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO', 'ALMACENISTA']) && this.sesion.tieneModulo('REPORTES'));
   protected readonly esAdminCompras = computed(() => this.sesion.tieneRol(['ADMIN_COMPRAS']) && !this.sesion.soloLectura());
@@ -90,11 +93,78 @@ export class Inventario implements OnInit {
   }
 
   /** @param p panel que se abre (o se cierra si ya estaba abierto) */
-  protected abrir(p: 'carga' | 'nuevo' | 'reorden'): void {
+  protected abrir(p: 'carga' | 'nuevo' | 'reorden' | 'inactivos'): void {
     this.panel.set(this.panel() === p ? 'ninguno' : p);
-    if (p === 'nuevo' && !this.unidades().length) {
+    if (p === 'nuevo') {
+      this.editandoId.set(null);
+      this.nuevo.reset({ codigo: '', nombre: '', categoriaId: 0, unidadMedidaId: 0, stockMinimo: 0, stockMaximo: null, costoReferencia: null });
+      this.cargarUnidades();
+    }
+    if (p === 'inactivos' && this.panel() === 'inactivos') {
+      this.cargarInactivos();
+    }
+  }
+
+  /** @param f fila; abre el formulario con los datos del producto para corregirlos (el stock no se edita aquí) */
+  protected editar(f: Fila): void {
+    if (!f.productoId) {
+      return;
+    }
+    this.cargarUnidades();
+    this.servicio.producto(f.productoId).subscribe({
+      next: p => {
+        this.editandoId.set(p.id ?? null);
+        this.nuevo.reset({
+          codigo: p.codigo ?? '', nombre: p.nombre ?? '', categoriaId: p.categoria?.id ?? 0, unidadMedidaId: p.unidadMedida?.id ?? 0,
+          stockMinimo: p.stockMinimo ?? 0, stockMaximo: p.stockMaximo ?? null, costoReferencia: p.costoReferencia ?? null,
+        });
+        this.panel.set('nuevo');
+      },
+      error: e => this.avisos.error(e),
+    });
+  }
+
+  /** @param f fila; desactiva el producto (deja de ofrecerse; su historial y stock se conservan) */
+  protected desactivar(f: Fila): void {
+    if (!f.productoId || !window.confirm(`¿Desactivar "${f.nombre}"? Deja de ofrecerse en solicitudes y cotizaciones; su historial se conserva.`)) {
+      return;
+    }
+    this.servicio.cambiarEstadoProducto(f.productoId, false).subscribe({
+      next: () => {
+        this.avisos.ok(`${f.nombre} quedó inactivo.`);
+        this.cargar();
+        if (this.panel() === 'inactivos') {
+          this.cargarInactivos();
+        }
+      },
+      error: e => this.avisos.error(e),
+    });
+  }
+
+  /** @param p producto inactivo; lo vuelve a activar */
+  protected activar(p: Producto): void {
+    if (!p.id) {
+      return;
+    }
+    this.servicio.cambiarEstadoProducto(p.id, true).subscribe({
+      next: () => {
+        this.avisos.ok(`${p.nombre} quedó activo.`);
+        this.cargarInactivos();
+        this.cargar();
+      },
+      error: e => this.avisos.error(e),
+    });
+  }
+
+  private cargarUnidades(): void {
+    if (!this.unidades().length) {
       this.servicio.unidades().subscribe({ next: l => this.unidades.set(l), error: () => undefined });
     }
+  }
+
+  private cargarInactivos(): void {
+    this.inactivos.set(null);
+    this.servicio.productos({ activo: false }).subscribe({ next: p => this.inactivos.set(p.contenido ?? []), error: e => { this.inactivos.set([]); this.avisos.error(e); } });
   }
 
   protected exportarPorCorreo(): void {
@@ -147,11 +217,14 @@ export class Inventario implements OnInit {
       return;
     }
     const v = this.nuevo.getRawValue();
+    const datos = { ...v, stockMaximo: v.stockMaximo ?? undefined, costoReferencia: v.costoReferencia ?? undefined };
+    const id = this.editandoId();
     this.trabajando.set(true);
-    this.servicio.crear({ ...v, stockMaximo: v.stockMaximo ?? undefined, costoReferencia: v.costoReferencia ?? undefined }).subscribe({
+    (id ? this.servicio.actualizarProducto(id, datos) : this.servicio.crear(datos)).subscribe({
       next: p => {
         this.trabajando.set(false);
-        this.avisos.ok(`Producto ${p.codigo} creado.`);
+        this.avisos.ok(`Producto ${p.codigo} ${id ? 'actualizado' : 'creado'}.`);
+        this.editandoId.set(null);
         this.nuevo.reset();
         this.panel.set('ninguno');
         this.cargar();

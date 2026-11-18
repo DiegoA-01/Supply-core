@@ -1,0 +1,8 @@
+.filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin-bottom: 14px; .campo { min-width: 180px; } }
+.nowrap { white-space: nowrap; }
+.uso { min-width: 150px; }
+.barra > span.verde { background: #2e9e5b; }
+.barra > span.ambar { background: #e0a21b; }
+.barra > span.rojo { background: #d6402a; }
+.margen-arriba { margin-top: 14px; }
+.aviso { margin: 12px 0; }

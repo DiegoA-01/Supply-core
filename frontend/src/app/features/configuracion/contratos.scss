@@ -1,0 +1,13 @@
+.filtros { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; margin-bottom: 14px; .campo { min-width: 160px; flex: 1; } }
+.check { display: flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; padding-bottom: 8px; }
+.campo.ancho { grid-column: 1 / -1; }
+.etiqueta-seccion { font-weight: 600; }
+.linea { display: grid; grid-template-columns: minmax(180px, 2fr) repeat(3, minmax(100px, 1fr)) auto; gap: 10px; align-items: end; margin: 8px 0; }
+.nowrap { white-space: nowrap; }
+.titulo { justify-content: space-between; h2 { margin: 0; } }
+.paginacion { justify-content: center; margin-top: 12px; }
+.margen-arriba { margin-top: 14px; }
+.bloque { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 10px; background: #f6f6f6; label { font-weight: 600; font-size: 13px; } }
+.peligro-fondo { background: #fff3f0; }
+.aviso { margin: 12px 0; }
+@media (max-width: 860px) { .linea { grid-template-columns: 1fr 1fr; } }

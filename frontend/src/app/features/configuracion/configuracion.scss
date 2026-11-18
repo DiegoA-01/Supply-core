@@ -1,0 +1,6 @@
+.grupo { font-size: 18px; margin: 8px 0 10px; }
+.rejilla.tarjetas { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.entrada { display: flex; gap: 14px; align-items: flex-start; text-decoration: none; color: inherit; transition: box-shadow .15s, transform .15s; p { margin: 4px 0 8px; } }
+.entrada:hover { box-shadow: 0 6px 18px rgb(0 0 0 / 10%); transform: translateY(-1px); }
+.entrada:focus-visible { outline: 3px solid #f6b9a3; outline-offset: 2px; }
+.icono { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 10px; background: var(--sc-primario-suave); color: var(--sc-primario); }

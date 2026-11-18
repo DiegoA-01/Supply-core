@@ -1,0 +1,120 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Proveedores</p>
+    <div class="encabezado">
+      <div><h1>Proveedores</h1><p>Se registran solos en el portal; solo cotizan cuando compras los habilita.</p></div>
+      <div class="acciones pastillas">
+        @for (e of estados; track e.texto) {
+          <button type="button" class="pastilla" [class.activa]="estado() === e.valor" (click)="filtrar(e.valor)">{{ e.texto }}</button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="rejilla principal">
+    <section class="tarjeta sin-relleno">
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Proveedor</th><th class="oculto-movil">Contacto</th><th>Estado</th><th class="num">Score</th><th class="oculto-movil">Registro</th></tr></thead>
+          <tbody>
+            @for (p of lista() ?? []; track p.id) {
+              <tr class="seleccionable" [class.seleccionada]="detalle()?.id === p.id" (click)="abrir(p)">
+                <td><strong>{{ p.razonSocial }}</strong><span class="sub">NIT {{ p.nit }}</span></td>
+                <td class="oculto-movil">{{ p.correoContacto }}<span class="sub">{{ p.telefono }}</span></td>
+                <td><sc-estado [valor]="p.estado" /></td>
+                <td class="num">{{ p.scoreActual | puntaje }}</td>
+                <td class="oculto-movil">{{ p.creadoEn | fecha }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" class="vacio">{{ lista() ? 'No hay proveedores con este filtro.' : 'Cargando…' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    @if (detalle(); as d) {
+      <section class="tarjeta">
+        <div class="fila titulo"><h2>{{ d.razonSocial }}</h2><sc-estado [valor]="d.estado" /></div>
+
+        @if (editando()) {
+          <form class="formulario" (ngSubmit)="guardar()">
+            <div class="campo"><label for="pc">Correo de contacto</label><input id="pc" name="pc" type="email" class="entrada" [ngModel]="correo()" (ngModelChange)="correo.set($event)"></div>
+            <div class="campo"><label for="pt">Teléfono</label><input id="pt" name="pt" class="entrada" [ngModel]="telefono()" (ngModelChange)="telefono.set($event)"></div>
+            <div class="campo"><label for="pd">Dirección</label><input id="pd" name="pd" class="entrada" [ngModel]="direccion()" (ngModelChange)="direccion.set($event)"></div>
+            <fieldset class="categorias">
+              <legend>Categorías en que cotiza</legend>
+              @for (c of categorias(); track c.id) {
+                <label class="check"><input type="checkbox" [checked]="categoriaIds().includes(c.id!)" (change)="alternarCategoria(c.id!)"> {{ c.nombre }}</label>
+              }
+            </fieldset>
+            <div class="fila">
+              <button type="submit" class="boton primario" [disabled]="trabajando()">Guardar</button>
+              <button type="button" class="boton" (click)="editando.set(false)">Cancelar</button>
+            </div>
+          </form>
+        } @else {
+          <div class="pares">
+            <div class="par"><span>NIT</span><span>{{ d.nit }}</span></div>
+            <div class="par"><span>Correo</span><span>{{ d.correoContacto ?? '—' }}</span></div>
+            <div class="par"><span>Teléfono</span><span>{{ d.telefono ?? '—' }}</span></div>
+            <div class="par"><span>Dirección</span><span>{{ d.direccion ?? '—' }}</span></div>
+            <div class="par"><span>Score</span><span><strong>{{ d.scoreActual | puntaje }}</strong></span></div>
+            <div class="par"><span>Registrado</span><span>{{ d.creadoEn | fecha }}</span></div>
+            @if (d.motivoEstado) { <div class="par"><span>Motivo del estado</span><span>{{ d.motivoEstado }}</span></div> }
+          </div>
+          <h3>Categorías</h3>
+          <div class="roles">@for (c of d.categorias ?? []; track c.id) { <span class="chip naranja">{{ c.nombre }}</span> } @empty { <span class="texto-2">Sin categorías</span> }</div>
+        }
+
+        @if (puedeDecidir() && !editando()) {
+          @if (motivoPara(); as que) {
+            <div class="bloque margen-arriba" [class.peligro-fondo]="true">
+              <label for="mo">Motivo para {{ que === 'rechazar' ? 'rechazar' : 'suspender' }} (obligatorio, mínimo 5 caracteres)</label>
+              <input id="mo" class="entrada" maxlength="500" [ngModel]="motivo()" (ngModelChange)="motivo.set($event)">
+              <div class="fila">
+                <button type="button" class="boton peligro" [disabled]="trabajando()" (click)="confirmarMotivo()">{{ que === 'rechazar' ? 'Rechazar' : 'Suspender' }}</button>
+                <button type="button" class="boton" (click)="cancelarMotivo()">Cancelar</button>
+              </div>
+            </div>
+          } @else {
+            <div class="fila margen-arriba">
+              @if (d.estado === 'PENDIENTE' || d.estado === 'SUSPENDIDO') { <button type="button" class="boton primario" [disabled]="trabajando()" (click)="habilitar()">{{ d.estado === 'SUSPENDIDO' ? 'Volver a habilitar' : 'Habilitar' }}</button> }
+              @if (d.estado === 'PENDIENTE') { <button type="button" class="boton peligro" (click)="motivoPara.set('rechazar')">Rechazar</button> }
+              @if (d.estado === 'HABILITADO') { <button type="button" class="boton peligro" (click)="motivoPara.set('suspender')">Suspender</button> }
+              <button type="button" class="boton" (click)="editar()">Editar datos</button>
+            </div>
+          }
+        }
+
+        <h3>Calificaciones</h3>
+        @if (evaluaciones(); as ev) {
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead><tr><th>Fecha</th><th class="num">Puntualidad</th><th class="num">Cantidad</th><th class="num">Calidad</th><th class="num">Precio</th><th class="num">Score</th></tr></thead>
+              <tbody>
+                @for (e of ev.contenido ?? []; track e.id) {
+                  <tr>
+                    <td class="nowrap">{{ e.creadoEn | fecha }}</td>
+                    <td class="num">{{ e.puntualidad | numero }}</td>
+                    <td class="num">{{ e.cumplimientoCantidad | numero }}</td>
+                    <td class="num">{{ e.calidad | numero }}</td>
+                    <td class="num">{{ e.precio | numero }}</td>
+                    <td class="num"><strong>{{ e.score | puntaje }}</strong></td>
+                  </tr>
+                } @empty { <tr><td colspan="6" class="vacio">Todavía no tiene calificaciones: se generan al cerrar una recepción.</td></tr> }
+              </tbody>
+            </table>
+          </div>
+          @if ((ev.totalPaginas ?? 0) > 1) {
+            <div class="fila paginacion">
+              <button type="button" class="boton chico" [disabled]="paginaEval() === 0" (click)="cargarEvaluaciones(d.id!, paginaEval() - 1)">Anterior</button>
+              <span class="texto-chico texto-2">Página {{ paginaEval() + 1 }} de {{ ev.totalPaginas }}</span>
+              <button type="button" class="boton chico" [disabled]="paginaEval() + 1 >= (ev.totalPaginas ?? 0)" (click)="cargarEvaluaciones(d.id!, paginaEval() + 1)">Siguiente</button>
+            </div>
+          }
+        } @else { <p class="texto-2">Cargando…</p> }
+      </section>
+    }
+  </div>
+</div>

@@ -1,0 +1,7 @@
+.criterios { display: grid; gap: 14px; margin: 14px 0; }
+.criterio { display: grid; grid-template-columns: minmax(160px, 1fr) minmax(120px, 2fr) 70px; align-items: center; gap: 14px; }
+.criterio label { font-weight: 600; }
+.valor { text-align: right; }
+.entrada-peso { display: flex; align-items: center; gap: 6px; grid-column: 2 / 4; max-width: 160px; }
+.aviso { margin: 12px 0; }
+@media (max-width: 720px) { .criterio { grid-template-columns: 1fr auto; .barra { grid-column: 1 / -1; order: 3; } } }

@@ -1,0 +1,153 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / <a routerLink="/app/configuracion">Configuración</a> / Contratos</p>
+    <div class="encabezado">
+      <div><h1>Contratos y precios pactados</h1>
+        <p>Con un contrato vigente que cubre una solicitud aprobada, el comprador emite la orden directa sin cotizar. Un contrato no se borra: se anula con motivo.</p></div>
+      <div class="acciones">
+        @if (puedeEditar()) { <button type="button" class="boton primario" (click)="nuevo()"><span class="material-symbols-outlined">add</span> Nuevo contrato</button> }
+      </div>
+    </div>
+  </div>
+
+  @if (!puedeEditar()) {
+    <div class="aviso"><span class="material-symbols-outlined">visibility</span>Solo consulta: los contratos los administra el jefe de compras.</div>
+  }
+
+  @if (abierto()) {
+    <section class="tarjeta">
+      <h2>Nuevo contrato</h2>
+      <form class="formulario dos" (ngSubmit)="guardar()">
+        <div class="campo"><label for="cp">Proveedor</label>
+          <select id="cp" name="cp" class="entrada" [ngModel]="proveedorId()" (ngModelChange)="proveedorId.set($event)">
+            <option [ngValue]="null" disabled>Elige</option>
+            @for (p of proveedores(); track p.id) { <option [ngValue]="p.id">{{ p.razonSocial }}</option> }
+          </select></div>
+        <div class="campo"><label for="cn">Número del contrato</label><input id="cn" name="cn" class="entrada" maxlength="40" [ngModel]="numero()" (ngModelChange)="numero.set($event)"></div>
+        <div class="campo"><label for="cd">Vigente desde</label><input id="cd" name="cd" type="date" class="entrada" [ngModel]="desde()" (ngModelChange)="desde.set($event)"></div>
+        <div class="campo"><label for="ch">Vigente hasta</label><input id="ch" name="ch" type="date" class="entrada" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)"></div>
+        <div class="campo ancho"><label for="cdes">Descripción (opcional)</label><input id="cdes" name="cdes" class="entrada" maxlength="250" [ngModel]="descripcion()" (ngModelChange)="descripcion.set($event)"></div>
+
+        <div class="campo ancho">
+          <span class="etiqueta-seccion">Precios pactados</span>
+          @for (p of precios(); track p; let i = $index) {
+            <div class="linea">
+              <div class="campo"><label [for]="'pp' + i">Producto</label>
+                <input [id]="'pp' + i" [name]="'pp' + i" class="entrada" [attr.list]="'lista-c' + i" autocomplete="off" placeholder="Código o nombre"
+                       [ngModel]="p.buscador.texto()" (ngModelChange)="p.buscador.escribir($event)">
+                <datalist [id]="'lista-c' + i">@for (o of p.buscador.opciones(); track o.id) { <option [value]="p.buscador.etiqueta(o)"></option> }</datalist></div>
+              <div class="campo"><label [for]="'pr' + i">Precio unitario</label>
+                <input [id]="'pr' + i" [name]="'pr' + i" type="number" min="0" step="any" class="entrada num" [ngModel]="p.precio" (ngModelChange)="cambiarPrecio(i, 'precio', $event)"></div>
+              <div class="campo"><label [for]="'pi' + i">IVA %</label>
+                <input [id]="'pi' + i" [name]="'pi' + i" type="number" min="0" max="100" step="any" class="entrada num" [ngModel]="p.impuesto" (ngModelChange)="cambiarPrecio(i, 'impuesto', $event)"></div>
+              <div class="campo"><label [for]="'pt' + i">Tope de cantidad (opcional)</label>
+                <input [id]="'pt' + i" [name]="'pt' + i" type="number" min="0" step="any" class="entrada num" placeholder="Sin tope" [ngModel]="p.tope" (ngModelChange)="cambiarPrecio(i, 'tope', $event)"></div>
+              <button type="button" class="boton chico" (click)="quitarPrecio(i)" [disabled]="precios().length === 1" aria-label="Quitar producto"><span class="material-symbols-outlined">close</span></button>
+            </div>
+          }
+          <button type="button" class="boton chico" (click)="agregarPrecio()"><span class="material-symbols-outlined">add</span> Agregar producto</button>
+        </div>
+
+        <div class="fila">
+          <button type="submit" class="boton primario" [disabled]="trabajando()">{{ trabajando() ? 'Guardando…' : 'Crear contrato' }}</button>
+          <button type="button" class="boton" (click)="abierto.set(false)">Cancelar</button>
+        </div>
+      </form>
+    </section>
+  }
+
+  <div class="rejilla principal">
+    <section class="tarjeta">
+      <div class="filtros">
+        <div class="campo"><label for="fp">Proveedor</label>
+          <select id="fp" class="entrada" [ngModel]="proveedorFiltro()" (ngModelChange)="proveedorFiltro.set($event); buscar(0)">
+            <option [ngValue]="null">Todos</option>
+            @for (p of proveedores(); track p.id) { <option [ngValue]="p.id">{{ p.razonSocial }}</option> }
+          </select></div>
+        <div class="campo"><label for="fe">Estado</label>
+          <select id="fe" class="entrada" [ngModel]="estadoFiltro()" (ngModelChange)="estadoFiltro.set($event); buscar(0)">
+            <option [ngValue]="null">Todos</option><option value="ACTIVO">Activo</option><option value="ANULADO">Anulado</option>
+          </select></div>
+        <label class="check"><input type="checkbox" [ngModel]="soloVigentes()" (ngModelChange)="soloVigentes.set($event); buscar(0)"> Solo vigentes hoy</label>
+      </div>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Contrato</th><th>Proveedor</th><th>Vigencia</th><th>Estado</th></tr></thead>
+          <tbody>
+            @for (c of pagina()?.contenido ?? []; track c.id) {
+              <tr class="seleccionable" [class.seleccionada]="detalle()?.id === c.id" (click)="abrir(c)">
+                <td><strong>{{ c.numero }}</strong></td>
+                <td>{{ c.proveedorRazonSocial }}</td>
+                <td class="nowrap">{{ c.vigenteDesde | fecha: 'corta' }} al {{ c.vigenteHasta | fecha }}</td>
+                <td><sc-estado [valor]="c.estado" />@if (c.estado === 'ACTIVO') { <div class="texto-chico texto-2">{{ c.vigente ? 'vigente hoy' : 'fuera de fechas' }}</div> }</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="4" class="vacio">{{ pagina() ? 'No hay contratos con ese filtro.' : 'Cargando…' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (pagina(); as p) {
+        @if ((p.totalPaginas ?? 0) > 1) {
+          <div class="fila paginacion">
+            <button type="button" class="boton chico" [disabled]="numeroPagina() === 0" (click)="buscar(numeroPagina() - 1)">Anterior</button>
+            <span class="texto-chico texto-2">Página {{ numeroPagina() + 1 }} de {{ p.totalPaginas }}</span>
+            <button type="button" class="boton chico" [disabled]="numeroPagina() + 1 >= (p.totalPaginas ?? 0)" (click)="buscar(numeroPagina() + 1)">Siguiente</button>
+          </div>
+        }
+      }
+    </section>
+
+    @if (detalle(); as d) {
+      <section class="tarjeta">
+        <div class="fila titulo"><h2>{{ d.numero }}</h2><sc-estado [valor]="d.estado" /></div>
+        <div class="pares">
+          <div class="par"><span>Proveedor</span><span>{{ d.proveedorRazonSocial }}</span></div>
+          <div class="par"><span>Vigencia</span><span>{{ d.vigenteDesde | fecha }} al {{ d.vigenteHasta | fecha }}</span></div>
+          @if (d.descripcion) { <div class="par"><span>Descripción</span><span>{{ d.descripcion }}</span></div> }
+          @if (d.motivoAnulacion) { <div class="par"><span>Motivo de la anulación</span><span>{{ d.motivoAnulacion }}</span></div> }
+        </div>
+
+        <h3>Precios pactados</h3>
+        <table class="tabla">
+          <thead><tr><th>Producto</th><th class="num">Precio</th><th class="num">IVA</th><th class="num">Tope</th><th class="num">Consumido</th><th class="num">Disponible</th></tr></thead>
+          <tbody>
+            @for (p of d.precios ?? []; track p.id) {
+              <tr>
+                <td><strong>{{ p.productoCodigo }}</strong> <span class="texto-2">{{ p.productoNombre }}</span></td>
+                <td class="num">{{ p.precioUnitario | pesos }}</td>
+                <td class="num">{{ p.impuestoPct | numero }} %</td>
+                <td class="num">{{ p.cantidadMaxima == null ? 'Sin tope' : (p.cantidadMaxima | numero) + ' ' + p.unidad }}</td>
+                <td class="num">{{ p.consumido | numero }}</td>
+                <td class="num">{{ p.cantidadMaxima == null ? '—' : (p.disponible | numero) }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        @if (puedeEditar() && d.estado === 'ACTIVO') {
+          @if (cambiandoVigencia()) {
+            <div class="bloque margen-arriba">
+              <label for="nv">Nueva fecha de fin</label>
+              <input id="nv" type="date" class="entrada" [ngModel]="nuevaVigencia()" (ngModelChange)="nuevaVigencia.set($event)">
+              <div class="fila"><button type="button" class="boton primario" [disabled]="trabajando()" (click)="guardarVigencia()">Guardar vigencia</button>
+                <button type="button" class="boton" (click)="cancelarCambios()">Cancelar</button></div>
+            </div>
+          } @else if (anulando()) {
+            <div class="bloque peligro-fondo margen-arriba">
+              <label for="ma">Motivo de la anulación (obligatorio, mínimo 5 caracteres)</label>
+              <input id="ma" class="entrada" maxlength="500" [ngModel]="motivo()" (ngModelChange)="motivo.set($event)" placeholder="Ej. El proveedor cambió sus precios">
+              <div class="fila"><button type="button" class="boton peligro" [disabled]="trabajando()" (click)="anular()">Anular contrato</button>
+                <button type="button" class="boton" (click)="cancelarCambios()">Cancelar</button></div>
+            </div>
+          } @else {
+            <div class="fila margen-arriba">
+              <button type="button" class="boton" (click)="abrirVigencia()">Cambiar vigencia</button>
+              <button type="button" class="boton peligro" (click)="anulando.set(true)">Anular</button>
+            </div>
+          }
+        }
+      </section>
+    }
+  </div>
+</div>

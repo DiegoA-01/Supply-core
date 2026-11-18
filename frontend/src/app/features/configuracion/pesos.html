@@ -1,0 +1,52 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / <a routerLink="/app/configuracion">Configuración</a> / Pesos de evaluación</p>
+    <div class="encabezado">
+      <div><h1>Pesos de evaluación</h1>
+        <p>Qué tanto cuenta cada criterio en el puntaje de una cotización. Deben sumar 100. Un cambio aplica a los análisis nuevos; los que ya se hicieron guardan los pesos con que se calcularon.</p></div>
+      <div class="acciones">
+        @if (puedeEditar() && !editando() && vigente()) { <button type="button" class="boton primario" (click)="editar()"><span class="material-symbols-outlined">tune</span> Cambiar pesos</button> }
+      </div>
+    </div>
+  </div>
+
+  @if (!puedeEditar()) {
+    <div class="aviso"><span class="material-symbols-outlined">visibility</span>Solo consulta: los pesos los administra el jefe de compras.</div>
+  }
+
+  @if (vigente(); as v) {
+    <section class="tarjeta">
+      <h2>{{ editando() ? 'Nuevos pesos' : 'Pesos vigentes' }}</h2>
+      @if (!editando()) { <p class="texto-chico texto-2">Vigentes desde el {{ v.vigenteDesde | fecha }}.</p> }
+      <div class="criterios">
+        @for (p of v.pesos ?? []; track p.codigo) {
+          <div class="criterio">
+            <label [for]="'peso-' + p.codigo">{{ p.nombre }}</label>
+            @if (editando()) {
+              <div class="entrada-peso">
+                <input [id]="'peso-' + p.codigo" type="number" min="0" max="100" step="any" class="entrada num" [ngModel]="valores()[p.codigo!]" (ngModelChange)="cambiar(p.codigo!, $event)">
+                <span>%</span>
+              </div>
+            } @else {
+              <div class="barra" role="img" [attr.aria-label]="p.nombre + ' ' + p.peso + ' por ciento'"><span [style.width.%]="p.peso"></span></div>
+              <strong class="valor">{{ p.peso | numero }} %</strong>
+            }
+          </div>
+        }
+      </div>
+
+      @if (editando()) {
+        <div class="aviso" [class.verde]="suma100()" [class.ambar]="!suma100()" role="status">
+          <span class="material-symbols-outlined">{{ suma100() ? 'check_circle' : 'warning' }}</span>
+          Suman {{ suma() | numero }} de 100 {{ suma100() ? '' : (suma() < 100 ? '· faltan ' + (100 - suma() | numero) : '· sobran ' + (suma() - 100 | numero)) }}
+        </div>
+        <div class="fila">
+          <button type="button" class="boton primario" [disabled]="trabajando() || !suma100()" (click)="guardar()">{{ trabajando() ? 'Guardando…' : 'Guardar pesos nuevos' }}</button>
+          <button type="button" class="boton" (click)="editando.set(false)">Cancelar</button>
+        </div>
+      }
+    </section>
+  } @else {
+    <section class="tarjeta"><p class="texto-2">Cargando…</p></section>
+  }
+</div>
