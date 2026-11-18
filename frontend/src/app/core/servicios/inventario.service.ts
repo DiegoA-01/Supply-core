@@ -3,9 +3,18 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  CargaMasiva, Categoria, CorreoExportacion, InventarioResumen, Pagina, Producto, ProductoNuevo, Solicitud, SugerenciaReorden, UnidadMedida,
+  Bodega, CargaMasiva, Categoria, CorreoExportacion, Movimiento, MovimientoNuevo, RegistroMovimiento, StockBodega, InventarioResumen, Pagina, Producto, ProductoNuevo, Solicitud, SugerenciaReorden, UnidadMedida,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
+
+/** Filtros del kardex; los vacíos no se envían. */
+export interface FiltroMovimientos {
+  productoId?: number | null;
+  bodegaId?: number | null;
+  tipo?: string | null;
+  desde?: string | null;
+  hasta?: string | null;
+}
 
 /** Productos, stock, reorden sugerida y carga masiva. */
 @Injectable({ providedIn: 'root' })
@@ -77,6 +86,42 @@ export class InventarioService {
   /** Plantilla de Excel para la carga masiva. */
   plantilla(): Observable<Blob> {
     return this.http.get(api('/api/productos/carga-masiva/plantilla'), { responseType: 'blob' });
+  }
+
+  /** Bodegas activas. */
+  bodegas(): Observable<Bodega[]> {
+    return this.http.get<Bodega[]>(api('/api/bodegas'), { params: parametros({ activo: true }) });
+  }
+
+  /** @param bodegaId filtro opcional; existencia de cada producto en cada bodega (las cantidades las calcula el backend) */
+  stock(bodegaId?: number | null): Observable<StockBodega[]> {
+    return this.http.get<StockBodega[]>(api('/api/inventario/stock'), { params: parametros({ bodegaId }) });
+  }
+
+  /**
+   * Kardex: movimientos de stock, los más recientes primero.
+   *
+   * @param f      producto, bodega, tipo y rango de fechas (ISO)
+   * @param pagina número de página desde 0
+   */
+  movimientos(f: FiltroMovimientos, pagina: number): Observable<Pagina<Movimiento>> {
+    return this.http.get<Pagina<Movimiento>>(api('/api/inventario/movimientos'),
+      { params: parametros({ ...f, page: pagina, size: 25, sort: 'creadoEn,desc' }) });
+  }
+
+  /** @param datos salida por consumo, ajuste o traslado; el stock solo cambia por movimientos con motivo */
+  registrarMovimiento(datos: MovimientoNuevo): Observable<RegistroMovimiento> {
+    return this.http.post<RegistroMovimiento>(api('/api/inventario/movimientos'), datos);
+  }
+
+  /** @param f producto (obligatorio), bodega, tipo y fechas; kardex en Excel */
+  kardexExcel(f: FiltroMovimientos): Observable<Blob> {
+    return this.http.get(api('/api/exportaciones/inventario/kardex'), { params: parametros({ ...f, formato: 'xlsx' }), responseType: 'blob' });
+  }
+
+  /** @param f mismos filtros del Excel; lo envía al correo del usuario de la sesión */
+  kardexPorCorreo(f: FiltroMovimientos): Observable<CorreoExportacion> {
+    return this.http.post<CorreoExportacion>(api('/api/exportaciones/inventario/kardex/correo'), {}, { params: parametros({ ...f, formato: 'xlsx' }) });
   }
 
   /** Envía las existencias en Excel al correo del usuario de la sesión. */

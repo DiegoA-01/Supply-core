@@ -99,6 +99,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/recepcion/recepcion').then(m => m.RecepcionOrden),
       },
       {
+        path: 'inventario/movimientos',
+        title: 'Movimientos de stock · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: INTERNOS, modulo: 'INVENTARIO' },
+        loadComponent: () => import('./features/inventario/movimientos').then(m => m.Movimientos),
+      },
+      {
         path: 'inventario',
         title: 'Productos y stock · Supply-Core',
         canActivate: [permisoGuard],

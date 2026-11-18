@@ -37,7 +37,7 @@ Rutas sin uso: `/api/auth/recuperar`, `/restablecer`, `/mfa`, `/mfa/configurar`,
 7. Consola del dueño: editar el código de ingreso de una empresa (hoy solo se fija al crear). Requiere confirmar con el backend la ruta de edición.
 8. Configuración de notificaciones por usuario (`/api/config-notificaciones`).
 
-## Fase 3. Inventario
+## Fase 3. Inventario — hecha el 2026-11-18 (reorden y carga masiva ya estaban completas; el kardex se exporta aquí)
 Rutas sin uso: `/api/inventario/stock`, `/api/inventario/movimientos`.
 1. Stock por bodega con filtros y alertas de stock bajo.
 2. Movimientos de inventario con filtros y detalle.

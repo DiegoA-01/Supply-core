@@ -23,6 +23,12 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 - `/app/configuracion/notificaciones` (ADMIN_SISTEMA): interruptores de correo y campana por evento.
 - Falta: editar el código de ingreso de una empresa (no existe la ruta en el backend; ver `PLAN_FRONTEND.md`).
 
+## Movimientos de stock (2026-11-18, fase 3 de `PLAN_FRONTEND.md`)
+- `/app/inventario/movimientos` (todos los roles internos con el módulo INVENTARIO; menú "Movimientos de stock" y botón en Productos y stock). Dos pestañas: **Existencias por bodega** (`GET /api/inventario/stock`, filtro por bodega en el servidor y por texto en pantalla) y **Kardex** (`GET /api/inventario/movimientos` con producto, bodega, tipo y fechas, 25 por página, exportar a Excel o al correo; el kardex exige elegir producto).
+- Registrar movimiento (solo ALMACENISTA, no en mora): salida por consumo, ajuste que suma, ajuste que resta y traslado. La pantalla pide solo las bodegas que aplican a cada tipo y el motivo (obligatorio en ajustes, mínimo 5 caracteres); el backend vuelve a validar y avisa si el producto quedó bajo su mínimo. Las entradas por compra, devoluciones y despachos nunca se registran aquí.
+- Buscador de producto: escribe 2 letras y elige de la lista (consulta al backend, 15 resultados), sin cargar todo el catálogo.
+- Reorden sugerida y carga masiva ya estaban completas (revisar, luego aplicar todo o nada, errores por fila, plantilla).
+
 ## Decisiones (2026-11-05)
 - **Una sola app SaaS con tres zonas**: `/app` (empresa, `empresaGuard`), `/portal` (rol PROVEEDOR, `proveedorGuard`), `/plataforma` (dueño con MFA, `plataformaGuard`). Cada pantalla se carga perezosa.
 - **Librería**: Angular Material solo para comportamiento (menús, avisos, tooltips); el aspecto sale de tokens CSS en `styles.scss` tomados del mockup (primario `#d93a0b`). PrimeNG descartado: v22 exige licencia comercial con clave.

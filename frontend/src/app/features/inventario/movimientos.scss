@@ -1,0 +1,12 @@
+.pastillas { display: flex; gap: 8px; flex-wrap: wrap; }
+.pastilla {
+  padding: 8px 16px; border: 1px solid #e0e0e0; border-radius: 999px; background: #fff; font: inherit; font-weight: 600; cursor: pointer;
+  &.activa { background: var(--sc-primario); border-color: var(--sc-primario); color: #fff; }
+  &:focus-visible { outline: 3px solid #f6b9a3; outline-offset: 2px; }
+}
+.filtros { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.campo.ancho { grid-column: 1 / -1; }
+.separador { flex: 1; }
+.margen-arriba { margin-top: 14px; }
+.nowrap { white-space: nowrap; }
+.paginacion { justify-content: center; margin-top: 14px; }

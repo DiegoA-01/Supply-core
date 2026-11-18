@@ -59,6 +59,15 @@ const ETIQUETAS: Record<string, [string, Tono]> = {
   ACTIVA: ['Activa', 'verde'],
   MOROSA: ['En mora', 'ambar'],
   SUSPENDIDA: ['Suspendida', 'rojo'],
+  // Movimientos de inventario
+  ENTRADA_COMPRA: ['Entrada por compra', 'verde'],
+  SALIDA_CONSUMO: ['Salida por consumo', 'ambar'],
+  AJUSTE_POSITIVO: ['Ajuste que suma', 'verde'],
+  AJUSTE_NEGATIVO: ['Ajuste que resta', 'rojo'],
+  DEVOLUCION_PROVEEDOR: ['Devolución al proveedor', 'ambar'],
+  TRASLADO: ['Traslado entre bodegas', 'naranja'],
+  SALIDA_VENTA: ['Salida por despacho', 'ambar'],
+  ANULACION_DESPACHO: ['Despacho anulado', 'gris'],
   // Pago a proveedores
   TRANSFERENCIA: ['Transferencia', 'gris'],
   CONSIGNACION: ['Consignación', 'gris'],
