@@ -123,7 +123,9 @@ def main():
     tok_bodega = sesion('bodeguero@ferreteriademo.local')
     categorias = {n: exigir('categoría ' + n, llamar('POST', '/api/categorias', {'nombre': n}, tok_compras))['id']
                   for n in ('Construcción', 'Eléctrico', 'Pintura', 'Herramientas')}
-    unidad = exigir('unidades', llamar('GET', '/api/unidades-medida', token=tok_compras))[0]['id']
+    # los productos se cuentan por unidad (UND); no la primera de la lista, que puede ser una caja
+    unidad = next(u['id'] for u in exigir('unidades', llamar('GET', '/api/unidades-medida', token=tok_compras))
+                  if u['codigo'] == 'UND')
     # código, nombre, categoría, costo, entra, sale
     productos = [
         ('CEM-50', 'Cemento gris 50 kg', 'Construcción', 32000, 300, 280),

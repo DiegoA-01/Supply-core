@@ -113,14 +113,27 @@
 
   <h3>Qué se pidió</h3>
   <div class="tabla-contenedor"><table class="tabla">
-    <thead><tr><th>Solicitud</th><th>Quién</th><th class="oculto-movil">Para qué</th><th>Estado</th><th class="num">Monto estimado</th></tr></thead>
+    <thead><tr><th>Solicitud</th><th>Quién</th><th class="oculto-movil">Para qué</th><th>Qué pidió y cuánto</th><th>Estado</th><th class="num">Monto estimado</th></tr></thead>
     <tbody>
       @for (s of c.solicitudes; track s.consecutivo) {
         <tr><td class="nowrap"><strong>{{ s.consecutivo }}</strong><span class="sub">{{ s.enviadoEn | fecha }}</span></td>
           <td>{{ s.solicitante }}<span class="sub">{{ s.centroCosto }}</span></td>
-          <td class="oculto-movil">{{ s.motivo }}</td><td><sc-estado [valor]="s.estado" /></td>
-          <td class="num">{{ s.montoEstimado | pesos }}@if (s.montoIncompleto) { <span class="sub">incompleto</span> }</td></tr>
-      } @empty { <tr><td colspan="5" class="vacio">No se enviaron solicitudes en el periodo.</td></tr> }
+          <td class="oculto-movil">{{ s.motivo }}</td>
+          <td class="pedido">
+            @for (l of s.lineas ?? []; track $index) {
+              <div class="linea">
+                <strong>{{ l.producto }}</strong> <span class="texto-2">{{ l.codigo }}</span>
+                <span class="cuenta">{{ l.cantidad | numero }} {{ l.unidad }}@if (l.unidad !== l.unidadProducto && l.cantidadEnUnidadProducto != null) { ({{ l.cantidadEnUnidadProducto | numero }} {{ l.unidadProducto }}) }
+                  × {{ l.costoReferencia != null ? (l.costoReferencia | pesos) : 'sin costo' }}@if (l.subtotal != null) { = <b>{{ l.subtotal | pesos }}</b> }</span>
+              </div>
+            } @empty { <span class="texto-2">Sin detalle en este informe</span> }
+          </td>
+          <td><sc-estado [valor]="s.estado" /></td>
+          <td class="num">{{ s.montoEstimado | pesos }}@if (s.montoIncompleto) { <span class="sub">incompleto</span> }
+            @if (s.cuadra === true) { <span class="chip verde comprobado">Cuadra</span> }
+            @else if (s.cuadra === false) { <span class="chip ambar comprobado">No cuadra</span><span class="sub">con los costos de hoy da {{ s.montoCalculado | pesos }}</span> }
+            @else if (s.lineas?.length) { <span class="sub">no se puede comprobar: falta algún costo</span> }</td></tr>
+      } @empty { <tr><td colspan="6" class="vacio">No se enviaron solicitudes en el periodo.</td></tr> }
     </tbody></table></div>
 
   <h3>Qué se cotizó</h3>

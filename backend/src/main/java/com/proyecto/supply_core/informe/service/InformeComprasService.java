@@ -1,6 +1,7 @@
 package com.proyecto.supply_core.informe.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.proyecto.supply_core.auditoria.enums.AccionAuditoria;
 import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
+import com.proyecto.supply_core.catalogo.service.UnidadMedidaService;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
@@ -31,12 +33,14 @@ import com.proyecto.supply_core.compra.adjudicacion.entity.Adjudicacion;
 import com.proyecto.supply_core.compra.cotizacion.entity.Cotizacion;
 import com.proyecto.supply_core.compra.rfq.entity.Rfq;
 import com.proyecto.supply_core.compra.solicitud.entity.SolicitudCompra;
+import com.proyecto.supply_core.compra.solicitud.entity.SolicitudCompraLinea;
 import com.proyecto.supply_core.empresa.entity.CentroCosto;
 import com.proyecto.supply_core.empresa.repository.CentroCostoRepository;
 import com.proyecto.supply_core.informe.dto.EnviarInformeRequest;
 import com.proyecto.supply_core.informe.dto.InformeContenido;
 import com.proyecto.supply_core.informe.dto.InformeContenido.AdjudicacionFila;
 import com.proyecto.supply_core.informe.dto.InformeContenido.CotizacionFila;
+import com.proyecto.supply_core.informe.dto.InformeContenido.LineaFila;
 import com.proyecto.supply_core.informe.dto.InformeContenido.Resumen;
 import com.proyecto.supply_core.informe.dto.InformeContenido.RfqFila;
 import com.proyecto.supply_core.informe.dto.InformeContenido.SolicitudFila;
@@ -74,6 +78,7 @@ public class InformeComprasService {
     private final ReporteService reportes;
     private final NotificacionService notificaciones;
     private final AuditoriaService auditoria;
+    private final UnidadMedidaService unidades;
     /** Convierte la foto fija a JSON y de vuelta. */
     private final JsonMapper json = JsonMapper.builder().build();
 
@@ -84,16 +89,18 @@ public class InformeComprasService {
      * @param reportes       reporte de gasto que se incluye en el informe
      * @param notificaciones avisos de pedido y de envío
      * @param auditoria      registro de pedir y enviar
+     * @param unidades       conversión de la cantidad pedida a la unidad del producto
      */
     public InformeComprasService(InformeComprasRepository informes, UsuarioRepository usuarios,
             CentroCostoRepository centros, ReporteService reportes, NotificacionService notificaciones,
-            AuditoriaService auditoria) {
+            AuditoriaService auditoria, UnidadMedidaService unidades) {
         this.informes = informes;
         this.usuarios = usuarios;
         this.centros = centros;
         this.reportes = reportes;
         this.notificaciones = notificaciones;
         this.auditoria = auditoria;
+        this.unidades = unidades;
     }
 
     /**
@@ -266,10 +273,8 @@ public class InformeComprasService {
                 || adjudicaciones.size() > InformeContenido.MAXIMO_FILAS;
 
         return new InformeContenido(desde, hasta, LocalDateTime.now(), resumen,
-                primeras(solicitudes, s -> new SolicitudFila(s.getConsecutivo(),
-                        nombres.getOrDefault(s.getUsuarioSolicitanteId(), "—"),
-                        nombresCentros.getOrDefault(s.getCentroCostoId(), "—"), s.getEstado().name(),
-                        s.getMontoEstimado(), s.isMontoIncompleto(), s.getMotivo(), s.getEnviadoEn())),
+                primeras(solicitudes, s -> fila(s, nombres.getOrDefault(s.getUsuarioSolicitanteId(), "—"),
+                        nombresCentros.getOrDefault(s.getCentroCostoId(), "—"))),
                 primeras(rfqs, r -> new RfqFila(r.getConsecutivo(), r.getSolicitud().getConsecutivo(), r.getEstado().name(),
                         r.getInvitados().size(), informes.cotizacionesDeRfq(r.getId()), r.getFechaLimite())),
                 primeras(cotizaciones, c -> new CotizacionFila(c.getRfq().getConsecutivo(),
@@ -279,6 +284,50 @@ public class InformeComprasService {
                         a.getCotizacion().getProveedor().getRazonSocial(), a.getMontoTotal(), a.isSigueRecomendacion(),
                         a.getJustificacion(), a.getEstado().name(), a.getDecididoEn())),
                 reportes.gasto(desde, hasta, null, null), recortado);
+    }
+
+    /**
+     * Fila de una solicitud con sus productos y la comprobación del monto: cada línea es cantidad (en la unidad del
+     * producto) por costo de referencia, y la suma se compara con el monto estimado que se guardó al enviarla.
+     *
+     * @param s           solicitud
+     * @param solicitante nombre de quien la pidió
+     * @param centroCosto nombre del centro de costo
+     * @return fila del informe
+     */
+    private SolicitudFila fila(SolicitudCompra s, String solicitante, String centroCosto) {
+        List<LineaFila> lineas = s.getLineas().stream().map(this::linea).toList();
+        boolean completas = !lineas.isEmpty() && lineas.stream().allMatch(l -> l.subtotal() != null);
+        // se suma sin redondear cada línea, igual que el monto estimado, para no descuadrar por centavos
+        BigDecimal calculado = completas ? sumar(lineas.stream()
+                .map(l -> l.cantidadEnUnidadProducto().multiply(l.costoReferencia())).toList())
+                .setScale(2, RoundingMode.HALF_UP) : null;
+        Boolean cuadra = calculado == null || s.getMontoEstimado() == null ? null
+                : calculado.compareTo(s.getMontoEstimado()) == 0;
+        return new SolicitudFila(s.getConsecutivo(), solicitante, centroCosto, s.getEstado().name(), s.getMontoEstimado(),
+                s.isMontoIncompleto(), s.getMotivo(), s.getEnviadoEn(), lineas, calculado, cuadra);
+    }
+
+    /**
+     * Cuenta de una línea pedida: cantidad pasada a la unidad del producto por su costo de referencia.
+     *
+     * @param l línea de la solicitud
+     * @return línea del informe (sin subtotal si no hay costo o no se puede convertir la unidad)
+     */
+    private LineaFila linea(SolicitudCompraLinea l) {
+        var producto = l.getProducto();
+        BigDecimal enUnidadProducto;
+        try {
+            enUnidadProducto = unidades.convertir(l.getCantidad(), l.getUnidadMedida().getId(),
+                    producto.getUnidadMedida().getId());
+        } catch (RuntimeException e) {
+            enUnidadProducto = null; // unidades que ya no se pueden convertir: se muestra sin subtotal
+        }
+        BigDecimal costo = producto.getCostoReferencia();
+        BigDecimal subtotal = costo == null || enUnidadProducto == null ? null
+                : enUnidadProducto.multiply(costo).setScale(2, RoundingMode.HALF_UP);
+        return new LineaFila(producto.getCodigo(), producto.getNombre(), l.getCantidad(), l.getUnidadMedida().getCodigo(),
+                enUnidadProducto, producto.getUnidadMedida().getCodigo(), costo, subtotal);
     }
 
     /**

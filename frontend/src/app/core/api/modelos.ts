@@ -146,7 +146,13 @@ export interface InformeResumen {
   solicitudes: number; montoSolicitado: number; solicitudesPorEstado: Record<string, number>;
   rfqs: number; cotizacionesRecibidas: number; adjudicaciones: number; adjudicacionesFueraDeRecomendacion: number; montoAdjudicado: number;
 }
-export interface InformeSolicitud { consecutivo: string; solicitante: string; centroCosto: string; estado: string; montoEstimado?: number | null; montoIncompleto: boolean; motivo?: string | null; enviadoEn?: string; }
+/** Producto pedido y su cuenta: cantidad (en la unidad del producto) x costo de referencia, calculada por el backend. */
+export interface InformeLinea { codigo: string; producto: string; cantidad: number; unidad: string; cantidadEnUnidadProducto?: number | null; unidadProducto: string; costoReferencia?: number | null; subtotal?: number | null; }
+export interface InformeSolicitud {
+  consecutivo: string; solicitante: string; centroCosto: string; estado: string; montoEstimado?: number | null; montoIncompleto: boolean; motivo?: string | null; enviadoEn?: string;
+  /** Vienen desde que el informe trae el detalle; los informes enviados antes no los tienen. */
+  lineas?: InformeLinea[] | null; montoCalculado?: number | null; cuadra?: boolean | null;
+}
 export interface InformeRfq { consecutivo: string; solicitud: string; estado: string; invitados: number; cotizaciones: number; fechaLimite?: string; }
 export interface InformeCotizacion { rfq: string; proveedor: string; estado: string; total?: number | null; plazoEntregaDias?: number | null; enviadoEn?: string; }
 export interface InformeAdjudicacion { rfq: string; proveedor: string; montoTotal: number; sigueRecomendacion: boolean; justificacion?: string | null; estado: string; decididoEn?: string; }

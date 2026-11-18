@@ -59,9 +59,30 @@ public record InformeContenido(LocalDate desde, LocalDate hasta, LocalDateTime g
      * @param montoIncompleto si algún producto no tenía costo de referencia
      * @param motivo          justificación del solicitante
      * @param enviadoEn       fecha de envío a aprobación
+     * @param lineas          qué productos y cuántos pidió, con el cálculo de cada uno
+     * @param montoCalculado  suma de los subtotales de las líneas con el costo de referencia actual
+     * @param cuadra          si esa suma coincide con el monto estimado al enviarla ({@code null} si no se puede
+     *                        comprobar porque falta algún costo)
      */
     public record SolicitudFila(String consecutivo, String solicitante, String centroCosto, String estado,
-            BigDecimal montoEstimado, boolean montoIncompleto, String motivo, LocalDateTime enviadoEn) {
+            BigDecimal montoEstimado, boolean montoIncompleto, String motivo, LocalDateTime enviadoEn,
+            List<LineaFila> lineas, BigDecimal montoCalculado, Boolean cuadra) {
+    }
+
+    /**
+     * Producto pedido en una solicitud y su cuenta: cantidad (pasada a la unidad del producto) por costo de referencia.
+     *
+     * @param codigo             código del producto
+     * @param producto           nombre del producto
+     * @param cantidad           cantidad pedida
+     * @param unidad             unidad en que se pidió
+     * @param cantidadEnUnidadProducto cantidad convertida a la unidad del producto (igual si es la misma unidad)
+     * @param unidadProducto     unidad en que está el costo de referencia
+     * @param costoReferencia    costo de referencia actual ({@code null} si el producto no tiene)
+     * @param subtotal           cantidad convertida x costo ({@code null} si no tiene costo)
+     */
+    public record LineaFila(String codigo, String producto, BigDecimal cantidad, String unidad,
+            BigDecimal cantidadEnUnidadProducto, String unidadProducto, BigDecimal costoReferencia, BigDecimal subtotal) {
     }
 
     /**

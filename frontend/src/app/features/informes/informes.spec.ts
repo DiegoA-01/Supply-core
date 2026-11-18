@@ -13,7 +13,12 @@ const contenido: InformeContenido = {
   desde: '2026-11-01', hasta: '2026-11-30', generadoEn: '2026-11-18T16:00:00',
   resumen: { solicitudes: 3, montoSolicitado: 1500000, solicitudesPorEstado: { APROBADA: 2, PENDIENTE_APROBACION: 1 }, rfqs: 1,
     cotizacionesRecibidas: 2, adjudicaciones: 1, adjudicacionesFueraDeRecomendacion: 1, montoAdjudicado: 83776 },
-  solicitudes: [{ consecutivo: 'SOL-000002', solicitante: 'Bodeguero', centroCosto: 'Obras', estado: 'EN_RFQ', montoEstimado: 420000, montoIncompleto: false, motivo: 'Se acaba el cable' }],
+  solicitudes: [
+    { consecutivo: 'SOL-000002', solicitante: 'Bodeguero', centroCosto: 'Obras', estado: 'EN_RFQ', montoEstimado: 420000, montoIncompleto: false, motivo: 'Se acaba el cable',
+      lineas: [{ codigo: 'CAB-12', producto: 'Cable 12 AWG', cantidad: 150, unidad: 'UND', cantidadEnUnidadProducto: 150, unidadProducto: 'UND', costoReferencia: 2800, subtotal: 420000 }], montoCalculado: 420000, cuadra: true },
+    { consecutivo: 'SOL-000001', solicitante: 'Solicitante', centroCosto: 'Obras', estado: 'PENDIENTE_APROBACION', montoEstimado: 1110000, montoIncompleto: false, motivo: 'Pintura',
+      lineas: [{ codigo: 'PIN-20', producto: 'Pintura blanca 20 L', cantidad: 6, unidad: 'CAJA24', cantidadEnUnidadProducto: 144, unidadProducto: 'UND', costoReferencia: 7800, subtotal: 1123200 }], montoCalculado: 1123200, cuadra: false },
+  ],
   rfqs: [{ consecutivo: 'RFQ-000001', solicitud: 'SOL-000002', estado: 'ABIERTA', invitados: 2, cotizaciones: 1 }],
   cotizaciones: [{ rfq: 'RFQ-000001', proveedor: 'Electro Sur Ltda.', estado: 'ENVIADA', total: 83776, plazoEntregaDias: 5 }],
   adjudicaciones: [{ rfq: 'RFQ-000001', proveedor: 'Electro Sur Ltda.', montoTotal: 83776, sigueRecomendacion: false, justificacion: 'Entrega más rápida', estado: 'APROBADA' }],
@@ -70,6 +75,22 @@ describe('Informe de compras', () => {
     expect(texto()).toContain('SOL-000002');
     expect(texto()).toContain('Se apartó');
     expect(texto()).toContain('Entrega más rápida');
+  });
+
+  it('cada solicitud muestra qué productos pidió, cuántos, la cuenta y si el monto cuadra', () => {
+    crear(['ADMIN_SISTEMA']);
+    c()['abrir'](enviado);
+    backend.expectOne('/api/informes-compras/3/leido').flush({ ...enviado, leidoEn: '2026-11-18T10:00:00', analisis: 'Ok.', contenido });
+    backend.expectOne(r => r.url === '/api/informes-compras').flush(pagina([]));
+    fixture.detectChanges();
+
+    expect(texto()).toContain('Qué pidió y cuánto');
+    expect(texto()).toContain('Cable 12 AWG');
+    expect(texto()).toContain('150 UND');
+    expect(texto()).toContain('144 UND');      // 6 cajas pasadas a la unidad del costo
+    expect(texto()).toContain('Cuadra');
+    expect(texto()).toContain('No cuadra');
+    expect(fixture.nativeElement.querySelectorAll('.linea').length).toBe(2);
   });
 
   it('compras responde el pedido: toma su periodo, revisa los datos y envía con su análisis', () => {
