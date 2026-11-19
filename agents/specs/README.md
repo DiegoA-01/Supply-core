@@ -13,8 +13,8 @@ Estados de una spec: **Propuesta** (en revisión) → **Aprobada** (se puede pla
 |---|---|---|---|---|---|
 | [000-ci-github-actions](000-ci-github-actions/spec.md) | F0 | CI con GitHub Actions, Dependency Review y CodeQL | `feature/ci-github-actions` | — | Hecha (PR #26) |
 | [001-ventas-catalogo](001-ventas-catalogo/spec.md) | F1 | Módulos, roles, impuestos, código de barras, listas y precios con historial | `feature/ventas-catalogo` | 000 | Hecha (V29 + V31, PR #28) |
-| [002-ventas-clientes](002-ventas-clientes/spec.md) | F2 | Clientes, consumidor final, autorización de datos | `feature/ventas-clientes` | 001 | Hecha, pendiente de mezclar |
-| [003-caja-turnos](003-caja-turnos/spec.md) | F3 | Cajas, turnos, libro de caja, PIN de supervisor, cierre ciego | `feature/caja-turnos` | 001 | Propuesta |
+| [002-ventas-clientes](002-ventas-clientes/spec.md) | F2 | Clientes, consumidor final, autorización de datos | `feature/ventas-clientes` | 001 | Hecha (V32, PR #29) |
+| [003-caja-turnos](003-caja-turnos/spec.md) | F3 | Cajas, turnos, libro de caja, PIN de supervisor, cierre ciego | `feature/caja-turnos` | 001 | Hecha, pendiente de mezclar |
 | [004-venta-backend](004-venta-backend/spec.md) | F4 | La venta en una sola transacción: precios, descuentos, impuestos, pagos, stock, caja, idempotencia | `feature/ventas-pos-backend` | 002, 003 | Propuesta |
 | [005-pos-frontend](005-pos-frontend/spec.md) | F5 | POS con lector y atajos, cobro, tiquete de 80 mm, mi turno | `feature/ventas-pos-frontend` | 004 | Propuesta |
 | [006-anulacion-devolucion](006-anulacion-devolucion/spec.md) | F6 | Anulación en el turno y devolución de cliente | `feature/ventas-anulacion-devolucion` | 004 | Propuesta |
@@ -38,8 +38,8 @@ referencias cruzadas; catálogos de proveedor en PDF leídos con IA; correo real
 | D3 | ¿Redondear el total en efectivo a $50? | **Sí**, guardando la diferencia en `redondeo` para que cuadre. | Recomendada | 004 |
 | D4 | ¿Crédito a clientes en la primera versión? | **No**: dejarlo para la 007 y salir primero con contado. | Recomendada | 007 |
 | D5 | ¿Roles nuevos `SUPERVISOR_VENTAS` y `VENDEDOR`? | **Sí**; el dueño puede asignar los dos a la misma persona en negocios pequeños. | **Tomada** (2026-11-19) | 001 |
-| D6 | ¿Tolerancia de diferencia de caja sin aprobación? | $2.000, configurable por empresa. | Recomendada | 003 |
-| D7 | ¿Una caja puede descontar de varias bodegas? | **No**: una caja, una bodega. Los traslados ya existen. | Recomendada | 003 |
+| D6 | ¿Tolerancia de diferencia de caja sin aprobación? | $2.000, configurable por empresa. | **Tomada** (2026-11-19) | 003 |
+| D7 | ¿Una caja puede descontar de varias bodegas? | **No**: una caja, una bodega. Los traslados ya existen. | **Tomada** (2026-11-19) | 003 |
 | D8 | ¿Quién fija precios: solo el dueño o también el jefe de compras? | El dueño, con opción de delegarlo a `ADMIN_COMPRAS`. | **Tomada** (construida en V29) | 001 |
 | D9 | ¿Precio distinto por caja y por unidad del mismo producto? | **Sí**, como pedía la spec original; hoy el precio se guarda solo en la unidad del producto. | **Tomada** (2026-11-19) | 001 |
 
@@ -54,7 +54,8 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V26 a V30 | (en `develop`, PR #27) | Reabastecimiento, inventario por sede, pedidos internos, precios de venta (V29), catálogos de proveedores |
 | V31 | `feature/ventas-catalogo` | Completar la spec 001: módulos, roles y precio vigente único |
 | V32 | `feature/ventas-clientes` | Clientes y consumidor final (spec 002) |
-| V33 en adelante | libre | Se reserva al empezar cada spec |
+| V33 | `feature/caja-turnos` | Cajas, turnos, libro de caja, PIN y autorizaciones (spec 003) |
+| V34 en adelante | libre | Se reserva al empezar cada spec |
 
 ## Riesgos generales
 

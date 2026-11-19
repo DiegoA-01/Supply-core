@@ -1,6 +1,6 @@
 # Plan 003
 
-## Datos (migración: la siguiente libre, reservarla en `agents/specs/README.md`)
+## Datos (V33, reservada en `agents/specs/README.md`)
 **`caja`**: `id, empresa_id, sede_id, bodega_id, nombre, prefijo_consecutivo, tope_efectivo, activa`.
 - La bodega debe ser de la sede (D7: una caja, una bodega).
 
@@ -23,7 +23,17 @@ autorizado_por_usuario_id, creado_en`. Sin UPDATE ni DELETE.
   DESCUENTO, PRECIO_BAJO_MINIMO, DEVOLUCION, RETIRO, GASTO), turno_id, referencia_id, token_hash, vence_en, usada_en`.
   Solo se guarda el hash del token.
 
-**Configuración por empresa:** `empresa.tolerancia_diferencia_caja` (por defecto 2000, D6).
+**Configuración por empresa:** `empresa.tolerancia_diferencia_caja` (por defecto 2000, D6). Se lee y cambia en
+`GET/PUT /api/cajas/configuracion` (no en el formulario de la empresa), para que todo lo de caja quede en su módulo.
+
+**Ajustes al construir (2026-11-19):**
+- El usuario no tiene sede asignada: el cajero ve todas las cajas activas (no solo las de su sede).
+- La autorización la pide la sesión del cajero; el supervisor se identifica con su correo y su PIN en esa pantalla
+  (`POST /api/autorizaciones` lo llaman CAJERO, SUPERVISOR_VENTAS y ADMIN_SISTEMA).
+- Turno: dentro de la tolerancia queda `CERRADO`; si alguna diferencia por medio de pago la pasa, queda `CERRADO` con
+  `requiere_aprobacion` y pasa a `APROBADO` cuando un supervisor (que no sea el cajero) la explica.
+- Con el turno abierto, el cajero no ve cuánto efectivo debería haber: solo la marca `debeRetirar` cuando pasa el tope.
+- El gasto lleva un número de soporte en texto; la foto del recibo se agrega en la spec 005 con "Mi turno".
 
 ## Flujos
 **Abrir turno**
@@ -35,7 +45,7 @@ autorizado_por_usuario_id, creado_en`. Sin UPDATE ni DELETE.
 **Retiros y gastos menores**
 - **Retiro a bóveda:** cuando el efectivo pasa el `tope_efectivo` de la caja, la respuesta del turno trae la marca de
   aviso y la pantalla avisa que hay que retirar.
-- **Gasto menor:** con motivo y soporte (foto del recibo opcional, como `documento` del turno).
+- **Gasto menor:** con motivo y número de soporte (la foto del recibo llega en la spec 005).
 - Los dos con autorización de supervisor. Quedan en `movimiento_caja` en negativo.
 
 **Cerrar turno (cierre ciego)**
@@ -65,8 +75,9 @@ autorizado_por_usuario_id, creado_en`. Sin UPDATE ni DELETE.
 | `POST /api/turnos/{id}/aprobar` | SUPERVISOR_VENTAS, ADMIN_SISTEMA | Aprobar la diferencia |
 | `GET /api/turnos?estado=` | SUPERVISOR_VENTAS, ADMIN_SISTEMA, AUDITOR | Turnos abiertos, cierres y pendientes |
 | `GET /api/turnos/{id}/cierre` | los mismos y el cajero dueño del turno | Tiquete Z |
-| `POST /api/autorizaciones` | SUPERVISOR_VENTAS, ADMIN_SISTEMA | Valida PIN y devuelve el permiso de un solo uso |
-| `PUT /api/usuarios/me/pin` | SUPERVISOR_VENTAS, ADMIN_SISTEMA | Fijar o cambiar su PIN (pide la contraseña) |
+| `POST /api/autorizaciones` | CAJERO, SUPERVISOR_VENTAS, ADMIN_SISTEMA (sesión del cajero) | Valida correo y PIN del supervisor y devuelve el permiso de un solo uso |
+| `PUT /api/autorizaciones/mi-pin` | SUPERVISOR_VENTAS, ADMIN_SISTEMA | Fijar o cambiar su PIN (pide la contraseña) |
+| `GET/PUT /api/cajas/configuracion` | ADMIN_SISTEMA (leer también SUPERVISOR_VENTAS) | Tolerancia de diferencia de caja |
 
 ## Frontend
 - **Cajas y turnos** (`/app/caja/turnos`, supervisor y dueño): turnos abiertos, cierres, diferencias por aprobar.

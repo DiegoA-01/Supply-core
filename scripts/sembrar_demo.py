@@ -181,6 +181,15 @@ def main():
         'correo': 'compras@tallerelpiston.local', 'aceptaDatos': True, 'cupoCredito': 2000000, 'plazoDias': 30},
         tok_admin))
 
+    # 5d. Caja (spec 003): una caja en la bodega principal y el PIN del supervisor de ventas para autorizar
+    exigir('caja', llamar('POST', '/api/cajas', {
+        'nombre': 'Caja 1 mostrador', 'sedeId': sede['id'], 'bodegaId': bodega['id'], 'prefijoConsecutivo': 'C1',
+        'topeEfectivo': 500000}, tok_admin))
+    pin_supervisor = ''.join(secrets.choice(string.digits) for _ in range(6))
+    tok_supervisor = sesion('supervisor.ventas@ferreteriademo.local')
+    exigir('PIN del supervisor', llamar('PUT', '/api/autorizaciones/mi-pin', {
+        'passwordActual': claves['supervisor.ventas@ferreteriademo.local'], 'pin': pin_supervisor}, tok_supervisor))
+
     # 6. Políticas de aprobación: las solicitudes las aprueba el jefe de compras; las adjudicaciones, el aprobador
     #    (nadie aprueba lo suyo: el backend lo impide por segregación de funciones)
     for tipo, rol in (('SOLICITUD', 'ADMIN_COMPRAS'), ('ADJUDICACION', 'APROBADOR')):
@@ -220,6 +229,8 @@ Segundo factor (obligatorio para este rol): llave para la app autenticadora:
 Usuarios con rol (sin segundo factor; entran con código de empresa, correo y clave)
 {'Rol':<18}{'Correo':<40}Clave
 {filas}
+PIN del supervisor de ventas (autoriza retiros, gastos y anulaciones en la caja): {pin_supervisor}
+
 == PROVEEDOR (portal, zona /portal; mismo código de empresa) ==
 Correo:  {prov_correo}
 Clave:   {prov_clave}

@@ -74,5 +74,11 @@ public enum EntidadAuditada {
     /** Tabla {@code catalogo_item}. */
     CATALOGO_ITEM,
     /** Tabla {@code cliente}. */
-    CLIENTE
+    CLIENTE,
+    /** Tabla {@code caja}. */
+    CAJA,
+    /** Tabla {@code turno_caja}. */
+    TURNO_CAJA,
+    /** Tabla {@code autorizacion_supervisor}. */
+    AUTORIZACION
 }

@@ -99,6 +99,7 @@ export class Shell implements OnInit {
       case 'PEDIDO_INTERNO_RESPONDIDO': return '/app/pedidos';
       case 'CATALOGO_ACTUALIZADO': return '/app/catalogos';
       case 'INFORME_PEDIDO': case 'INFORME_RECIBIDO': return '/app/informes';
+      case 'TURNO_DIFERENCIA': return '/app/caja';
       default: return undefined;
     }
   }

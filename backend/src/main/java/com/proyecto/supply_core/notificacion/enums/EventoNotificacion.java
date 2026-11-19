@@ -75,7 +75,9 @@ public enum EventoNotificacion {
     /** Un proveedor subió o actualizó su catálogo (destino: COMPRADOR y ADMIN_COMPRAS). */
     CATALOGO_ACTUALIZADO("Un proveedor actualizó su catálogo"),
     /** El área de compras envió un informe de compras al administrador de la empresa. */
-    INFORME_RECIBIDO("Informe de compras recibido");
+    INFORME_RECIBIDO("Informe de compras recibido"),
+    /** Un turno cerró con una diferencia de caja que pasa la tolerancia y espera la aprobación de un supervisor. */
+    TURNO_DIFERENCIA("Diferencia de caja por aprobar");
 
     /** Asunto del correo. */
     private final String asunto;

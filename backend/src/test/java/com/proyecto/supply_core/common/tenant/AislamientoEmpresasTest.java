@@ -2241,6 +2241,164 @@ class AislamientoEmpresasTest {
     }
 
     @Test
+    void elTurnoDeCajaSeCierraACiegasConAutorizacionesDeUnSoloUsoYSinCruzarEmpresas() throws Exception {
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        com.fasterxml.jackson.databind.ObjectMapper lector = new com.fasterxml.jackson.databind.ObjectMapper();
+        String duenoA = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+        String cajeroA = token(empresaA, usuarioA2, "CAJERO");
+        Long sedeA = jdbc.queryForObject("SELECT sede_id FROM bodega WHERE id = ?", Long.class, bodegaA);
+        try {
+            // el dueño crea la caja; una bodega de otra empresa no existe para A
+            mvc.perform(post("/api/cajas").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"nombre\":\"Caja 1\",\"sedeId\":" + sedeA + ",\"bodegaId\":" + bodegaB
+                                    + ",\"prefijoConsecutivo\":\"c1\",\"topeEfectivo\":100000}"))
+                    .andExpect(status().isNotFound());
+            long cajaId = lector.readTree(mvc.perform(post("/api/cajas").header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content("{\"nombre\":\"Caja 1\",\"sedeId\":" + sedeA + ",\"bodegaId\":" + bodegaA
+                                    + ",\"prefijoConsecutivo\":\"c1\",\"topeEfectivo\":100000}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.prefijoConsecutivo").value("C1"))
+                    .andReturn().getResponse().getContentAsString()).get("id").asLong();
+            mvc.perform(post("/api/cajas").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"nombre\":\"Caja 2\",\"sedeId\":" + sedeA + ",\"bodegaId\":" + bodegaA
+                                    + ",\"prefijoConsecutivo\":\"C2\",\"topeEfectivo\":0}"))
+                    .andExpect(status().isForbidden());
+
+            // el cajero abre su turno; ni él abre otro ni otra persona usa la misma caja
+            String abrir = "{\"cajaId\":" + cajaId + ",\"baseApertura\":50000}";
+            long turnoId = lector.readTree(mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content(abrir))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.estado").value("ABIERTO"))
+                    .andReturn().getResponse().getContentAsString()).get("id").asLong();
+            mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json).content(abrir))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("TURNO_ABIERTO"));
+            mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "CAJERO"))
+                            .contentType(json).content(abrir))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CAJA_OCUPADA"));
+
+            // el dueño fija su PIN confirmando la contraseña
+            mvc.perform(put("/api/autorizaciones/mi-pin").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"passwordActual\":\"otra-clave\",\"pin\":\"123456\"}"))
+                    .andExpect(status().isConflict());
+            mvc.perform(put("/api/autorizaciones/mi-pin").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"passwordActual\":\"" + CLAVE + "\",\"pin\":\"123456\"}"))
+                    .andExpect(status().isNoContent());
+
+            // autorización: PIN equivocado no sirve; el correcto da un permiso de un solo uso
+            String pedir = "{\"correo\":\"admin@mismo.com\",\"pin\":\"%s\",\"accion\":\"RETIRO\",\"turnoId\":" + turnoId + "}";
+            mvc.perform(post("/api/autorizaciones").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(pedir.formatted("000000")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("AUTORIZACION_INVALIDA"));
+            String permiso = lector.readTree(mvc.perform(post("/api/autorizaciones").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content(pedir.formatted("123456")))
+                    .andExpect(status().isCreated())
+                    .andReturn().getResponse().getContentAsString()).get("token").asText();
+            // no hay efectivo para retirar 60.000 (la base es 50.000): el permiso no se gasta
+            String retiro = "{\"tipo\":\"RETIRO\",\"monto\":%s,\"motivo\":\"A la bóveda\",\"autorizacion\":\"" + permiso + "\"}";
+            mvc.perform(post("/api/turnos/" + turnoId + "/movimientos").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content(retiro.formatted("60000")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("EFECTIVO_INSUFICIENTE"));
+            mvc.perform(post("/api/turnos/" + turnoId + "/movimientos").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content(retiro.formatted("20000")))
+                    .andExpect(status().isOk());
+            mvc.perform(post("/api/turnos/" + turnoId + "/movimientos").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content(retiro.formatted("1000")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("AUTORIZACION_INVALIDA"));
+
+            // una venta en efectivo (la registra la spec 004): el cajero no la ve ni ve el esperado, solo el aviso de tope
+            jdbc.update("INSERT INTO movimiento_caja (empresa_id, turno_id, tipo, medio_pago, monto, usuario_id) "
+                    + "VALUES (?, ?, 'VENTA', 'EFECTIVO', 80000, ?)", empresaA, turnoId, usuarioA2);
+            mvc.perform(get("/api/turnos/actual").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.esperado").doesNotExist())
+                    .andExpect(jsonPath("$.debeRetirar").value(true))                    // 50.000 − 20.000 + 80.000 > 100.000
+                    .andExpect(jsonPath("$.movimientos[?(@.tipo=='VENTA')]").isEmpty())
+                    .andExpect(jsonPath("$.movimientos[?(@.tipo=='RETIRO')].autorizadoPor").isNotEmpty());
+            // el supervisor sí ve la venta
+            mvc.perform(get("/api/turnos/" + turnoId).header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$.movimientos[?(@.tipo=='VENTA')]").isNotEmpty());
+
+            // cierre ciego: cuenta 105.000 y el esperado era 110.000; 5.000 pasan la tolerancia de 2.000
+            mvc.perform(post("/api/turnos/" + turnoId + "/cerrar").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"contadoEfectivo\":105000,\"contadoOtros\":{\"TARJETA_DEBITO\":0}}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("CERRADO"))
+                    .andExpect(jsonPath("$.esperado.EFECTIVO").value(110000.0))
+                    .andExpect(jsonPath("$.diferencias.EFECTIVO").value(-5000.0))
+                    .andExpect(jsonPath("$.requiereAprobacion").value(true));
+            mvc.perform(get("/api/turnos?pendientes=true").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$.contenido[0].id").value(turnoId));
+            // nadie aprueba lo suyo; el dueño, sí
+            String aprobar = "{\"explicacion\":\"Se pagó un domicilio sin registrarlo\"}";
+            mvc.perform(post("/api/turnos/" + turnoId + "/aprobar").header(HttpHeaders.AUTHORIZATION,
+                            token(empresaA, usuarioA2, "SUPERVISOR_VENTAS")).contentType(json).content(aprobar))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("APRUEBA_LO_SUYO"));
+            mvc.perform(post("/api/turnos/" + turnoId + "/aprobar").header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content(aprobar))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("APROBADO"))
+                    .andExpect(jsonPath("$.aprobadoPor").exists());
+
+            // nada cruza de empresa: ni la caja, ni el turno, ni autorizar sobre un turno ajeno
+            String duenoB = token(empresaB, usuarioB, "ADMIN_SISTEMA");
+            mvc.perform(get("/api/cajas").header(HttpHeaders.AUTHORIZATION, duenoB))
+                    .andExpect(jsonPath("$[?(@.id==" + cajaId + ")]").isEmpty());
+            mvc.perform(get("/api/turnos/" + turnoId).header(HttpHeaders.AUTHORIZATION, duenoB))
+                    .andExpect(status().isNotFound());
+            mvc.perform(post("/api/autorizaciones").header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "CAJERO"))
+                            .contentType(json).content(pedir.formatted("123456")))
+                    .andExpect(status().isNotFound());
+
+            // un nuevo turno: tras 5 PIN equivocados el PIN se bloquea aunque luego sea el correcto
+            long turno2 = lector.readTree(mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content("{\"cajaId\":" + cajaId + ",\"baseApertura\":0}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            String pedir2 = "{\"correo\":\"admin@mismo.com\",\"pin\":\"%s\",\"accion\":\"GASTO\",\"turnoId\":" + turno2 + "}";
+            for (int i = 0; i < 5; i++) {
+                mvc.perform(post("/api/autorizaciones").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                        .content(pedir2.formatted("999999"))).andExpect(status().isConflict());
+            }
+            mvc.perform(post("/api/autorizaciones").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(pedir2.formatted("123456")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("PIN_BLOQUEADO"));
+            assertTrue(jdbc.queryForObject("SELECT COUNT(*) FROM auditoria WHERE empresa_id = ? AND accion = 'AUTORIZACION_FALLO'",
+                    Integer.class, empresaA) >= 6);
+
+            // dos personas abren a la vez la misma caja: una abre y la otra recibe 409; nunca hay dos turnos abiertos
+            mvc.perform(post("/api/turnos/" + turno2 + "/cerrar").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                    .content("{\"contadoEfectivo\":0}")).andExpect(status().isOk());
+            java.util.concurrent.CountDownLatch salida = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.ExecutorService hilos = java.util.concurrent.Executors.newFixedThreadPool(2);
+            List<java.util.concurrent.Future<Integer>> estados = new java.util.ArrayList<>();
+            for (Long cajero : List.of(usuarioA, usuarioA2)) {
+                estados.add(hilos.submit(() -> {
+                    salida.await();
+                    return mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, token(empresaA, cajero, "CAJERO"))
+                            .contentType(json).content("{\"cajaId\":" + cajaId + ",\"baseApertura\":1000}"))
+                            .andReturn().getResponse().getStatus();
+                }));
+            }
+            salida.countDown();
+            List<Integer> resultado = new java.util.ArrayList<>();
+            for (var f : estados) {
+                resultado.add(f.get(30, java.util.concurrent.TimeUnit.SECONDS));
+            }
+            hilos.shutdown();
+            assertEquals(List.of(201, 409), resultado.stream().sorted().toList());
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM turno_caja WHERE caja_id = ? AND estado = 'ABIERTO'",
+                    Integer.class, cajaId));
+        } finally {
+            jdbc.update("DELETE FROM autorizacion_supervisor WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM movimiento_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM turno_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("UPDATE usuario SET pin_supervisor_hash = NULL, pin_intentos_fallidos = 0, pin_bloqueado_hasta = NULL "
+                    + "WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+        }
+    }
+
+    @Test
     void elCatalogoDelProveedorSeCruzaConElInventarioSinQueElProveedorVeaNadaNuestro() throws Exception {
         String portalA = tokenProveedor(empresaA, usuarioA, proveedorA);
         String comprasA = token(empresaA, usuarioA, "ADMIN_COMPRAS");

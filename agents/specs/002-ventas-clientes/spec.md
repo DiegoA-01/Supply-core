@@ -1,6 +1,6 @@
 # 002 - Clientes
 
-**Estado:** Hecha (2026-11-19), pendiente de mezclar · **Rama:** `feature/ventas-clientes` · **Depende de:** 001
+**Estado:** Hecha (2026-11-19, PR #29) · **Rama:** `feature/ventas-clientes` · **Depende de:** 001
 
 ## Objetivo
 Saber a quién se le vende cuando hace falta (crédito, devoluciones, listas especiales), sin frenar la venta rápida al
