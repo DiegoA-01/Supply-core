@@ -1,0 +1,66 @@
+# Specs
+
+Una carpeta por cambio, numerada para conservar el orden: `NNN-nombre/` con `spec.md` (qué y por qué, sin tecnología),
+`plan.md` (cómo: tablas, endpoints, pantallas y pruebas) y `tasks.md` (pasos T1, T2… que se marcan con `[x]` solo si sus
+pruebas pasan). El flujo está en `AGENTS.md`.
+
+Estados de una spec: **Propuesta** (en revisión) → **Aprobada** (se puede planear y construir) → **En construcción** →
+**Hecha** (criterios de aceptación verificados).
+
+## Índice
+
+| Spec | Fase de la spec original | Qué entrega | Rama | Depende de | Estado |
+|---|---|---|---|---|---|
+| [000-ci-github-actions](000-ci-github-actions/spec.md) | F0 | CI con GitHub Actions, Dependency Review y CodeQL | `feature/ci-github-actions` | — | Propuesta |
+| [001-ventas-catalogo](001-ventas-catalogo/spec.md) | F1 | Módulos, roles, impuestos, código de barras, listas y precios con historial | `feature/ventas-catalogo` | 000 | En construcción (en parte hecha en `feature/mejoras-negocio`) |
+| [002-ventas-clientes](002-ventas-clientes/spec.md) | F2 | Clientes, consumidor final, autorización de datos | `feature/ventas-clientes` | 001 | Propuesta |
+| [003-caja-turnos](003-caja-turnos/spec.md) | F3 | Cajas, turnos, libro de caja, PIN de supervisor, cierre ciego | `feature/caja-turnos` | 001 | Propuesta |
+| [004-venta-backend](004-venta-backend/spec.md) | F4 | La venta en una sola transacción: precios, descuentos, impuestos, pagos, stock, caja, idempotencia | `feature/ventas-pos-backend` | 002, 003 | Propuesta |
+| [005-pos-frontend](005-pos-frontend/spec.md) | F5 | POS con lector y atajos, cobro, tiquete de 80 mm, mi turno | `feature/ventas-pos-frontend` | 004 | Propuesta |
+| [006-anulacion-devolucion](006-anulacion-devolucion/spec.md) | F6 | Anulación en el turno y devolución de cliente | `feature/ventas-anulacion-devolucion` | 004 | Propuesta |
+| [007-cartera](007-cartera/spec.md) | F7 | Crédito, cupos, abonos y edades | `feature/ventas-cartera` | 004 | Propuesta |
+| [008-costo-promedio-margen](008-costo-promedio-margen/spec.md) | F8 | Costo promedio ponderado y margen real | `feature/inventario-costo-promedio` | 004 | Propuesta |
+| [009-reportes-cuadre](009-reportes-cuadre/spec.md) | F9 | Reportes de ventas y caja, tablero, cuadre diario automático | `feature/ventas-reportes` | 006, 008 | Propuesta |
+| [010-endurecimiento-e2e](010-endurecimiento-e2e/spec.md) | F10 | Alertas, pruebas de punta a punta en el CI, prueba de carga | `feature/ventas-endurecimiento` | 009 | Propuesta |
+
+Al terminar la 006 el negocio ya puede **vender y cuadrar caja**. De la 007 en adelante se suman crédito, márgenes y
+control fino.
+
+**Futuro (sin spec todavía):** factura electrónica DIAN; repuestos: compatibilidad por marca y modelo de vehículo y
+referencias cruzadas; catálogos de proveedor en PDF leídos con IA; correo real por SMTP.
+
+## Decisiones
+
+| # | Pregunta | Decisión | Estado | Spec |
+|---|---|---|---|---|
+| D1 | ¿Se permite vender sin stock (stock negativo)? | **No.** Es la principal fuente de descuadres. | Recomendada | 004 |
+| D2 | ¿El precio de mostrador incluye IVA? | **Sí**, como es costumbre en Colombia; Java separa base e impuesto. | **Tomada** (construida en V29) | 001 |
+| D3 | ¿Redondear el total en efectivo a $50? | **Sí**, guardando la diferencia en `redondeo` para que cuadre. | Recomendada | 004 |
+| D4 | ¿Crédito a clientes en la primera versión? | **No**: dejarlo para la 007 y salir primero con contado. | Recomendada | 007 |
+| D5 | ¿Roles nuevos `SUPERVISOR_VENTAS` y `VENDEDOR`? | **Sí**; el dueño puede asignar los dos a la misma persona en negocios pequeños. | Recomendada | 001 |
+| D6 | ¿Tolerancia de diferencia de caja sin aprobación? | $2.000, configurable por empresa. | Recomendada | 003 |
+| D7 | ¿Una caja puede descontar de varias bodegas? | **No**: una caja, una bodega. Los traslados ya existen. | Recomendada | 003 |
+| D8 | ¿Quién fija precios: solo el dueño o también el jefe de compras? | El dueño, con opción de delegarlo a `ADMIN_COMPRAS`. | **Tomada** (construida en V29) | 001 |
+| D9 | ¿Precio distinto por caja y por unidad del mismo producto? | **Sí**, como pedía la spec original; hoy el precio se guarda solo en la unidad del producto. | Recomendada | 001 |
+
+Una decisión **Recomendada** pasa a **Tomada** cuando la aprueba el equipo; se anota aquí antes de aprobar la spec.
+
+## Reserva de migraciones
+Antes de crear una migración, la rama la anota aquí (en su primer commit) para que dos ramas no usen el mismo número.
+
+| Versión | Rama | Qué |
+|---|---|---|
+| V25 | (en `develop`) | Informe de compras |
+| V26 a V30 | `feature/mejoras-negocio` | Reabastecimiento, inventario por sede, pedidos internos, precios de venta (V29), catálogos de proveedores |
+| V31 | `feature/ventas-catalogo` | Completar la spec 001 |
+| V32 en adelante | libre | Se reserva al empezar cada spec |
+
+## Riesgos generales
+
+| Riesgo | Cómo se mitiga | Spec |
+|---|---|---|
+| El POS debe ser muy rápido | Búsqueda indexada por código y código de barras; el carrito vive en la pantalla y solo hay una petición al cobrar. | 004, 005 |
+| Sin internet no se puede vender | Fuera de estas specs. Se documenta como limitación; un modo sin conexión sería una spec aparte. | — |
+| Bloqueos de la base con muchas cajas | Bloqueo solo de las filas de stock de la venta, en orden de id, y transacciones cortas. | 004 |
+| La DIAN cambia el esquema de facturación | El modelo de venta ya guarda base, impuesto por línea y datos del cliente; la factura será una capa encima. | futuro |
+| Dos ramas construyen lo mismo o usan la misma migración | Una spec, una rama y una persona responsable; migración reservada en esta página. | todas |

@@ -1,8 +1,13 @@
 # Supply-Core
 
-Plataforma web de abastecimiento (inventario, proveedores, solicitudes, RFQ, cotizaciones con IA, orden, pago registrado, recepción) en modalidad **SaaS multiempresa**: el dueño del software activa a cada empresa cliente (ferretería, eléctricos...) y sus módulos. Proyecto formativo. Responder en español.
+Plataforma web de abastecimiento (inventario, proveedores, solicitudes, RFQ, cotizaciones con IA, orden, pago registrado, recepción) que suma **ventas y caja** (POS, turnos, clientes, cartera), en modalidad **SaaS multiempresa**: el dueño del software activa a cada empresa cliente (ferretería, eléctricos...) y sus módulos. Proyecto formativo. Responder en español.
 
 Al iniciar cada sesión, usa la skill caveman en nivel full.
+
+@AGENTS.md
+
+## Specs (Spec Driven Development)
+Todo cambio nuevo parte de una spec en `agents/specs/NNN-nombre/` (`spec.md` → `plan.md` → `tasks.md`); el flujo está en `AGENTS.md` y el contexto fijo en `agents/product.md`, `agents/tech-stack.md` y `agents/architecture.md`. No escribir código sin spec aprobada. Las migraciones se reservan en `agents/specs/README.md` antes de crearlas.
 
 ## Stack y comandos
 - Backend: `backend` — Java 21, Spring Boot 4.1.1, JPA, Web MVC, Validation, Flyway, MySQL 8, Lombok. Paquete base `com.proyecto.supply_core`.
@@ -18,7 +23,7 @@ Al iniciar cada sesión, usa la skill caveman en nivel full.
 4. Apartarse de la recomendación de la IA exige justificación.
 5. Cada análisis guarda el snapshot de pesos usado; el histórico no cambia.
 6. Acciones sensibles → `auditoria`. Claves (IA, Maps, JWT) solo en variables de entorno.
-7. Fuera del alcance: pasarela para pagar a proveedores (el pago solo se registra), marketplace, microservicios. Factura electrónica DIAN y multimoneda son **fases futuras** (después del cierre del backend), no del alcance actual. Reglas nuevas ya hechas: presupuesto por centro de costo, contratos y precios pactados, delegación y SLA de aprobación, reorden sugerida y carga masiva por Excel (pasos 18-a a 18-d), calidad en recepción y tolerancia del cruce de tres vías (pasos 17 y 17-bis). La pasarela solo cobra la suscripción SaaS (fase 4, sandbox primero).
+7. Fuera del alcance: pasarela para pagar a proveedores (el pago solo se registra), marketplace, microservicios, procesar tarjetas en el POS (el cobro con tarjeta solo se registra). **Ventas y caja sí entran** (specs 001 a 010 en `agents/specs/`), con sus reglas en `agents/product.md`. Factura electrónica DIAN y multimoneda son **fases futuras** (después del cierre del backend), no del alcance actual. Reglas nuevas ya hechas: presupuesto por centro de costo, contratos y precios pactados, delegación y SLA de aprobación, reorden sugerida y carga masiva por Excel (pasos 18-a a 18-d), calidad en recepción y tolerancia del cruce de tres vías (pasos 17 y 17-bis). La pasarela solo cobra la suscripción SaaS (fase 4, sandbox primero).
 8. Aislamiento por empresa: toda tabla de negocio lleva `empresa_id`; sale del JWT, nunca del request. Cada módulo se prueba con "fuga entre empresas" (A pide dato de B ⇒ 404).
 9. Tres niveles: plataforma (dueño, `usuario_plataforma`, MFA, no ve datos de negocio), administrador de la empresa (`ADMIN_SISTEMA`, solo su empresa) y usuarios con rol (cajero, bodeguero, comprador...).
 10. Doble permiso: módulo activo para la empresa (`@RequiereModulo`, lo decide el dueño) Y rol del usuario (`@RequiereRol`, lo decide el admin de la empresa). Ya implementado (V23): módulo apagado = 403 `MODULO_NO_CONTRATADO`; suscripción suspendida = 403, morosa = solo lectura.
