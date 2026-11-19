@@ -1,7 +1,7 @@
 # Supply-Core — Progreso del backend
 
-> Última actualización: 2026-11-17 · Estado: **pasos 0 a 18, 18-a a 18-d, SaaS fase 2 y SaaS fase 3 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración), consola de plataforma con planes y módulos (V23), seguridad restante de SaaS 3: sesiones que se cortan, recuperación de clave y MFA de administradores (V24), exportación a Excel y PDF con archivos legibles, y cruce de totales de la IA con Gemini como proveedor de lectura (sin migración)**.
-> **714 pruebas en verde** (1 omitida: la prueba en vivo contra Gemini) (41 de fuga y de extremo a extremo entre empresas contra MySQL real), Javadoc sin advertencias (`doclint=all`), 24 migraciones Flyway, 51 controllers.
+> Última actualización: 2026-11-19 · Estado: **frontend completo (fases 0 a 8), stack de Docker, informe de compras para el dueño (V25) y spec del módulo de Ventas y Caja aprobada para empezar (ver sección 6)**. Antes: **pasos 0 a 18, 18-a a 18-d, SaaS fase 2 y SaaS fase 3 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración), consola de plataforma con planes y módulos (V23), seguridad restante de SaaS 3: sesiones que se cortan, recuperación de clave y MFA de administradores (V24), exportación a Excel y PDF con archivos legibles, y cruce de totales de la IA con Gemini como proveedor de lectura (sin migración)**.
+> **743 pruebas del backend en verde** (1 omitida: la prueba en vivo contra Gemini), 45 de fuga y de extremo a extremo entre empresas contra MySQL real, Javadoc sin advertencias (`doclint=all`), 25 migraciones Flyway; **127 pruebas del frontend** (Vitest, 21 archivos). Al 2026-11-17 eran 714 pruebas del backend y 24 migraciones.
 > Detalle vivo para Claude: `.claude/skills/supply-core/references/estado.md`, `plan-backend.md` y `saas.md`. Reglas no negociables: `CLAUDE.md`.
 
 ---
@@ -101,7 +101,8 @@ La evaluación UC-14 la dispara el cierre de la recepción (paso 17).
 | V22 | Delegación y SLA: `delegacion_aprobacion` (delegante, delegado, fechas, ACTIVA/REVOCADA, CHECKs); `aprobacion_solicitud.delegacion_id` y `adjudicacion.delegacion_id`; `empresa.sla_aprobacion_horas` (0 a 720, 24 por defecto); `solicitud_compra.sla_aviso_en` y `escalada_en` con índice; eventos SOLICITUD_SLA_POR_VENCER, SOLICITUD_ESCALADA y DELEGACION_ASIGNADA sembrados por empresa |
 | V23 | Plataforma, planes y módulos: `usuario_plataforma` (MFA: secreto, activo y último paso usado; bloqueo), `modulo`, `plan`, `plan_modulo`, `empresa_modulo` (excepciones por empresa), `suscripcion` (una por empresa, estado ENUM), `auditoria_plataforma`; siembra los 10 módulos y los planes BASICO, PROFESIONAL y EMPRESARIAL, y deja a las empresas que ya existen en EMPRESARIAL y ACTIVA |
 | V24 | Seguridad fase 3: `usuario.version_sesion` (sube al cambiar la clave o desactivar; el JWT la lleva en el claim `sv`), `usuario.mfa_secreto`, `mfa_activo` y `mfa_ultimo_paso` (TOTP), y tabla `recuperacion_password` (empresa, usuario, hash del token, vencimiento, usado en; único por hash) |
-| **Próximo libre** | **V25** |
+| V25 | Informe de compras y aprobación del dueño: `solicitud_compra.aprueba_dueno` (si quien pide aprueba con el rol de su política, la decide `ADMIN_SISTEMA`) y tabla `informe_compras` (PEDIDO/ENVIADO, periodo, mensaje del pedido, análisis, foto fija en JSON, quién pidió, quién envió y cuándo lo leyó; CHECK de periodo) |
+| **Próximo libre** | **V26** |
 
 ---
 
@@ -317,10 +318,10 @@ Para notificar en los pasos nuevos: agregar el evento a `EventoNotificacion`, se
 | 0 | Decisiones: BD compartida con `empresa_id`, proveedor por empresa, planes y módulos | ✅ |
 | Sesión | JWT 15 min, refresh rotativo, bloqueo de cuenta, límite por IP, CAJERO (V16) | ✅ 2026-10-23 |
 | 1 | Aislamiento por empresa: `empresa_id` en el JWT y filtro central, consecutivos por empresa, únicos compuestos, pruebas de fuga (V17) | ✅ 2026-10-23. Falta: carpeta de archivos por empresa |
-| 2 | Consola de plataforma: `usuario_plataforma` + MFA, alta de empresa, planes y módulos, `@RequiereModulo`, suspender y reactivar, auditoría global | ⏳ |
-| 3 | Seguridad restante: MFA, recuperación de clave con token de un solo uso, revocar sesiones al cambiar clave o desactivar usuario, dos usuarios MySQL, cabeceras seguras, escaneo de dependencias | ⏳ |
+| 2 | Consola de plataforma: `usuario_plataforma` + MFA, alta de empresa, planes y módulos, `@RequiereModulo`, suspender y reactivar, auditoría global | ✅ 2026-10-28 (V23) |
+| 3 | Seguridad restante: MFA, recuperación de clave con token de un solo uso, revocar sesiones al cambiar clave o desactivar usuario, dos usuarios MySQL, cabeceras seguras, escaneo de dependencias | ✅ 2026-11-10 (V24). Falta probar `permisos.sql` en un servidor real |
 | 4 | Suscripción y cobro en sandbox, estados de mora, límites por plan, métricas de uso | ⏳ |
-| 5 | Docker Compose, CI/CD, entornos, logs con `empresa_id`, onboarding de una empresa en minutos | ⏳ |
+| 5 | Docker Compose, CI/CD, entornos, logs con `empresa_id`, onboarding de una empresa en minutos | En parte: Docker Compose y perfil `prod` ✅ 2026-11-17; el CI es la fase F0 de la spec de ventas (sección 6) |
 | Futuro | DIAN, multimoneda, PWA de recepción sin conexión, exportar a contabilidad, importar ventas del POS | ⏳ |
 
 Modelo de datos previsto: `plan`, `modulo`, `plan_modulo`, `empresa_modulo`, `suscripcion`, `usuario_plataforma`. Estados de suscripción: PRUEBA, ACTIVA, MOROSA, SUSPENDIDA, CANCELADA.
@@ -410,3 +411,117 @@ cd backend
 - La hora del PC debe estar sincronizada: el MFA (TOTP) tolera solo unos 30 s, y cinco fallos bloquean la cuenta 15 minutos mostrando "Credenciales inválidas" (el mensaje no distingue el bloqueo a propósito).
 - En Windows: usar `py` (no `python`); los heredocs con apóstrofes rompen el shell, mejor escribir el script a un archivo; `docs/` está bloqueado para lectura y escritura.
 - El perfil `demo` tiene el MFA de administrador apagado y toma el proveedor de IA de `IA_PROVEEDOR`; el perfil `test` apaga los jobs y la memoria de sesión.
+
+---
+
+## 6. Sesión del 2026-11-17 al 2026-11-19: qué se hizo y qué sigue (para retomar tras una compactación)
+
+Solo lo que no estaba en las secciones anteriores. Todo quedó mezclado en `develop` por PR (#7 a #23); `main` sigue sin estos cambios.
+
+### Qué se hizo, en orden
+
+**Frontend completo (fases 0 a 8 de `PLAN_FRONTEND.md`, PR #7, #8, #15 a #18).**
+1. **Fases 1 y 2:** revisión de la lectura con IA (con la alerta `TOTAL_NO_CUADRA` y el total impreso), exportaciones por correo, ingreso con MFA, recuperar contraseña, MFA en el perfil y la pantalla de avisos y correos.
+2. **Fase 3, inventario:** movimientos de stock, kardex, ajustes y traslados.
+3. **Rotación de productos** (pedido aparte): reporte nuevo en el backend (`RotacionController` y `RotacionService`, `GET /api/reportes/rotacion`) y tablero en `/app/inventario/rotacion`. La salida cuenta `SALIDA_CONSUMO` + `SALIDA_VENTA` − `ANULACION_DESPACHO` (sin ajustes ni traslados). Clases: ALTA si la cobertura es de 30 días o menos, BAJA si pasa de 90, "por agotarse" si es de 15 o menos. Periodo de 90 días por defecto, máximo 366. Con prueba de fuga.
+4. **Fases 4 y 5:** despachos y pagos con anulación y comprobante; adjudicaciones, delegaciones (endpoint nuevo `GET /api/delegaciones/candidatos`), orden directa por contrato y acciones sobre las órdenes.
+5. **Fase 6:** configuración de la empresa con un índice en `/app/configuracion`, catálogos simples con una pantalla genérica, reglas de compra y ficha de proveedores.
+6. **Fase 7, portal del proveedor:** registro público, perfil con calificaciones y recepciones en sus órdenes. Endpoint nuevo `GET /api/portal/proveedor/categorias`, porque el proveedor no puede leer `/api/categorias`.
+7. **Fase 8:** auditoría de la empresa con filtros, períodos rápidos y detalle, con los textos de las 96 acciones y 28 entidades auditadas.
+
+**Docker (PR #8 y #19).**
+- `docker-compose.yml` con `db` (MySQL 8.4), `api` (perfil `prod`) y `web` (nginx). Solo nginx publica puerto: `WEB_PORT`, 8088 por defecto.
+- Imágenes multi-etapa, sin root, con sistema de archivos de solo lectura y `cap_drop: ALL`. MySQL y el backend viven en redes internas.
+- Perfil `application-prod.yaml` sin valores por defecto para secretos: sin `DB_URL`, `DB_USER`, `DB_PASSWORD` o `JWT_SECRET` no arranca. Swagger apagado y solo `/actuator/health` expuesto.
+- nginx sobrescribe `X-Forwarded-For` y Spring usa `forward-headers-strategy: native`, así el límite por IP no se puede esquivar.
+- La CSP exigió `optimization.styles.inlineCritical: false` en Angular. Guía en `DOCKER.md`; `.gitattributes` fuerza LF en Dockerfile, nginx y compose.
+
+**Datos de demostración y ajustes de uso (PR #19 y #20).**
+1. **`scripts/sembrar_demo.py`:** siembra por la API pública una empresa `Ferreteria Demo` con todos los roles, productos, existencias, políticas y un proveedor. Las claves aleatorias y las llaves MFA van a `credenciales-docker.local.txt` (ignorado por git).
+2. **Arreglo del ingreso con segundo factor:** al formulario del código le faltaba `FormsModule` y el navegador lo enviaba como GET, volviendo al inicio.
+3. **Menú lateral:** sin "Ver como dueño" para nadie de la empresa, sin el enlace al dueño en el ingreso y sin la barra de scroll.
+4. **Campana:** sección "Por decidir" para aceptar o rechazar proveedores nuevos; cada aviso lleva a su pantalla.
+5. **Proveedores:** pantalla responsive con container query, y la ficha muestra "Cómo entra al portal" con el código de empresa. `EmpresaResponse` ahora trae `codigoPublico`.
+6. **Selector de productos en la solicitud:** catálogo al hacer clic, búsqueda por código o nombre, "parecidos" si varias palabras no coinciden, y alta del producto desde ahí para quien administra compras.
+7. **Portal del proveedor:** el archivo subido queda a la vista y la cotización se puede enviar solo con el archivo.
+8. **Flujo de la ferretería en la demo:**
+   - El bodeguero también es solicitante.
+   - El jefe de compras es administrador de compras, comprador y solicitante.
+   - La política de solicitudes la aprueba `ADMIN_COMPRAS`.
+   - El dueño solo administra y no recibe avisos de compras.
+9. **Cotización de ejemplo** en `ejemplos/cotizacion-electro-sur.png` para probar el portal.
+
+**Informe de compras para el dueño (PR #20 y #21, V25).**
+- **El flujo:** el dueño (`ADMIN_SISTEMA`) lo pide con un periodo y un mensaje. El jefe de compras (`ADMIN_COMPRAS`) revisa los datos en vivo, escribe su análisis y lo envía, y al dueño le llega "sin leer".
+- **Qué trae:** solicitudes con sus productos, cantidades y cuenta (cantidad × costo = subtotal), RFQ, cotizaciones recibidas, adjudicaciones (con si se apartó de la recomendación y por qué) y el gasto del periodo.
+- **Si el monto cuadra:** Java rehace la cuenta con los costos de hoy y la compara con el monto estimado guardado al enviar: "Cuadra", "No cuadra" o "no se puede comprobar".
+- **Foto fija:** al enviarse queda guardada en JSON y no cambia aunque cambien los datos.
+- **Rutas:** `/api/informes-compras` (listar, detalle, vista previa, pedir, enviar, leído). Avisos `INFORME_PEDIDO` e `INFORME_RECIBIDO`, auditoría `INFORME_PEDIR` e `INFORME_ENVIAR`, pantalla `/app/informes`, `InformeComprasServiceTest` y prueba de fuga.
+- **Aprobación por el dueño:** si quien pide una solicitud tiene el rol aprobador de su política (el jefe de compras), la decide el dueño. Se calcula al enviarla (`aprueba_dueno`); la bandeja, la decisión y el SLA lo respetan.
+
+**Spec del módulo de Ventas y Caja (PR #22 y #23).** `SPEC_VENTAS.md` (índice) y tres partes, sin código todavía:
+- **Parte 1:** base, CI, catálogo de venta y clientes.
+- **Parte 2:** caja y venta en mostrador.
+- **Parte 3:** cartera, costos y reportes.
+
+**Herramientas y forma de trabajo.**
+- **Flujo de git:**
+  - Se trabaja desde `develop`; cada tarea sale en una rama nueva desde `develop` actualizado.
+  - El dueño del repositorio crea o aprueba el PR y hace el merge.
+  - Antes de cada PR se simula la mezcla con `develop` para avisar si hay conflictos.
+- **Dependabot:** los PR #10 a #14 se revisan y se cierran a mano.
+- **`graphify`:** actualizado el 2026-11-19 (6.519 nodos, 247 comunidades). No se extrajeron `docs/` ni las imágenes de `branding/`.
+
+### Estado del repositorio
+- `develop` = `origin/develop` (`c6c0c55`, merge del PR #23); `main` sigue en el commit inicial.
+- **Backend:** 743 pruebas en verde (1 omitida), 45 de fuga entre empresas, 25 migraciones (próxima V26).
+- **Frontend:** 127 pruebas en verde.
+- **Docker:** `http://localhost:8088`, con la empresa `Ferreteria Demo` sembrada. Credenciales en `credenciales-docker.local.txt`, nunca en el repositorio.
+- **Local sin Docker:** backend en el puerto 8081, porque el 8080 lo ocupa un relé de WSL; `frontend/proxy.conf.json` apunta a 8081 y ese cambio no se sube.
+
+### Qué falta y cómo lo pensamos hacer (en este orden)
+1. **Decisiones de la parte 1 de ventas** (D2, D5, D8 de `SPEC_VENTAS_1_BASE_Y_CATALOGO.md`). La recomendación:
+   - Precio de mostrador con IVA incluido.
+   - Roles nuevos `SUPERVISOR_VENTAS` y `VENDEDOR`.
+   - Los precios los fija el dueño, con opción de delegar al jefe de compras.
+
+   Con eso se actualiza `CLAUDE.md` (regla 7 y descripción) para que Ventas y Caja entren al alcance.
+2. **F0, CI con GitHub Actions** (rama `feature/ci-github-actions`):
+   - `.github/workflows/ci.yml` con `backend` (Java 21, MySQL 8 de servicio, `./mvnw verify`, Javadoc con doclint, JaCoCo), `frontend` (`npm ci`, pruebas y build de producción) y `docker` (construir las imágenes y escanearlas con Trivy).
+   - Dependency Review en cada PR y CodeQL semanal, sin secretos reales.
+   - Después, el dueño del repositorio activa la protección de `develop` y `main` para exigir el CI antes de mezclar.
+3. **Ventas, parte 1** (F1 y F2): impuestos, código de barras, listas y precios de venta con historial, clientes con autorización de datos, módulos `VENTAS`, `CAJA` y `CARTERA` en los planes. Desde V26.
+4. **Ventas, parte 2** (F3 a F6), con las decisiones D1, D3, D6 y D7:
+   - Cajas y turnos con cierre ciego y PIN de supervisor.
+   - La venta en una sola transacción (stock, caja e idempotencia).
+   - POS con lector y tiquete de 80 mm.
+   - Anulación y devolución.
+5. **Ventas, parte 3** (F7 a F10), con la decisión D4:
+   - Cartera.
+   - Costo promedio y margen.
+   - Reportes, tablero y cuadre diario automático.
+   - Alertas y pruebas de punta a punta con Playwright en el CI.
+6. **Pendientes del frontend:**
+   - Fase 9: nombre del solicitante en la bandeja, conteo de usuarios por empresa en la consola, variación frente al mes anterior.
+   - Fase 10: pruebas de punta a punta, accesibilidad y build sin advertencias.
+   - Editar el código de ingreso de una empresa, que primero necesita la ruta en el backend.
+   - Filtro por bodega y Excel en la rotación.
+7. **Paso 19, cierre del backend** (sigue lo de la sección 5):
+   - Prueba de punta a punta con dos empresas.
+   - Correo real por SMTP.
+   - Carpeta de archivos por empresa.
+   - Probar `permisos.sql` en un servidor real.
+   - OWASP Dependency-Check.
+   - Ruta de la consola para reiniciar el MFA del único administrador.
+
+   El perfil `prod` con `JWT_SECRET` obligatorio ya quedó hecho con Docker.
+8. **IA con cotizaciones reales:** probar Gemini con documentos de la ferretería. En Docker la IA está apagada (`IA_PROVEEDOR=ninguno`); para activarla se pone `IA_PROVEEDOR=gemini` y la clave en el `.env`, sabiendo que los documentos salen hacia Google.
+9. **Demo:** los productos de la demo actual quedaron en "CAJA24" por un error ya corregido en el script. Al sembrar de nuevo quedan en "UND".
+10. **SaaS 4:** cobro de la suscripción en sandbox, límites por plan y métricas de uso.
+11. **Documento de exposición:** regenerarlo con la numeración 0–19 y el diagrama ER en tres partes. **Mezclar `develop` en `main`** cuando el backend y el frontend estén cerrados.
+
+### Trampas nuevas de este entorno
+- **Docker Desktop:** debe estar encendido; si no, la app de `http://localhost:8088` no responde. Al encenderlo, los contenedores vuelven a subir solos.
+- **CLI de GitHub:** no está instalado (`gh`). Los PR se crean desde la página de GitHub con la sesión del usuario.
+- **Finales de línea:** muchos archivos usan CRLF y `sed` no casa los cambios de varias líneas. Mejor editar con un script de Python que normalice los saltos de línea.
+- **Límite de ingreso:** después de muchos ingresos seguidos, `/api/auth/login` responde 429 por un minuto. Es el rate limit funcionando.
