@@ -214,5 +214,11 @@ public enum AccionAuditoria {
     /** Un proveedor subió o reemplazó su catálogo. */
     CATALOGO_CARGAR,
     /** Compras confirmó o descartó la equivalencia de un artículo de catálogo. */
-    CATALOGO_EQUIVALENCIA
+    CATALOGO_EQUIVALENCIA,
+    /** Se creó un cliente (spec 002). */
+    CLIENTE_CREAR,
+    /** Se editó, desactivó o reactivó un cliente. */
+    CLIENTE_EDITAR,
+    /** Cambió el cupo de crédito, el plazo o la lista de precios de un cliente. */
+    CLIENTE_CUPO_CAMBIAR
 }

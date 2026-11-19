@@ -2135,6 +2135,112 @@ class AislamientoEmpresasTest {
     }
 
     @Test
+    void losClientesSonDeCadaEmpresaYElConsumidorFinalNoSeToca() throws Exception {
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        String cajeroA = token(empresaA, usuarioA, "CAJERO");
+        String duenoA = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+        String cajeroB = token(empresaB, usuarioB, "CAJERO");
+        com.fasterxml.jackson.databind.ObjectMapper lector = new com.fasterxml.jackson.databind.ObjectMapper();
+        try {
+            // V32 sembró un consumidor final por empresa; si falta (empresa nueva), la primera consulta lo crea
+            jdbc.update("DELETE FROM cliente WHERE empresa_id = ? AND es_consumidor_final = 1", empresaB);
+            mvc.perform(get("/api/clientes").header(HttpHeaders.AUTHORIZATION, cajeroB))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contenido[0].esConsumidorFinal").value(true));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM cliente WHERE empresa_id = ? AND es_consumidor_final = 1",
+                    Integer.class, empresaB));
+            long consumidorA = lector.readTree(mvc.perform(get("/api/clientes/consumidor-final")
+                            .header(HttpHeaders.AUTHORIZATION, cajeroA)).andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString()).get("id").asLong();
+
+            // el cajero crea un cliente; el contacto exige autorización de datos
+            String sinAutorizar = "{\"tipoDocumento\":\"CC\",\"numeroDocumento\":\"1.020.304.050\",\"nombre\":\"Ana Pérez\","
+                    + "\"telefono\":\"3001234567\"}";
+            mvc.perform(post("/api/clientes").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json).content(sinAutorizar))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("AUTORIZACION_DATOS_REQUERIDA"));
+            String ana = mvc.perform(post("/api/clientes").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(sinAutorizar.replace("}", ",\"aceptaDatos\":true}")))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.numeroDocumento").value("1020304050"))
+                    .andExpect(jsonPath("$.aceptaDatosEn").exists())
+                    .andReturn().getResponse().getContentAsString();
+            long anaId = lector.readTree(ana).get("id").asLong();
+            // el mismo documento no se repite en A, pero B sí puede tenerlo
+            mvc.perform(post("/api/clientes").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"tipoDocumento\":\"CC\",\"numeroDocumento\":\"1020304050\",\"nombre\":\"Otra\"}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("CLIENTE_DUPLICADO"));
+            mvc.perform(post("/api/clientes").header(HttpHeaders.AUTHORIZATION, cajeroB).contentType(json)
+                            .content("{\"tipoDocumento\":\"CC\",\"numeroDocumento\":\"1020304050\",\"nombre\":\"Ana en B\"}"))
+                    .andExpect(status().isCreated());
+            // NIT con dígito de verificación equivocado
+            mvc.perform(post("/api/clientes").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"tipoDocumento\":\"NIT\",\"numeroDocumento\":\"800197268-5\",\"nombre\":\"Taller\"}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("DOCUMENTO_INVALIDO"));
+
+            // el cupo y el plazo solo los fijan el dueño o el supervisor de ventas
+            String conCupo = "{\"tipoDocumento\":\"CC\",\"numeroDocumento\":\"1020304050\",\"nombre\":\"Ana Pérez\","
+                    + "\"telefono\":\"3001234567\",\"cupoCredito\":500000,\"plazoDias\":30}";
+            mvc.perform(put("/api/clientes/" + anaId).header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json).content(conCupo))
+                    .andExpect(status().isForbidden());
+            mvc.perform(put("/api/clientes/" + anaId).header(HttpHeaders.AUTHORIZATION,
+                            token(empresaA, usuarioA, "SUPERVISOR_VENTAS")).contentType(json).content(conCupo))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.cupoCredito").value(500000.0))
+                    .andExpect(jsonPath("$.plazoDias").value(30));
+            // el cajero edita el nombre sin tocar el cupo (vacío = se conserva)
+            mvc.perform(put("/api/clientes/" + anaId).header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"tipoDocumento\":\"CC\",\"numeroDocumento\":\"1020304050\",\"nombre\":\"Ana María Pérez\","
+                                    + "\"telefono\":\"3001234567\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.cupoCredito").value(500000.0));
+            assertTrue(jdbc.queryForObject("SELECT COUNT(*) FROM auditoria WHERE empresa_id = ? AND accion = 'CLIENTE_CUPO_CAMBIAR' "
+                    + "AND entidad_id = ?", Integer.class, empresaA, anaId) >= 1);
+
+            // el consumidor final no se edita
+            mvc.perform(put("/api/clientes/" + consumidorA).header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"tipoDocumento\":\"CC\",\"numeroDocumento\":\"1234\",\"nombre\":\"X\",\"activo\":false}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("CONSUMIDOR_FINAL"));
+
+            // búsqueda por documento o nombre, sin cruzar de empresa
+            mvc.perform(get("/api/clientes?q=1020").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(jsonPath("$.totalElementos").value(1))
+                    .andExpect(jsonPath("$.contenido[0].nombre").value("Ana María Pérez"));
+            mvc.perform(get("/api/clientes?q=ana%20mar").header(HttpHeaders.AUTHORIZATION, cajeroB))
+                    .andExpect(jsonPath("$.totalElementos").value(0));
+            mvc.perform(get("/api/clientes/" + anaId).header(HttpHeaders.AUTHORIZATION, cajeroB))
+                    .andExpect(status().isNotFound());
+            mvc.perform(put("/api/clientes/" + anaId).header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "ADMIN_SISTEMA"))
+                            .contentType(json).content("{\"tipoDocumento\":\"CC\",\"numeroDocumento\":\"999999\",\"nombre\":\"X\"}"))
+                    .andExpect(status().isNotFound());
+
+            // el auditor lee pero no crea; la exportación es solo para dueño y auditoría
+            mvc.perform(get("/api/clientes").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "AUDITOR")))
+                    .andExpect(status().isOk());
+            mvc.perform(post("/api/clientes").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "AUDITOR"))
+                            .contentType(json).content("{\"tipoDocumento\":\"CC\",\"numeroDocumento\":\"55555\",\"nombre\":\"X\"}"))
+                    .andExpect(status().isForbidden());
+            mvc.perform(get("/api/exportaciones/clientes?formato=xlsx").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isForbidden());
+            mvc.perform(get("/api/exportaciones/clientes?formato=xlsx").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isOk());
+            // el supervisor de ventas lee las listas de precios (para elegir la del cliente), pero no los precios
+            mvc.perform(get("/api/ventas/listas").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "SUPERVISOR_VENTAS")))
+                    .andExpect(status().isOk());
+            mvc.perform(get("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "SUPERVISOR_VENTAS")))
+                    .andExpect(status().isForbidden());
+            // un comprador (sin rol de venta) no ve clientes
+            mvc.perform(get("/api/clientes").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "COMPRADOR")))
+                    .andExpect(status().isForbidden());
+        } finally {
+            jdbc.update("DELETE FROM cliente WHERE empresa_id IN (?, ?) AND es_consumidor_final = 0", empresaA, empresaB);
+        }
+    }
+
+    @Test
     void elCatalogoDelProveedorSeCruzaConElInventarioSinQueElProveedorVeaNadaNuestro() throws Exception {
         String portalA = tokenProveedor(empresaA, usuarioA, proveedorA);
         String comprasA = token(empresaA, usuarioA, "ADMIN_COMPRAS");

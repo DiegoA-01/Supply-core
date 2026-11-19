@@ -50,6 +50,21 @@ public class ExportacionController {
     }
 
     /**
+     * Descarga los clientes de la empresa (spec 002). Solo el dueño y auditoría: son datos personales.
+     *
+     * @param formato {@code xlsx}
+     * @param activo  filtro por estado (vacío = todos)
+     * @return archivo adjunto
+     */
+    @GetMapping("/clientes")
+    @RequiereModulo(Modulos.VENTAS)
+    @RequiereRol({ Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    public ResponseEntity<byte[]> clientes(@RequestParam(required = false) String formato,
+            @RequestParam(required = false) Boolean activo) {
+        return descarga(exportacionService.clientes(formato, activo, DestinoExportacion.DESCARGA));
+    }
+
+    /**
      * Descarga las existencias por producto y bodega (cualquier interno, como {@code /api/inventario/stock}).
      *
      * @param formato    {@code xlsx}

@@ -7,7 +7,7 @@ export const ACCIONES: Record<string, string> = {
   LOGIN: 'Ingresó', LOGOUT: 'Cerró sesión', REFRESH_REUTILIZADO: 'Intento de reutilizar una sesión ya cerrada',
   CUENTA_BLOQUEADA: 'Cuenta bloqueada por intentos fallidos', PASSWORD_CAMBIAR: 'Cambió su contraseña',
   PASSWORD_RECUPERAR_PEDIR: 'Pidió recuperar su contraseña', PASSWORD_RECUPERAR_USAR: 'Cambió su contraseña con el código de recuperación',
-  MFA_ACTIVAR: 'Activó el segundo factor', MFA_DESACTIVAR: 'Reinició el segundo factor',
+  MFA_ACTIVAR: 'Activó el segundo factor', MFA_DESACTIVAR: 'Reinició el segundo factor', MFA_FALLO: 'Falló el código del segundo factor',
   INFORME_PEDIR: 'Pidió un informe de compras', INFORME_ENVIAR: 'Envió un informe de compras',
   // Usuarios, empresa y estructura
   USUARIO_CREAR: 'Creó un usuario', USUARIO_EDITAR: 'Editó un usuario', USUARIO_ACTIVAR: 'Activó un usuario', USUARIO_DESACTIVAR: 'Desactivó un usuario',
@@ -29,6 +29,11 @@ export const ACCIONES: Record<string, string> = {
   // Productos e inventario
   PRODUCTO_CREAR: 'Creó un producto', PRODUCTO_EDITAR: 'Editó un producto', PRODUCTO_CAMBIAR_ESTADO: 'Activó o desactivó un producto',
   PRODUCTO_CARGA_MASIVA: 'Cargó productos desde Excel', REORDEN_GENERAR: 'Generó un borrador de reorden',
+  PEDIDO_INTERNO_CREAR: 'Pidió un producto a compras', PEDIDO_INTERNO_GESTIONAR: 'Atendió o descartó un pedido interno',
+  CATALOGO_CARGAR: 'Un proveedor subió su catálogo', CATALOGO_EQUIVALENCIA: 'Confirmó o descartó una equivalencia de catálogo',
+  // Ventas
+  PRECIO_CONFIGURAR: 'Configuró un impuesto o una lista de precios', PRECIO_CAMBIAR: 'Cambió un precio de venta',
+  CLIENTE_CREAR: 'Creó un cliente', CLIENTE_EDITAR: 'Editó un cliente', CLIENTE_CUPO_CAMBIAR: 'Cambió el cupo, el plazo o la lista de un cliente',
   INVENTARIO_AJUSTE: 'Movió el inventario (salida, ajuste o traslado)', DOCUMENTO_SUBIR: 'Subió un documento',
   // Solicitudes
   SOLICITUD_CREAR: 'Creó una solicitud', SOLICITUD_EDITAR: 'Editó una solicitud', SOLICITUD_ENVIAR: 'Envió una solicitud', SOLICITUD_CANCELAR: 'Canceló una solicitud',
@@ -58,6 +63,8 @@ export const ENTIDADES: Record<string, string> = {
   CONFIG_NOTIFICACION: 'Aviso o correo', SOLICITUD_COMPRA: 'Solicitud', RFQ: 'RFQ', DESPACHO: 'Despacho', COTIZACION: 'Cotización',
   CONFIG_PESOS: 'Pesos de evaluación', ANALISIS: 'Análisis', ADJUDICACION: 'Adjudicación', ORDEN_COMPRA: 'Orden de compra', PAGO: 'Pago',
   RECEPCION: 'Recepción', FACTURA: 'Factura', EXPORTACION: 'Exportación', INFORME_COMPRAS: 'Informe de compras',
+  PEDIDO_INTERNO: 'Pedido interno', TARIFA_IMPUESTO: 'Impuesto de venta', LISTA_PRECIO: 'Lista de precios',
+  PRECIO_PRODUCTO: 'Precio de venta', CATALOGO_ITEM: 'Artículo de catálogo', CLIENTE: 'Cliente',
 };
 
 /** Pantalla donde se ve cada entidad, cuando existe una dirección por id. */

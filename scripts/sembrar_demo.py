@@ -170,6 +170,17 @@ def main():
             'listaId': general, 'productoId': ids_producto['GUA-01'], 'precio': 126000, 'precioMinimo': 120000,
             'unidadMedidaId': docena, 'motivo': 'Precio por docena'}, tok_admin))
 
+    # 5c. Clientes (spec 002): el cajero crea uno con autorización de datos y el dueño le da cupo a un taller.
+    #     El consumidor final ya existe en cada empresa.
+    tok_cajero = sesion('cajero@ferreteriademo.local')
+    exigir('cliente Ana', llamar('POST', '/api/clientes', {
+        'tipoDocumento': 'CC', 'numeroDocumento': '1020304050', 'nombre': 'Ana Pérez', 'telefono': '3001234567',
+        'aceptaDatos': True}, tok_cajero))
+    exigir('cliente Taller', llamar('POST', '/api/clientes', {
+        'tipoDocumento': 'NIT', 'numeroDocumento': '900123456-8', 'nombre': 'Taller El Pistón S.A.S.',
+        'correo': 'compras@tallerelpiston.local', 'aceptaDatos': True, 'cupoCredito': 2000000, 'plazoDias': 30},
+        tok_admin))
+
     # 6. Políticas de aprobación: las solicitudes las aprueba el jefe de compras; las adjudicaciones, el aprobador
     #    (nadie aprueba lo suyo: el backend lo impide por segregación de funciones)
     for tipo, rol in (('SOLICITUD', 'ADMIN_COMPRAS'), ('ADJUDICACION', 'APROBADOR')):

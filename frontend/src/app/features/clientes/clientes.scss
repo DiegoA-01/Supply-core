@@ -1,0 +1,10 @@
+h2 { margin: 0 0 12px; }
+.barra-herramientas { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--sc-borde); }
+.buscar { max-width: 320px; }
+.opcion { display: flex; align-items: center; gap: 8px; font-size: 13px; input { accent-color: var(--sc-primario); } }
+.sub { display: block; font-size: 12px; color: var(--sc-texto-2); }
+.chip.mini { font-size: 11px; padding: 1px 8px; margin-left: 6px; display: inline-block; }
+.chip.gris { background: #efefef; color: var(--sc-texto-2); }
+tr.inactivo td { color: var(--sc-texto-2); }
+.paginacion { justify-content: center; align-items: center; gap: 12px; padding: 12px; }
+@media (max-width: 720px) { .buscar { max-width: none; width: 100%; } }

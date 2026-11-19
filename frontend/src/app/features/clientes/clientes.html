@@ -1,0 +1,71 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Clientes</p>
+    <div class="encabezado">
+      <div><h1>Clientes</h1>
+        <p>A quién le vendes. Para las ventas rápidas sin datos usa el consumidor final. Teléfono, correo y dirección solo se guardan si el cliente autoriza el tratamiento de sus datos.</p></div>
+      <div class="acciones fila">
+        @if (puedeExportar()) { <button type="button" class="boton" (click)="exportar()">Exportar a Excel</button> }
+        @if (puedeEditar()) { <button type="button" class="boton primario" (click)="editando.set('nuevo')">Nuevo cliente</button> }
+      </div>
+    </div>
+  </div>
+
+  @if (editando(); as e) {
+    <section class="tarjeta">
+      <h2>{{ e === 'nuevo' ? 'Nuevo cliente' : 'Editar ' + e.nombre }}</h2>
+      <sc-cliente-formulario [cliente]="clienteDe(e)" [puedeCondiciones]="puedeCondiciones()" [listas]="listas()"
+        (guardado)="guardado($event)" (cancelado)="editando.set(null)" />
+    </section>
+  }
+
+  <section class="tarjeta sin-relleno">
+    <form class="barra-herramientas" (ngSubmit)="buscar()">
+      <input class="entrada buscar" name="q" type="search" placeholder="Documento o nombre" aria-label="Buscar cliente"
+        [ngModel]="texto()" (ngModelChange)="texto.set($event)">
+      <label class="opcion"><input type="checkbox" name="activos" [ngModel]="soloActivos()" (ngModelChange)="soloActivos.set($event); buscar()"> Solo activos</label>
+      <button type="submit" class="boton">Buscar</button>
+    </form>
+    @if (datos(); as d) {
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Cliente</th><th>Documento</th><th>Contacto</th>
+            @if (puedeCondiciones()) { <th>Lista</th><th class="num">Cupo</th> }
+            <th></th></tr></thead>
+          <tbody>
+            @for (c of d.contenido; track c.id) {
+              <tr [class.inactivo]="!c.activo">
+                <td><strong>{{ c.nombre }}</strong>
+                  @if (c.esConsumidorFinal) { <span class="chip mini gris">Consumidor final</span> }
+                  @if (!c.activo) { <span class="chip mini ambar">Inactivo</span> }</td>
+                <td>{{ c.tipoDocumento }} {{ c.numeroDocumento }}</td>
+                <td>@if (c.aceptaDatosEn) {
+                    {{ c.telefono ?? '' }}@if (c.telefono && c.correo) { · }{{ c.correo ?? '' }}
+                    <span class="sub">autorizó datos el {{ c.aceptaDatosEn | fecha }}</span>
+                  } @else { <span class="sub">sin autorización de datos</span> }</td>
+                @if (puedeCondiciones()) {
+                  <td>{{ c.listaPrecio ?? 'General' }}</td>
+                  <td class="num">{{ (c.cupoCredito ?? 0) > 0 ? (c.cupoCredito | pesos) : '—' }}
+                    @if ((c.plazoDias ?? 0) > 0) { <span class="sub">{{ c.plazoDias }} días</span> }</td>
+                }
+                <td class="num">@if (puedeEditar() && !c.esConsumidorFinal) {
+                  <button type="button" class="boton chico" (click)="editar(c)">Editar</button> }</td>
+              </tr>
+            } @empty {
+              <tr><td [attr.colspan]="puedeCondiciones() ? 6 : 4" class="vacio">No hay clientes con esta búsqueda.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (d.totalPaginas > 1) {
+        <div class="paginacion fila">
+          <button type="button" class="boton chico" [disabled]="d.pagina === 0" (click)="irA(d.pagina - 1)">Anterior</button>
+          <span class="texto-chico">Página {{ d.pagina + 1 }} de {{ d.totalPaginas }} · {{ d.totalElementos }} clientes</span>
+          <button type="button" class="boton chico" [disabled]="d.pagina + 1 >= d.totalPaginas" (click)="irA(d.pagina + 1)">Siguiente</button>
+        </div>
+      }
+    } @else {
+      <p class="cargando">Cargando clientes…</p>
+    }
+  </section>
+</div>
