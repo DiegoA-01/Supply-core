@@ -75,6 +75,18 @@ public class EmpresaService {
         if (req.slaAprobacionHoras() != null) {
             e.setSlaAprobacionHoras(req.slaAprobacionHoras());
         }
+        if (req.plazoEntregaDiasDefecto() != null) {
+            e.setPlazoEntregaDiasDefecto(req.plazoEntregaDiasDefecto());
+        }
+        if (req.diasSeguridadDefecto() != null) {
+            e.setDiasSeguridadDefecto(req.diasSeguridadDefecto());
+        }
+        if (req.diasCoberturaDefecto() != null) {
+            e.setDiasCoberturaDefecto(req.diasCoberturaDefecto());
+        }
+        if (req.preciosDelegadosCompras() != null) {
+            e.setPreciosDelegadosCompras(req.preciosDelegadosCompras());
+        }
         auditoriaService.exito(AccionAuditoria.EMPRESA_EDITAR, EntidadAuditada.EMPRESA, e.getId(),
                 "antes: " + antes + " | después: " + describir(e));
         return EmpresaResponse.of(e);
@@ -95,12 +107,14 @@ public class EmpresaService {
      * Resumen para la auditoría.
      *
      * @param e empresa
-     * @return texto con razón social, NIT y moneda
+     * @return texto con razón social, NIT, moneda y reglas
      */
     private static String describir(Empresa e) {
         return "razonSocial=" + e.getRazonSocial() + ", nit=" + e.getNit() + ", moneda=" + e.getMonedaBase()
                 + ", topeAnticipoPct=" + e.getTopeAnticipoPct() + ", toleranciaFacturaPct=" + e.getToleranciaFacturaPct()
                 + ", toleranciaFacturaMonto=" + e.getToleranciaFacturaMonto() + ", slaAprobacionHoras="
-                + e.getSlaAprobacionHoras();
+                + e.getSlaAprobacionHoras() + ", plazoEntregaDiasDefecto=" + e.getPlazoEntregaDiasDefecto()
+                + ", diasSeguridadDefecto=" + e.getDiasSeguridadDefecto() + ", diasCoberturaDefecto="
+                + e.getDiasCoberturaDefecto() + ", preciosDelegadosCompras=" + e.isPreciosDelegadosCompras();
     }
 }

@@ -66,6 +66,12 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 - `features/auditoria/textos.ts` traduce las 96 acciones y las 28 entidades del backend (`AccionAuditoria` y `EntidadAuditada`); un código nuevo se muestra tal cual hasta que se agregue su texto. Hay que sumar el texto cuando el backend agregue una acción.
 - Se eliminó el marcador `features/pendiente` (ya no lo usaba ninguna ruta).
 
+## Reabastecimiento y tablero del dueño (2026-11-18)
+- `/app/inventario/reabastecimiento`: estados del plan como tarjetas que filtran, tabla con consumo, días que alcanza, plazo (de la empresa o del producto, y el real como pista), fecha límite para pedir y cantidad; detalle con la cuenta. ADMIN_COMPRAS ajusta el plazo del producto; el SOLICITANTE elige productos y crea la solicitud en borrador (abre su edición).
+- `/app/tablero` (ADMIN_SISTEMA, ADMIN_COMPRAS, AUDITOR): KPIs, compras por mes (barras), gasto por categoría y proveedor, distribución de rotación, más y menos movidos, qué pedir. Sin librería de gráficos: barras con CSS; todo número viene del backend.
+- Datos de la empresa suma los días de entrega, seguridad y cobertura por defecto.
+- Selector de sede (`core/ui/selector-sede.ts`) en tablero, plan de reabastecimiento y rotación; aparece solo con dos o más sedes. El tablero de toda la empresa compara las compras por sede.
+
 ## Decisiones (2026-11-05)
 - **Una sola app SaaS con tres zonas**: `/app` (empresa, `empresaGuard`), `/portal` (rol PROVEEDOR, `proveedorGuard`), `/plataforma` (dueño con MFA, `plataformaGuard`). Cada pantalla se carga perezosa.
 - **Librería**: Angular Material solo para comportamiento (menús, avisos, tooltips); el aspecto sale de tokens CSS en `styles.scss` tomados del mockup (primario `#d93a0b`). PrimeNG descartado: v22 exige licencia comercial con clave.
@@ -88,6 +94,14 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 
 ## Pendiente
 - Plan completo y por fases: `PLAN_FRONTEND.md` (fases 0 y 1 hechas; el kardex se exporta en la fase 3, donde se elige el producto).
-- Pantallas: auditoría de la empresa (placeholder), despachos de caja (CAJERO), movimientos de inventario (ajustes y traslados), catálogos de configuración (sedes, centros de costo, bodegas, categorías, políticas, pesos, presupuestos, contratos, delegaciones), perfil del proveedor en el portal y su registro público.
+- Pantallas de las fases 2 a 8 hechas (ver `PLAN_FRONTEND.md`). Datos y reglas de la empresa (`/app/configuracion/empresa`, `PUT /api/empresa`) agregada el 2026-11-18.
 - Datos que la API no trae y el mockup muestra: nombre del solicitante en la bandeja (solo ADMIN_SISTEMA/AUDITOR leen `/api/usuarios`), usuarios por empresa en la consola, variación frente al mes anterior.
 - Exportar a Excel los reportes (backend, parte 2). Recuperación de clave (SaaS 3).
+
+## Mejoras de negocio (2026-11-19, rama `feature/mejoras-negocio`)
+- `/app/pedidos` (todo usuario interno): pedir un producto del catálogo o con descripción libre; compras (ADMIN_COMPRAS, COMPRADOR) ve todos y responde; descartar exige explicación. `?productoId=` lo llena desde el plan ("Necesito este producto").
+- `/app/precios` (módulo VENTAS): precio de venta con IVA incluido, impuesto, historial y margen por producto y global; todo lo calcula el backend. Delegar precios a compras: casilla en Datos de la empresa.
+- `/app/catalogos` (módulo PROVEEDORES; ADMIN_COMPRAS, COMPRADOR, AUDITOR, ADMIN_SISTEMA): pestañas Oportunidades y Catálogo completo; confirmar, cambiar o descartar la equivalencia (solo ADMIN_COMPRAS y COMPRADOR). Servicio `catalogos.proveedor.service.ts`.
+- `/portal/catalogo`: el proveedor sube su Excel (todo o nada, errores por fila) y ve su lista; nunca ve stock ni necesidades.
+- Plan de reabastecimiento: comparación de sedes, chip de traslado, mínimo y máximo por sede (ADMIN_COMPRAS) y "Ofertas en catálogos de proveedores" en el detalle.
+- Reportes, Inicio e Informe de compras con selector de sede o tabla "Compras por sede".

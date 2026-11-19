@@ -1,0 +1,93 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Pedidos internos</p>
+    <div class="encabezado">
+      <div><h1>Pedidos internos</h1>
+        <p>¿Hace falta algo? Avísale a compras aquí. Ellos deciden si lo traen de otra sede, lo compran o lo cotizan. Los proveedores no ven estos pedidos.</p></div>
+    </div>
+  </div>
+
+  <section class="tarjeta">
+    <h2>Necesito un producto</h2>
+    <div class="formulario dos">
+      <div class="campo">
+        <label for="pp">Producto del catálogo</label>
+        <input id="pp" class="entrada" list="lista-pedido" placeholder="Escribe código o nombre" [ngModel]="buscador.texto()" (ngModelChange)="buscador.escribir($event)">
+        <datalist id="lista-pedido">@for (p of buscador.opciones(); track p.id) { <option [value]="buscador.etiqueta(p)"></option> }</datalist>
+        @if (buscador.producto(); as p) { <span class="ayuda ok">{{ p.nombre }} · stock {{ p.stockTotal | numero }} {{ p.unidadMedida?.codigo }}</span> }
+      </div>
+      <div class="campo">
+        <label for="pd">O descríbelo si no está en el catálogo</label>
+        <input id="pd" class="entrada" maxlength="300" placeholder="Ej.: guantes de carnaza talla L" [disabled]="!!buscador.id()"
+               [ngModel]="descripcion()" (ngModelChange)="descripcion.set($event)">
+      </div>
+      <div class="campo">
+        <label for="pc">Cantidad (opcional)</label>
+        <input id="pc" type="number" min="0" class="entrada num" [ngModel]="cantidad()" (ngModelChange)="cantidad.set($event === '' || $event === null ? null : +$event)">
+      </div>
+      <sc-selector-sede [sede]="sede()" (sedeChange)="sede.set($event)" />
+      <div class="campo ancho">
+        <label for="pn">Para qué o para cuándo (opcional)</label>
+        <input id="pn" class="entrada" maxlength="500" [ngModel]="nota()" (ngModelChange)="nota.set($event)">
+      </div>
+    </div>
+    <button type="button" class="boton primario" [disabled]="enviando()" (click)="pedir()">
+      <span class="material-symbols-outlined">send</span> Enviar a compras</button>
+  </section>
+
+  <section class="tarjeta sin-relleno">
+    <div class="barra-herramientas">
+      <div class="pastillas" role="group" aria-label="Qué pedidos ver">
+        <button type="button" class="pastilla" [class.activa]="vista() === 'mios'" (click)="cambiarVista('mios')">Mis pedidos</button>
+        @if (veTodo()) { <button type="button" class="pastilla" [class.activa]="vista() === 'todos'" (click)="cambiarVista('todos')">Todos</button> }
+      </div>
+      <select class="entrada filtro-estado" aria-label="Filtrar por estado" [ngModel]="filtro()" (ngModelChange)="filtro.set($event); cargar()">
+        <option [ngValue]="null">Todos los estados</option>
+        @for (e of estados; track e) { <option [ngValue]="e">{{ etiqueta(e) }}</option> }
+      </select>
+    </div>
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead><tr><th>Pedido</th><th>Qué hace falta</th><th>Quién y dónde</th><th>Estado</th><th>Respuesta de compras</th>@if (responde()) { <th></th> }</tr></thead>
+        <tbody>
+          @for (p of pagina()?.contenido ?? []; track p.id) {
+            <tr>
+              <td><strong>{{ p.consecutivo }}</strong><span class="sub">{{ p.creadoEn | fecha }}</span></td>
+              <td>{{ p.producto ?? p.descripcion }}
+                @if (p.cantidad != null) { <span class="sub">{{ p.cantidad | numero }} {{ p.unidad ?? '' }}</span> }
+                @if (p.nota) { <span class="sub">«{{ p.nota }}»</span> }</td>
+              <td>{{ p.solicitante }}<span class="sub">{{ p.sede ?? 'Sin sede' }}</span></td>
+              <td><span class="chip {{ tono(p.estado) }}">{{ etiqueta(p.estado) }}</span></td>
+              <td>{{ p.respuesta ?? '—' }}@if (p.atendidoPor) { <span class="sub">{{ p.atendidoPor }} · {{ p.atendidoEn | fecha }}</span> }</td>
+              @if (responde()) {
+                <td class="num">
+                  @if (!cerrado(p.estado)) {
+                    <div class="fila fin">
+                      @if (p.estado === 'PENDIENTE') { <button type="button" class="boton chico" (click)="responder(p, 'EN_GESTION')">Tomar</button> }
+                      <button type="button" class="boton chico primario" (click)="responder(p, 'ATENDIDO')">Atendido</button>
+                      <button type="button" class="boton chico" (click)="responder(p, 'DESCARTADO')">Descartar</button>
+                    </div>
+                  }
+                </td>
+              }
+            </tr>
+            @if (respuesta(); as r) {
+              @if (r.id === p.id) {
+                <tr class="detalle"><td [attr.colspan]="responde() ? 6 : 5">
+                  <div class="fila respuesta">
+                    <div class="campo"><label for="rp-{{ p.id }}">{{ r.estado === 'ATENDIDO' ? 'Qué se hizo (opcional)' : 'Por qué no se hará' }}</label>
+                      <input id="rp-{{ p.id }}" class="entrada" maxlength="500" [ngModel]="r.texto" (ngModelChange)="escribirRespuesta($event)"></div>
+                    <button type="button" class="boton primario" (click)="guardarRespuesta(r)">Responder</button>
+                    <button type="button" class="boton" (click)="respuesta.set(null)">Cancelar</button>
+                  </div>
+                </td></tr>
+              }
+            }
+          } @empty {
+            <tr><td [attr.colspan]="responde() ? 6 : 5" class="vacio">{{ pagina() ? 'No hay pedidos con este filtro.' : 'Cargando…' }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

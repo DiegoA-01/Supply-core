@@ -237,8 +237,11 @@ public class SolicitudService {
             PoliticaAprobacion p = politica.get();
             s.setPoliticaAprobacionId(p.getId());
             s.setEstado(EstadoSolicitud.PENDIENTE_APROBACION);
-            // Si quien pide aprueba con ese mismo rol (p. ej. el jefe de compras), la decide el dueño de la empresa
-            s.setApruebaDueno(SesionActual.usuario().roles().contains(p.getRolAprobador().getCodigo()));
+            // Si quien pide aprueba con ese mismo rol (p. ej. el jefe de compras), la decide el dueño de la empresa.
+            // Si quien pide ES el dueño, no hay a quién subirla: la decide otra persona con el rol de la política
+            // (nadie aprueba lo suyo, lo garantiza la aprobación).
+            var roles = SesionActual.usuario().roles();
+            s.setApruebaDueno(roles.contains(p.getRolAprobador().getCodigo()) && !roles.contains(Roles.ADMIN_SISTEMA));
             notificacionService.notificarRol(s.isApruebaDueno() ? Roles.ADMIN_SISTEMA : p.getRolAprobador().getCodigo(),
                     EventoNotificacion.SOLICITUD_PENDIENTE_APROBACION, "La solicitud " + s.getConsecutivo()
                             + " por " + describirMonto(e) + " espera su aprobación");

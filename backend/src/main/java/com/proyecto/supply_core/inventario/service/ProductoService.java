@@ -24,6 +24,7 @@ import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.common.exception.ParametroInvalidoException;
 import com.proyecto.supply_core.common.util.Ordenamiento;
+import com.proyecto.supply_core.inventario.dto.ProductoPlazoRequest;
 import com.proyecto.supply_core.inventario.dto.ProductoRequest;
 import com.proyecto.supply_core.inventario.dto.ProductoResponse;
 import com.proyecto.supply_core.inventario.dto.ProductoUpdateRequest;
@@ -49,6 +50,8 @@ public class ProductoService {
     private final StockProductoBodegaRepository stockRepository;
     private final MovimientoInventarioRepository movimientoRepository;
     private final AuditoriaService auditoriaService;
+    /** Impuesto de venta por defecto de los productos nuevos; {@code null} en pruebas que no lo usan. */
+    private final com.proyecto.supply_core.venta.repository.TarifaImpuestoRepository tarifaRepository;
 
     /**
      * @param productoRepository   acceso a productos
@@ -61,6 +64,25 @@ public class ProductoService {
     public ProductoService(ProductoRepository productoRepository, CategoriaProductoRepository categoriaRepository,
             UnidadMedidaRepository unidadRepository, StockProductoBodegaRepository stockRepository,
             MovimientoInventarioRepository movimientoRepository, AuditoriaService auditoriaService) {
+        this(productoRepository, categoriaRepository, unidadRepository, stockRepository, movimientoRepository,
+                auditoriaService, null);
+    }
+
+    /**
+     * @param productoRepository   acceso a productos
+     * @param categoriaRepository  acceso a categorías
+     * @param unidadRepository     acceso a unidades
+     * @param stockRepository      totales de stock (solo lectura)
+     * @param movimientoRepository para saber si el producto ya tiene movimientos
+     * @param auditoriaService     registro de cambios
+     * @param tarifaRepository     impuesto de venta por defecto (IVA 19 %) de los productos nuevos
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    public ProductoService(ProductoRepository productoRepository, CategoriaProductoRepository categoriaRepository,
+            UnidadMedidaRepository unidadRepository, StockProductoBodegaRepository stockRepository,
+            MovimientoInventarioRepository movimientoRepository, AuditoriaService auditoriaService,
+            com.proyecto.supply_core.venta.repository.TarifaImpuestoRepository tarifaRepository) {
+        this.tarifaRepository = tarifaRepository;
         this.productoRepository = productoRepository;
         this.categoriaRepository = categoriaRepository;
         this.unidadRepository = unidadRepository;
@@ -123,6 +145,10 @@ public class ProductoService {
     public ProductoResponse crear(ProductoRequest req) {
         Producto p = new Producto();
         p.setCodigo(normalizarCodigo(req.codigo()));
+        if (tarifaRepository != null) {
+            // como en la migración V29: los productos nuevos arrancan con IVA 19 %; se cambia en Precios y margen
+            tarifaRepository.findByCodigo("IVA19").ifPresent(p::setTarifaImpuesto);
+        }
         aplicar(p, req.nombre(), req.descripcion(), categoria(req.categoriaId()), unidad(req.unidadMedidaId()),
                 req.stockMinimo(), req.stockMaximo(), req.costoReferencia());
         Producto guardado = productoRepository.save(p);
@@ -159,6 +185,26 @@ public class ProductoService {
                 req.stockMinimo(), req.stockMaximo(), req.costoReferencia());
         auditoriaService.exito(AccionAuditoria.PRODUCTO_EDITAR, EntidadAuditada.PRODUCTO, id,
                 "antes: " + antes + " | después: " + describir(p));
+        return ProductoResponse.of(p, stockRepository.totalDeProducto(id));
+    }
+
+    /**
+     * Cambia el plazo de reabastecimiento propio del producto. Un valor {@code null} vuelve al de la empresa.
+     *
+     * @param id  producto
+     * @param req días hábiles de entrega y de seguridad
+     * @return producto actualizado
+     * @throws NoEncontradoException si no existe
+     */
+    @Transactional
+    public ProductoResponse cambiarPlazo(Long id, ProductoPlazoRequest req) {
+        Producto p = buscarEntidad(id);
+        String antes = "plazoEntregaDias=" + p.getPlazoEntregaDias() + ", diasSeguridad=" + p.getDiasSeguridad();
+        p.setPlazoEntregaDias(req.plazoEntregaDias());
+        p.setDiasSeguridad(req.diasSeguridad());
+        auditoriaService.exito(AccionAuditoria.PRODUCTO_EDITAR, EntidadAuditada.PRODUCTO, id, "codigo=" + p.getCodigo()
+                + "; antes: " + antes + " | después: plazoEntregaDias=" + p.getPlazoEntregaDias() + ", diasSeguridad="
+                + p.getDiasSeguridad());
         return ProductoResponse.of(p, stockRepository.totalDeProducto(id));
     }
 

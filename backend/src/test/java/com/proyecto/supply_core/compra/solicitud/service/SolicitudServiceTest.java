@@ -193,6 +193,23 @@ class SolicitudServiceTest {
     }
 
     @Test
+    void siQuienPideEsElDuenoLaDecideOtraPersonaConElRolDeLaPolitica() {
+        // el dueño también tiene el rol aprobador: subirla al dueño la dejaría trancada (nadie aprueba lo suyo)
+        request.setAttribute(SesionActual.ATRIBUTO, new UsuarioAutenticado(10L, "dueno@x.com", "Dueño",
+                Set.of("SOLICITANTE", "APROBADOR", "ADMIN_SISTEMA"), null, 1L));
+        SolicitudCompra s = existente(EstadoSolicitud.BORRADOR, 10L, linea(100L, 2L, "2"));
+        when(politicas.aplicable(TipoPolitica.SOLICITUD, new BigDecimal("24000.00")))
+                .thenReturn(Optional.of(politica(7L, "APROBADOR")));
+
+        var r = service.enviar(1L);
+
+        assertFalse(s.isApruebaDueno());
+        assertFalse(r.apruebaDueno());
+        verify(notificaciones).notificarRol(eq("APROBADOR"), eq(EventoNotificacion.SOLICITUD_PENDIENTE_APROBACION),
+                anyString());
+    }
+
+    @Test
     void productoSinCostoExigeLaPoliticaDeMayorTramo() {
         lapiz.setCostoReferencia(null);
         existente(EstadoSolicitud.BORRADOR, 10L, linea(100L, 1L, "3"));

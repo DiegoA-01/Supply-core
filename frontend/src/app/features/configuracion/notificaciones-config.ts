@@ -9,6 +9,11 @@ import { Avisos } from '../../core/ui/avisos';
 const EVENTOS: Record<string, string> = {
   PROVEEDOR_PENDIENTE: 'Un proveedor se registró y espera habilitación',
   STOCK_BAJO_MINIMO: 'Un producto quedó bajo su mínimo',
+  REABASTECIMIENTO_DIARIO: 'Resumen de la mañana: productos que hay que pedir hoy',
+  STOCK_BAJO_SEDE: 'Una sede se quedó corta de un producto',
+  PEDIDO_INTERNO: 'Alguien de la empresa necesita un producto',
+  PEDIDO_INTERNO_RESPONDIDO: 'Compras respondió tu pedido interno',
+  CATALOGO_ACTUALIZADO: 'Un proveedor actualizó su catálogo',
   SOLICITUD_PENDIENTE_APROBACION: 'Hay una solicitud esperando una decisión',
   SOLICITUD_DECIDIDA: 'Decidieron una solicitud',
   SOLICITUD_APROBADA: 'Una solicitud quedó aprobada y lista para cotizar',
@@ -59,7 +64,8 @@ export class NotificacionesConfig implements OnInit {
   private readonly avisos = inject(Avisos);
 
   protected readonly lista = signal<ConfigNotificacion[] | null>(null);
-  protected readonly guardando = signal<number | null>(null);
+  /** Evento y canal que se está guardando ({@code EVENTO/CANAL}). */
+  protected readonly guardando = signal<string | null>(null);
 
   protected readonly filas = computed<FilaEvento[]>(() => {
     const porEvento = new Map<string, FilaEvento>();
@@ -88,14 +94,15 @@ export class NotificacionesConfig implements OnInit {
 
   /** @param c canal de un evento; lo activa o desactiva y deja la lista con lo que guardó el servidor */
   protected alternar(c: ConfigNotificacion | undefined): void {
-    if (!c?.id || this.guardando() !== null) {
+    if (!c?.evento || !c.canal || this.guardando() !== null) {
       return;
     }
-    this.guardando.set(c.id);
-    this.servicio.cambiarConfiguracion(c.id, !c.activo).subscribe({
+    this.guardando.set(`${c.evento}/${c.canal}`);
+    // por evento y canal: los avisos que la empresa nunca cambió no tienen id todavía
+    this.servicio.cambiarPorEvento(c.evento, c.canal, !c.activo).subscribe({
       next: r => {
         this.guardando.set(null);
-        this.lista.update(l => (l ?? []).map(x => (x.id === r.id ? r : x)));
+        this.lista.update(l => (l ?? []).map(x => (x.evento === r.evento && x.canal === r.canal ? r : x)));
       },
       error: e => {
         this.guardando.set(null);

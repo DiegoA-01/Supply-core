@@ -2,10 +2,11 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { EstadoCuenta, Gasto, ProveedorRanking } from '../../core/api/modelos';
+import { EstadoCuenta, Gasto, GastoItem, ProveedorRanking } from '../../core/api/modelos';
 import { Estado } from '../../core/formato/etiquetas';
 import { FechaPipe, PesosPipe, PuntajePipe } from '../../core/formato/formato';
 import { ReportesService, iso } from '../../core/servicios/reportes.service';
+import { SelectorSede } from '../../core/ui/selector-sede';
 import { Avisos } from '../../core/ui/avisos';
 
 type Pestana = 'gasto' | 'proveedores' | 'cuenta';
@@ -13,7 +14,7 @@ type Pestana = 'gasto' | 'proveedores' | 'cuenta';
 /** Vista 8 · Reportes de solo lectura (UC-15). Todos los totales vienen del backend. */
 @Component({
   selector: 'sc-reportes',
-  imports: [FormsModule, RouterLink, Estado, PesosPipe, PuntajePipe, FechaPipe],
+  imports: [FormsModule, RouterLink, Estado, PesosPipe, PuntajePipe, FechaPipe, SelectorSede],
   templateUrl: './reportes.html',
   styleUrl: './reportes.scss',
 })
@@ -30,6 +31,10 @@ export class Reportes implements OnInit {
   protected readonly proveedorId = signal<number | null>(null);
   protected readonly cuenta = signal<EstadoCuenta | null>(null);
   protected readonly cargando = signal(false);
+  /** Sede de los reportes de gasto y proveedores; {@code null} = toda la empresa. */
+  protected readonly sede = signal<number | null>(null);
+  /** Comparación de compras entre sedes (solo en toda la empresa con dos o más sedes con compras). */
+  protected readonly porSede = signal<GastoItem[]>([]);
 
   ngOnInit(): void {
     // Los proveedores con órdenes en el último año sirven de lista para el estado de cuenta.
@@ -66,10 +71,15 @@ export class Reportes implements OnInit {
     };
     switch (this.pestana()) {
       case 'gasto':
-        this.servicio.gasto(desde, hasta).subscribe({ next: g => { this.gasto.set(g); listo(); }, error });
+        this.servicio.gasto(desde, hasta, this.sede()).subscribe({ next: g => { this.gasto.set(g); listo(); }, error });
+        if (this.sede() === null) {
+          this.servicio.gastoPorSede(desde, hasta).subscribe({ next: l => this.porSede.set(l.length > 1 ? l : []), error: () => this.porSede.set([]) });
+        } else {
+          this.porSede.set([]);
+        }
         break;
       case 'proveedores':
-        this.servicio.ranking(desde, hasta).subscribe({ next: r => { this.ranking.set(r); listo(); }, error });
+        this.servicio.ranking(desde, hasta, this.sede()).subscribe({ next: r => { this.ranking.set(r); listo(); }, error });
         break;
       case 'cuenta': {
         const id = this.proveedorId();

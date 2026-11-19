@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.reporte.dto.EstadoCuentaResponse;
+import com.proyecto.supply_core.reporte.dto.GastoItem;
 import com.proyecto.supply_core.reporte.dto.GastoResponse;
 import com.proyecto.supply_core.reporte.dto.InventarioResumen;
 import com.proyecto.supply_core.reporte.dto.ProveedorRanking;
@@ -48,14 +49,16 @@ public class ReporteController {
      * @param hasta       emisión hasta (yyyy-MM-dd), opcional
      * @param categoriaId categoría, opcional
      * @param proveedorId proveedor, opcional
+     * @param sedeId      solo órdenes que llegan a bodegas de esta sede, opcional
      * @return gasto del período (ceros y listas vacías si no hay datos)
      */
     @GetMapping("/gasto")
     public GastoResponse gasto(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
             @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long categoriaId,
-            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long proveedorId) {
-        return reporteService.gasto(desde, hasta, categoriaId, proveedorId);
+            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long proveedorId,
+            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long sedeId) {
+        return reporteService.gasto(desde, hasta, categoriaId, proveedorId, sedeId);
     }
 
     /**
@@ -80,14 +83,30 @@ public class ReporteController {
      * @param desde       emisión desde (yyyy-MM-dd), opcional
      * @param hasta       emisión hasta (yyyy-MM-dd), opcional
      * @param categoriaId categoría, opcional
+     * @param sedeId      solo órdenes que llegan a bodegas de esta sede, opcional
      * @return ranking por score (lista vacía si no hay órdenes)
      */
     @GetMapping("/proveedores")
     public List<ProveedorRanking> proveedores(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
-            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long categoriaId) {
-        return reporteService.proveedores(desde, hasta, categoriaId);
+            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long categoriaId,
+            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long sedeId) {
+        return reporteService.proveedores(desde, hasta, categoriaId, sedeId);
+    }
+
+    /**
+     * Gasto del período repartido por la sede a la que llegan las órdenes (para comparar sedes).
+     *
+     * @param desde emisión desde (yyyy-MM-dd), opcional
+     * @param hasta emisión hasta (yyyy-MM-dd), opcional
+     * @return una fila por sede, de mayor a menor gasto
+     */
+    @GetMapping("/gasto/sedes")
+    public List<GastoItem> gastoPorSede(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return reporteService.gastoPorSede(desde, hasta);
     }
 
     /**

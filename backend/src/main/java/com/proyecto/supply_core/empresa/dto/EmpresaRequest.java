@@ -22,6 +22,10 @@ import jakarta.validation.constraints.Size;
  * @param toleranciaFacturaPct   diferencia aceptada entre factura y recepción, en % (opcional)
  * @param toleranciaFacturaMonto diferencia aceptada entre factura y recepción, en monto fijo (opcional)
  * @param slaAprobacionHoras horas para decidir una solicitud pendiente antes de escalarla, de 0 (sin SLA) a 720 (opcional)
+ * @param plazoEntregaDiasDefecto días hábiles que suele tardar un pedido, de 0 a 120 (opcional)
+ * @param diasSeguridadDefecto    días hábiles de colchón, de 0 a 60 (opcional)
+ * @param diasCoberturaDefecto    días de calendario que debe cubrir un pedido al llegar, de 1 a 365 (opcional)
+ * @param preciosDelegadosCompras el jefe de compras también puede fijar precios de venta (opcional)
  */
 public record EmpresaRequest(
         @NotBlank(message = "es obligatoria")
@@ -52,5 +56,15 @@ public record EmpresaRequest(
         BigDecimal toleranciaFacturaMonto,
         @Min(value = 0, message = "no puede ser negativo")
         @Max(value = 720, message = "no puede superar 720 horas (30 días)")
-        Integer slaAprobacionHoras) {
+        Integer slaAprobacionHoras,
+        @Min(value = 0, message = "no puede ser negativo")
+        @Max(value = 120, message = "no puede superar 120 días hábiles")
+        Integer plazoEntregaDiasDefecto,
+        @Min(value = 0, message = "no puede ser negativo")
+        @Max(value = 60, message = "no puede superar 60 días hábiles")
+        Integer diasSeguridadDefecto,
+        @Min(value = 1, message = "debe ser al menos 1 día")
+        @Max(value = 365, message = "no puede superar 365 días")
+        Integer diasCoberturaDefecto,
+        Boolean preciosDelegadosCompras) {
 }

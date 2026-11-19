@@ -10,6 +10,7 @@
         <button type="button" class="pastilla" [class.activa]="periodo() === 'trimestre'" (click)="cambiarPeriodo('trimestre')">Trimestre</button>
         <button type="button" class="pastilla" [class.activa]="periodo() === 'anio'" (click)="cambiarPeriodo('anio')">Año</button>
       </div>
+      <sc-selector-sede [sede]="sede()" (sedeChange)="cambiarSede($event)" />
     }
     @if (sesion.tieneRol(['SOLICITANTE']) && sesion.tieneModulo('COMPRAS') && !sesion.soloLectura()) {
       <a class="boton primario" routerLink="/app/solicitudes/nueva"><span class="material-symbols-outlined">add</span> Nueva solicitud</a>

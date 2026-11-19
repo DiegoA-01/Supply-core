@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS } from './core/navegacion/menu';
+import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REABASTECIMIENTO, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS, ROLES_TABLERO, ROLES_PRECIOS, ROLES_CATALOGOS } from './core/navegacion/menu';
 import { empresaGuard, invitadoGuard, permisoGuard, plataformaGuard, proveedorGuard } from './core/sesion/guards';
 
 /**
@@ -140,6 +140,41 @@ export const routes: Routes = [
         loadComponent: () => import('./features/despachos/despachos').then(m => m.Despachos),
       },
       {
+        path: 'inventario/reabastecimiento',
+        title: 'Plan de reabastecimiento · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_REABASTECIMIENTO, modulo: 'COMPRAS' },
+        loadComponent: () => import('./features/inventario/reabastecimiento').then(m => m.PlanReabastecimiento),
+      },
+      {
+        path: 'catalogos',
+        title: 'Catálogos de proveedores · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_CATALOGOS, modulo: 'PROVEEDORES' },
+        loadComponent: () => import('./features/catalogos/catalogos').then(m => m.CatalogosProveedores),
+      },
+      {
+        path: 'precios',
+        title: 'Precios y margen · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_PRECIOS, modulo: 'VENTAS' },
+        loadComponent: () => import('./features/precios/precios').then(m => m.PreciosMargen),
+      },
+      {
+        path: 'pedidos',
+        title: 'Pedidos internos · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: INTERNOS, modulo: 'COMPRAS' },
+        loadComponent: () => import('./features/pedidos/pedidos').then(m => m.PedidosInternos),
+      },
+      {
+        path: 'tablero',
+        title: 'Tablero del dueño · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_TABLERO, modulo: 'REPORTES' },
+        loadComponent: () => import('./features/tablero/tablero').then(m => m.TableroDueno),
+      },
+      {
         path: 'inventario/rotacion',
         title: 'Rotación de productos · Supply-Core',
         canActivate: [permisoGuard],
@@ -187,6 +222,13 @@ export const routes: Routes = [
         canActivate: [permisoGuard],
         data: { roles: ['AUDITOR', 'ADMIN_SISTEMA'], modulo: 'AUDITORIA' },
         loadComponent: () => import('./features/auditoria/auditoria').then(m => m.Auditoria),
+      },
+      {
+        path: 'configuracion/empresa',
+        title: 'Datos de la empresa · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['ADMIN_SISTEMA'] },
+        loadComponent: () => import('./features/configuracion/empresa').then(m => m.ConfigEmpresa),
       },
       {
         path: 'configuracion/notificaciones',
@@ -257,6 +299,7 @@ export const routes: Routes = [
       { path: 'cotizaciones', title: 'Cotizaciones · Portal', loadComponent: () => import('./features/portal/portal-rfqs').then(m => m.PortalRfqs) },
       { path: 'cotizaciones/:rfqId', title: 'Cotizar · Portal', loadComponent: () => import('./features/portal/portal-cotizar').then(m => m.PortalCotizar) },
       { path: 'perfil', title: 'Mi perfil · Portal', loadComponent: () => import('./features/portal/portal-perfil').then(m => m.PortalPerfil) },
+      { path: 'catalogo', title: 'Mi catálogo · Portal', loadComponent: () => import('./features/portal/portal-catalogo').then(m => m.PortalCatalogo) },
       { path: 'ordenes', title: 'Órdenes · Portal', loadComponent: () => import('./features/portal/portal-ordenes').then(m => m.PortalOrdenes) },
     ],
   },

@@ -360,7 +360,7 @@ Orden final: 17 ✅ → 17-bis ✅ → 18 → 18-a a 18-d → SaaS 2 → SaaS 3 
 - Pagos: si una orden con pagos se cancela o el proveedor la rechaza, el saldo a favor solo queda visible en el resumen; no hay devolución (fuera de alcance).
 - Factura: una sola vigente por orden; considerar facturación por entregas si algún cliente la pide.
 - Despacho: carga del cierre de caja desde Excel/CSV, si la ferretería usa otro programa de caja.
-- Frontend Angular: 10 vistas del mockup (`feature/frontend-initial`) + usuarios, solicitudes, perfil, RFQ nueva, factura y consola de planes y auditoría (`feature/frontend-vistas`); lo que falta está en `references/frontend.md` › Pendiente.
+- Frontend Angular: 10 vistas del mockup (`feature/frontend-initial`) + usuarios, solicitudes, perfil, RFQ nueva, factura y consola de planes y auditoría (`feature/frontend-vistas`) + fases del `PLAN_FRONTEND.md` (develop) + datos de la empresa, plan de reabastecimiento por plazo de entrega y tablero del dueño (`feature/reabastecimiento`); lo que falta está en `references/frontend.md` › Pendiente.
 - **Seguridad personal:** en la sesión del 2026-10-23 la contraseña local de MySQL apareció en pantalla; cámbiala si compartes la conversación o el repositorio.
 
 ### Cómo retomar

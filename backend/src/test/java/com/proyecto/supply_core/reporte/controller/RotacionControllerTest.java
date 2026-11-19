@@ -2,6 +2,7 @@ package com.proyecto.supply_core.reporte.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -37,7 +38,7 @@ class RotacionControllerTest extends WebTestBase {
 
     @Test
     void pasaLosFiltrosYLoVenLosRolesQueAnalizanElInventario() throws Exception {
-        when(rotacionService.rotacion(any(), any(), any())).thenReturn(vacia());
+        when(rotacionService.rotacion(any(), any(), any(), any())).thenReturn(vacia());
 
         mvc.perform(get("/api/reportes/rotacion?desde=2026-10-01&hasta=2026-10-31&categoriaId=5")
                         .header(HttpHeaders.AUTHORIZATION, bearer("ADMIN_SISTEMA")))
@@ -45,7 +46,7 @@ class RotacionControllerTest extends WebTestBase {
                 .andExpect(jsonPath("$.dias").value(90))
                 .andExpect(jsonPath("$.resumen.diasPorAgotarse").value(15))
                 .andExpect(jsonPath("$.items").isEmpty());
-        verify(rotacionService).rotacion(eq(LocalDate.of(2026, 10, 1)), eq(LocalDate.of(2026, 10, 31)), eq(5L));
+        verify(rotacionService).rotacion(eq(LocalDate.of(2026, 10, 1)), eq(LocalDate.of(2026, 10, 31)), eq(5L), isNull());
         for (String rol : List.of("ADMIN_COMPRAS", "COMPRADOR", "APROBADOR", "ADMINISTRATIVO", "AUDITOR", "ALMACENISTA")) {
             mvc.perform(get("/api/reportes/rotacion").header(HttpHeaders.AUTHORIZATION, bearer(rol)))
                     .andExpect(status().isOk());

@@ -1,0 +1,182 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / <a routerLink="/app/inventario">Inventario</a> / Plan de reabastecimiento</p>
+    <div class="encabezado">
+      <div><h1>Plan de reabastecimiento</h1>
+        <p>Qué pedir, hasta cuándo y cuánto, para que el stock alcance mientras llega el pedido. Se calcula con lo que salió en los últimos días y con lo que tarda el proveedor en días hábiles (sin fines de semana ni festivos).</p></div>
+      <div class="acciones"><sc-selector-sede [sede]="sede()" (sedeChange)="cambiarSede($event)" /></div>
+    </div>
+  </div>
+
+  @if (datos(); as d) {
+    <div class="rejilla kpis">
+      @for (e of estados; track e) {
+        <button type="button" class="tarjeta kpi filtro-kpi" [class.activo]="filtro() === e" (click)="filtro.set(filtro() === e ? null : e)">
+          <div class="etiqueta"><span class="punto {{ tono(e) }}"></span>{{ etiqueta(e) }}</div>
+          <div class="valor" [class.peligro]="(e === 'URGENTE' || e === 'PEDIR_YA') && cuenta(e) > 0">{{ cuenta(e) }}</div>
+          <div class="nota">{{ e === 'URGENTE' ? 'se acaban antes de que llegue el pedido' : e === 'PEDIR_YA' ? 'hay que pedirlos hoy' : e === 'PRONTO' ? 'en los próximos 5 días hábiles' : e === 'OK' ? 'alcanzan holgados' : 'sin salidas en ' + d.diasConsumo + ' días' }}</div>
+        </button>
+      }
+    </div>
+
+    <section class="tarjeta reglas">
+      <span class="material-symbols-outlined">info</span>
+      <p class="sin-margen texto-chico">
+        Por defecto un pedido tarda <strong>{{ d.plazoEntregaDefecto }} días hábiles</strong>, con <strong>{{ d.seguridadDefecto }} días hábiles</strong> de seguridad,
+        y lo que se pide debe alcanzar <strong>{{ d.coberturaDefecto }} días</strong> después de llegar. El consumo es el promedio de los últimos {{ d.diasConsumo }} días.
+        @if (sesion.tieneRol(['ADMIN_SISTEMA'])) { <a routerLink="/app/configuracion/empresa">Cambiar los valores de la empresa</a>. }
+        @if (puedeAjustar()) { Cada producto puede tener su propio plazo. }
+        @if (sede() !== null) { <br><strong>Vista de una sede:</strong> cuentan el stock y las salidas de sus bodegas y las órdenes que llegan a ellas. No se descuentan las solicitudes (no tienen sede) ni se aplica el mínimo del producto, que es de toda la empresa. }
+      </p>
+    </section>
+
+    @if (comparacion().length) {
+      <section class="tarjeta sin-relleno">
+        <div class="cabecera-comparar"><h2>Comparar sedes</h2>
+          <p class="texto-chico texto-2 sin-margen">Cada sede con su propio stock, consumo y límites. Elige una sede arriba para ver su plan y los traslados sugeridos.</p></div>
+        <div class="tabla-contenedor">
+          <table class="tabla">
+            <thead><tr><th>Sede</th><th class="num">Urgentes</th><th class="num">Pedir hoy</th><th class="num">Pronto</th><th class="num">Alcanza</th><th class="num">Se cubren trasladando</th><th></th></tr></thead>
+            <tbody>
+              @for (s of comparacion(); track s.sedeId) {
+                <tr>
+                  <td><strong>{{ s.sede }}</strong></td>
+                  <td class="num" [class.rojo]="(s.urgentes ?? 0) > 0">{{ s.urgentes }}</td>
+                  <td class="num">{{ s.pedirYa }}</td>
+                  <td class="num">{{ s.pronto }}</td>
+                  <td class="num">{{ s.ok }}</td>
+                  <td class="num">{{ s.traslados }}</td>
+                  <td class="num"><button type="button" class="boton chico" (click)="cambiarSede(s.sedeId!)">Ver plan</button></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+
+    <section class="tarjeta sin-relleno">
+      <div class="barra-herramientas">
+        <div class="pastillas" role="group" aria-label="Qué mostrar">
+          <button type="button" class="pastilla" [class.activa]="filtro() === 'PEDIR'" (click)="filtro.set('PEDIR')">Por pedir</button>
+          <button type="button" class="pastilla" [class.activa]="filtro() === null" (click)="filtro.set(null)">Todos</button>
+        </div>
+        <input class="entrada buscar" type="search" placeholder="Buscar producto" aria-label="Buscar producto" [ngModel]="texto()" (ngModelChange)="texto.set($event)">
+      </div>
+
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead>
+            <tr>
+              @if (puedePedir()) { <th class="angosta"><span class="oculto">Elegir</span></th> }
+              <th>Producto</th><th>Estado</th><th class="num">Stock</th><th class="num">Consumo / día</th><th class="num">Alcanza</th>
+              <th>Plazo</th><th>Pedir antes del</th><th class="num">{{ sede() === null ? 'Cantidad sugerida' : 'Qué hacer' }}</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (i of items(); track i.productoId) {
+              <tr [class.resaltada]="i.estado === 'URGENTE'">
+                @if (puedePedir()) {
+                  <td class="angosta"><input type="checkbox" [attr.aria-label]="'Pedir ' + i.nombre" [disabled]="!(+(i.cantidadComprar ?? 0) > 0)"
+                    [checked]="elegidos().has(i.productoId!)" (change)="alternar(i.productoId!)"></td>
+                }
+                <td><strong>{{ i.nombre }}</strong><span class="sub">{{ i.codigo }} · {{ i.categoria }}</span></td>
+                <td><span class="chip {{ tono(i.estado) }}">{{ etiqueta(i.estado) }}</span></td>
+                <td class="num">{{ i.stock | numero }} <span class="texto-chico texto-2">{{ i.unidad }}</span>
+                  @if (+(i.porRecibir ?? 0) > 0 || +(i.enSolicitudes ?? 0) > 0) { <span class="sub">+{{ (+(i.porRecibir ?? 0) > 0 ? i.porRecibir : i.enSolicitudes) | numero }} en camino</span> }</td>
+                <td class="num">{{ i.consumoDiario | numero }}</td>
+                <td class="num">@if (i.diasCobertura != null) { {{ i.diasCobertura | numero }} días <span class="sub">hasta {{ i.fechaAgotamiento | fecha }}</span> } @else { — }</td>
+                <td>{{ i.plazoEntregaDias }} hábiles
+                  <span class="sub">{{ i.plazoPropio ? 'del producto' : 'de la empresa' }}@if (i.plazoHistorico != null) { · real {{ i.plazoHistorico | numero }} }</span></td>
+                <td>@if (i.pedirAntesDe) { <strong [class.rojo]="i.estado === 'URGENTE' || i.estado === 'PEDIR_YA'">{{ i.pedirAntesDe | fecha }}</strong> } @else { — }
+                  <span class="sub">llegaría el {{ i.llegadaSiPidoHoy | fecha }}</span></td>
+                <td class="num">
+                  @if (+(i.cantidadTraslado ?? 0) > 0) {
+                    <span class="chip traslado">Trasladar {{ i.cantidadTraslado | numero }}</span><span class="sub">desde {{ i.trasladoDesdeSede }}</span>
+                    @if (+(i.cantidadComprar ?? 0) > 0) { <span class="sub">y comprar {{ i.cantidadComprar | numero }}</span> }
+                  } @else {
+                    <strong>{{ +(i.cantidadSugerida ?? 0) > 0 ? (i.cantidadSugerida | numero) : '—' }}</strong>
+                  }
+                </td>
+                <td class="num"><button type="button" class="boton chico" (click)="verDetalle(i)"
+                  [attr.aria-expanded]="abierto() === i.productoId">{{ abierto() === i.productoId ? 'Ocultar' : 'Detalle' }}</button></td>
+              </tr>
+              @if (abierto() === i.productoId) {
+                <tr class="detalle"><td [attr.colspan]="puedePedir() ? 10 : 9"><div class="detalle-contenido">
+                  <p class="sin-margen"><strong>{{ i.motivo }}</strong></p>
+                  <a class="boton chico necesito" [routerLink]="['/app/pedidos']" [queryParams]="{ productoId: i.productoId }">
+                    <span class="material-symbols-outlined">campaign</span> Necesito este producto</a>
+                  <ul class="cuentas">
+                    <li>Punto de pedido: {{ i.puntoPedido | numero }} {{ i.unidad }} (consumo durante el plazo y la seguridad; nunca menos que el mínimo de {{ i.stockMinimo | numero }}).</li>
+                    <li>En camino: {{ i.porRecibir | numero }} en órdenes y {{ i.enSolicitudes | numero }} en solicitudes.</li>
+                    <li>Seguridad: {{ i.diasSeguridad }} días hábiles.@if (i.stockMaximo != null) { Máximo{{ sede() === null ? ' del producto' : ' en la sede' }}: {{ i.stockMaximo | numero }}. }</li>
+                    @if (sede() !== null && +(i.sobrante ?? 0) > 0) { <li>Esta sede puede ceder {{ i.sobrante | numero }} {{ i.unidad }} a otra sin quedarse corta.</li> }
+                    @if (i.plazoHistorico != null) {
+                      <li [class.ambar]="historicoDistinto(i)">Las últimas {{ i.entregasHistoricas }} entregas tardaron en promedio {{ i.plazoHistorico | numero }} días hábiles@if (historicoDistinto(i)) { : conviene revisar el plazo del producto }.</li>
+                    }
+                  </ul>
+                  @if (ofertas().length) {
+                    <div class="ofertas"><strong>Ofertas en catálogos de proveedores</strong>
+                      <ul class="cuentas">@for (o of ofertas(); track o.id) {
+                        <li>{{ o.proveedor }}: {{ o.precio | pesos }} {{ o.incluyeIva ? 'con IVA' : 'sin IVA' }} («{{ o.descripcion }}»)@if (o.vigenteHasta) { · vigente hasta {{ o.vigenteHasta | fecha }} }</li>
+                      }</ul></div>
+                  }
+                  @if (puedeAjustar()) {
+                    @if (edicion()?.id === i.productoId) {
+                      <div class="fila plazo">
+                        <div class="campo"><label for="pz-{{ i.productoId }}">Días hábiles de entrega</label>
+                          <input id="pz-{{ i.productoId }}" type="number" min="0" max="120" class="entrada num" placeholder="De la empresa"
+                            [ngModel]="edicion()?.plazo" (ngModelChange)="cambiarEdicion('plazo', $event)"></div>
+                        <div class="campo"><label for="sg-{{ i.productoId }}">Días hábiles de seguridad</label>
+                          <input id="sg-{{ i.productoId }}" type="number" min="0" max="60" class="entrada num" placeholder="De la empresa"
+                            [ngModel]="edicion()?.seguridad" (ngModelChange)="cambiarEdicion('seguridad', $event)"></div>
+                        <button type="button" class="boton primario" (click)="guardarPlazo()">Guardar</button>
+                        <button type="button" class="boton" (click)="edicion.set(null)">Cancelar</button>
+                      </div>
+                      <p class="texto-chico texto-2 sin-margen">Deja vacío para usar el valor de la empresa.</p>
+                    } @else {
+                      <div class="fila acciones-detalle">
+                        <button type="button" class="boton chico" (click)="editarPlazo(i)"><span class="material-symbols-outlined">schedule</span> Ajustar plazo de este producto</button>
+                        @if (sede() !== null && limiteSede()?.productoId !== i.productoId) {
+                          <button type="button" class="boton chico" (click)="abrirLimites(i)"><span class="material-symbols-outlined">tune</span> Mínimo y máximo en esta sede</button>
+                        }
+                      </div>
+                    }
+                    @if (limiteSede(); as l) {
+                      @if (l.productoId === i.productoId) {
+                        <div class="fila plazo">
+                          <div class="campo"><label for="lmin-{{ i.productoId }}">Mínimo en la sede</label>
+                            <input id="lmin-{{ i.productoId }}" type="number" min="0" class="entrada num" [ngModel]="l.minimo" (ngModelChange)="cambiarLimite('minimo', $event)"></div>
+                          <div class="campo"><label for="lmax-{{ i.productoId }}">Máximo en la sede</label>
+                            <input id="lmax-{{ i.productoId }}" type="number" min="0" class="entrada num" placeholder="Sin máximo" [ngModel]="l.maximo" (ngModelChange)="cambiarLimite('maximo', $event)"></div>
+                          <button type="button" class="boton primario" (click)="guardarLimites()">Guardar</button>
+                          <button type="button" class="boton" (click)="limiteSede.set(null)">Cancelar</button>
+                        </div>
+                        <p class="texto-chico texto-2 sin-margen">Con mínimo 0 la sede se guía solo por su consumo. Al bajar del mínimo se avisa en el momento a compras y bodega.</p>
+                      }
+                    }
+                  }
+                </div></td></tr>
+              }
+            } @empty {
+              <tr><td [attr.colspan]="puedePedir() ? 10 : 9" class="vacio">{{ filtro() === 'PEDIR' ? 'No hay nada que pedir por ahora: todo alcanza mientras llega un pedido.' : 'No hay productos con este filtro.' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    @if (puedePedir() && pedibles().length) {
+      <section class="tarjeta pedir">
+        <div><strong>{{ elegidos().size }} producto(s) elegidos</strong>
+          <p class="texto-chico texto-2 sin-margen">Se crea una solicitud en borrador con las cantidades sugeridas. Puedes cambiarlas antes de enviarla a aprobación.</p></div>
+        <div class="campo"><label for="fr">La necesito para el</label>
+          <input id="fr" type="date" class="entrada" [ngModel]="fechaRequerida()" (ngModelChange)="fechaRequerida.set($event)"></div>
+        <button type="button" class="boton primario" [disabled]="creando() || !elegidos().size" (click)="crearSolicitud()">
+          <span class="material-symbols-outlined">add_shopping_cart</span> Crear solicitud</button>
+      </section>
+    }
+  } @else {
+    <p class="cargando">Calculando el plan…</p>
+  }
+</div>

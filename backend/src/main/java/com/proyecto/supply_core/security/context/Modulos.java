@@ -26,6 +26,8 @@ public final class Modulos {
     public static final String REPORTES = "REPORTES";
     /** Consulta de la auditoría de la empresa. */
     public static final String AUDITORIA = "AUDITORIA";
+    /** Precios de venta, listas de precios, impuestos y margen (fase F1 de ventas). */
+    public static final String VENTAS = "VENTAS";
 
     /** Clase utilitaria: no se instancia. */
     private Modulos() {

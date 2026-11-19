@@ -1,0 +1,23 @@
+.pastillas { display: flex; gap: 8px; flex-wrap: wrap; }
+.pastilla {
+  padding: 8px 16px; border: 1px solid #e0e0e0; border-radius: 999px; background: #fff; font: inherit; font-weight: 600; cursor: pointer;
+  &.activa { background: var(--sc-primario); border-color: var(--sc-primario); color: #fff; }
+  &:focus-visible { outline: 3px solid #f6b9a3; outline-offset: 2px; }
+}
+.sin-margen { margin: 0; }
+.sub { display: block; font-size: 12px; color: var(--sc-texto-2); font-weight: 400; }
+.chip.gris { background: #efefef; color: var(--sc-texto-2); }
+.oportunidad { display: grid; gap: 10px; }
+.cabeza { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 0;
+  dt { font-size: 12px; color: var(--sc-texto-2); } dd { margin: 0; font-weight: 600; } }
+.acciones-op { gap: 8px; flex-wrap: wrap; }
+.vacio-grande { text-align: center; padding: 40px 20px; .material-symbols-outlined { font-size: 36px; color: var(--sc-primario); } }
+.barra-herramientas { display: flex; flex-wrap: wrap; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--sc-borde); }
+.buscar { max-width: 300px; }
+.filtro { max-width: 240px; }
+.fin { justify-content: flex-end; flex-wrap: nowrap; gap: 6px; }
+tr.detalle td { background: #fafafa; white-space: normal; }
+.elegir { align-items: flex-end; gap: 12px; flex-wrap: wrap; .campo { min-width: 280px; flex: 1; } }
+@media (max-width: 720px) { .buscar, .filtro { max-width: none; width: 100%; } }

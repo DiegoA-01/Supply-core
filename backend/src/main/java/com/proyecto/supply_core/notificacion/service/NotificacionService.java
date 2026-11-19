@@ -1,6 +1,10 @@
 package com.proyecto.supply_core.notificacion.service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -155,14 +159,48 @@ public class NotificacionService {
     }
 
     /**
-     * Configuración de canales por evento.
+     * Configuración de canales por evento: todos los eventos conocidos en los dos canales. Los que la empresa nunca
+     * cambió no tienen fila y salen activos con {@code id} vacío (sin fila = activo).
      *
-     * @return filas ordenadas por evento y canal
+     * @return una entrada por evento y canal, ordenadas por evento y canal
      */
     @Transactional(readOnly = true)
     public List<ConfigNotificacionResponse> configuracion() {
-        return configRepository.findAllByOrderByEventoAscCanalAsc().stream().map(ConfigNotificacionResponse::of)
-                .toList();
+        Map<String, ConfigNotificacion> guardadas = new HashMap<>();
+        configRepository.findAllByOrderByEventoAscCanalAsc()
+                .forEach(c -> guardadas.put(c.getEvento() + "/" + c.getCanal(), c));
+        List<ConfigNotificacionResponse> todas = new ArrayList<>();
+        for (EventoNotificacion evento : EventoNotificacion.values()) {
+            for (CanalNotificacion canal : CanalNotificacion.values()) {
+                ConfigNotificacion c = guardadas.get(evento + "/" + canal);
+                todas.add(c != null ? ConfigNotificacionResponse.of(c)
+                        : new ConfigNotificacionResponse(null, evento, canal, true));
+            }
+        }
+        todas.sort(Comparator.comparing((ConfigNotificacionResponse r) -> r.evento().name())
+                .thenComparing(r -> r.canal().name()));
+        return todas;
+    }
+
+    /**
+     * Activa o desactiva un canal de un evento por su nombre; si la empresa aún no tenía fila, la crea (auditado).
+     *
+     * @param evento evento del aviso
+     * @param canal  canal
+     * @param activo nuevo estado
+     * @return configuración guardada
+     */
+    @Transactional
+    public ConfigNotificacionResponse cambiarConfiguracion(EventoNotificacion evento, CanalNotificacion canal,
+            boolean activo) {
+        ConfigNotificacion c = configRepository.findByEventoAndCanal(evento, canal).orElse(null);
+        if (c == null) {
+            c = configRepository.save(new ConfigNotificacion(evento, canal, activo));
+            auditoriaService.exito(AccionAuditoria.CONFIG_NOTIFICACION_CAMBIAR, EntidadAuditada.CONFIG_NOTIFICACION,
+                    c.getId(), evento + "/" + canal + " activo=" + activo);
+            return ConfigNotificacionResponse.of(c);
+        }
+        return cambiarConfiguracion(c.getId(), activo);
     }
 
     /**

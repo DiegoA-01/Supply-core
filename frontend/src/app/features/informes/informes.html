@@ -175,4 +175,12 @@
       <tbody>@for (g of c.gasto.porProveedor; track g.id) { <tr><td>{{ g.nombre }}</td><td class="num">{{ g.ordenes }}</td><td class="num">{{ g.total | pesos }}</td></tr> }</tbody>
     </table></div>
   }
+
+  @if ((c.gastoPorSede?.length ?? 0) > 1) {
+    <h3>Compras por sede</h3>
+    <div class="tabla-contenedor"><table class="tabla">
+      <thead><tr><th>Sede</th><th class="num">Órdenes</th><th class="num">Total</th></tr></thead>
+      <tbody>@for (s of c.gastoPorSede; track s.nombre) { <tr><td>{{ s.nombre }}</td><td class="num">{{ s.ordenes }}</td><td class="num">{{ s.total | pesos }}</td></tr> }</tbody>
+    </table></div>
+  }
 </ng-template>

@@ -1,0 +1,92 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Catálogos de proveedores</p>
+    <div class="encabezado">
+      <div><h1>Catálogos de proveedores</h1>
+        <p>Lo que tus proveedores ofrecen por su cuenta, cruzado con tu inventario. Las oportunidades salen solo de equivalencias que confirmó una persona. Los proveedores no ven tu stock ni estas comparaciones.</p></div>
+    </div>
+  </div>
+
+  <div class="pastillas" role="tablist" aria-label="Secciones">
+    <button type="button" class="pastilla" role="tab" [attr.aria-selected]="pestana() === 'oportunidades'" [class.activa]="pestana() === 'oportunidades'" (click)="cambiar('oportunidades')">Oportunidades</button>
+    <button type="button" class="pastilla" role="tab" [attr.aria-selected]="pestana() === 'catalogo'" [class.activa]="pestana() === 'catalogo'" (click)="cambiar('catalogo')">Catálogo completo</button>
+  </div>
+
+  @if (pestana() === 'oportunidades') {
+    @if (oportunidades(); as ops) {
+      @for (o of ops; track o.productoId) {
+        <section class="tarjeta oportunidad">
+          <div class="cabeza">
+            <div><strong>{{ o.nombre }}</strong><span class="sub">{{ o.codigo }} · se ofrece como «{{ o.descripcionProveedor }}»@if (o.marca) { · {{ o.marca }} }</span></div>
+            <div class="chips">
+              @if (plan(o.estadoReabastecimiento); as pl) { <span class="chip {{ pl.tono }}">{{ pl.texto }}</span> }
+              @if (o.ahorroPct != null && o.ahorroPct > 0) { <span class="chip verde">{{ o.ahorroPct | numero }} % más barato</span> }
+            </div>
+          </div>
+          <p class="sin-margen">{{ o.motivo }}</p>
+          <dl class="cifras">
+            <div><dt>Proveedor</dt><dd>{{ o.proveedor }}</dd></div>
+            <div><dt>Precio sin IVA</dt><dd>{{ o.precioSinIva | pesos }} <span class="sub">{{ o.unidadComparable ? 'por ' + o.unidad : 'en la unidad del proveedor' }}</span></dd></div>
+            <div><dt>Tu último costo</dt><dd>{{ o.costoActual != null ? (o.costoActual | pesos) : '—' }}</dd></div>
+            @if (o.cantidadSugerida != null && o.cantidadSugerida > 0) { <div><dt>El plan sugiere</dt><dd>{{ o.cantidadSugerida | numero }} {{ o.unidad }}@if (o.pedirAntesDe) { <span class="sub">antes del {{ o.pedirAntesDe | fecha }}</span> }</dd></div> }
+          </dl>
+          <div class="fila acciones-op">
+            <a class="boton chico" routerLink="/app/inventario/reabastecimiento">Ver plan</a>
+            <a class="boton chico" routerLink="/app/solicitudes/nueva">Crear solicitud</a>
+          </div>
+        </section>
+      } @empty {
+        <section class="tarjeta vacio-grande"><span class="material-symbols-outlined">storefront</span>
+          <h2>No hay oportunidades por ahora</h2>
+          <p class="texto-2">Aparecen cuando un proveedor ofrece algo más barato que tu último costo o algo que hay que pedir pronto, y ya confirmaste a qué producto corresponde en el catálogo completo.</p></section>
+      }
+    } @else { <p class="cargando">Buscando oportunidades…</p> }
+  } @else {
+    <section class="tarjeta sin-relleno">
+      <div class="barra-herramientas">
+        <input class="entrada buscar" type="search" placeholder="Buscar en los catálogos" aria-label="Buscar en los catálogos" [ngModel]="texto()" (ngModelChange)="texto.set($event)" (keyup.enter)="buscar()">
+        <select class="entrada filtro" aria-label="Filtrar por equivalencia" [ngModel]="estado()" (ngModelChange)="estado.set($event); buscar()">
+          <option [ngValue]="null">Todas las equivalencias</option>
+          @for (e of equivalencias; track e) { <option [ngValue]="e">{{ textoEquivalencia(e) }}</option> }
+        </select>
+        <button type="button" class="boton" (click)="buscar()">Buscar</button>
+      </div>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Proveedor</th><th>Artículo</th><th class="num">Precio</th><th>Tu producto</th><th>Equivalencia</th>@if (decide()) { <th></th> }</tr></thead>
+          <tbody>
+            @for (c of pagina()?.contenido ?? []; track c.id) {
+              <tr>
+                <td>{{ c.proveedor }}<span class="sub">actualizado {{ c.actualizadoEn | fecha }}</span></td>
+                <td><strong>{{ c.descripcion }}</strong><span class="sub">{{ c.codigoProveedor }}@if (c.marca) { · {{ c.marca }} }@if (c.unidad) { · {{ c.unidad }} }</span></td>
+                <td class="num">{{ c.precio | pesos }}<span class="sub">{{ c.incluyeIva ? 'con IVA' : 'sin IVA' }}</span></td>
+                <td>{{ c.producto ?? '—' }}@if (c.similitud != null && c.estadoEquivalencia === 'SUGERIDA') { <span class="sub">parecido {{ (c.similitud * 100) | numero }} %</span> }</td>
+                <td><span class="chip {{ tonoEquivalencia(c.estadoEquivalencia) }}">{{ textoEquivalencia(c.estadoEquivalencia) }}</span></td>
+                @if (decide()) {
+                  <td class="num"><div class="fila fin">
+                    @if (c.productoId && c.estadoEquivalencia === 'SUGERIDA') { <button type="button" class="boton chico primario" (click)="confirmar(c)">Confirmar</button> }
+                    <button type="button" class="boton chico" (click)="cambiarProducto(c)">{{ c.productoId ? 'Cambiar' : 'Elegir producto' }}</button>
+                    @if (c.estadoEquivalencia !== 'DESCARTADA') { <button type="button" class="boton chico" (click)="descartar(c)">No me interesa</button> }
+                  </div></td>
+                }
+              </tr>
+              @if (editando() === c.id) {
+                <tr class="detalle"><td [attr.colspan]="decide() ? 6 : 5">
+                  <div class="fila elegir">
+                    <div class="campo"><label for="eq-{{ c.id }}">¿A cuál de tus productos corresponde?</label>
+                      <input id="eq-{{ c.id }}" class="entrada" [attr.list]="'lista-eq-' + c.id" placeholder="Escribe código o nombre" [ngModel]="buscador.texto()" (ngModelChange)="buscador.escribir($event)">
+                      <datalist [id]="'lista-eq-' + c.id">@for (p of buscador.opciones(); track p.id) { <option [value]="buscador.etiqueta(p)"></option> }</datalist></div>
+                    <button type="button" class="boton primario" (click)="confirmarElegido(c)">Confirmar</button>
+                    <button type="button" class="boton" (click)="editando.set(null)">Cancelar</button>
+                  </div>
+                </td></tr>
+              }
+            } @empty {
+              <tr><td [attr.colspan]="decide() ? 6 : 5" class="vacio">{{ pagina() ? 'Ningún proveedor ha subido artículos con este filtro.' : 'Cargando…' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</div>

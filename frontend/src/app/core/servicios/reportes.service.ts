@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
-import { EstadoCuenta, Gasto, Pagina, Proveedor, ProveedorRanking, Rotacion } from '../api/modelos';
+import { EstadoCuenta, Gasto, GastoItem, Pagina, Proveedor, ProveedorRanking, Rotacion, Tablero } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
 /** Reportes de solo lectura y proveedores. Todos los totales los calcula el backend. */
@@ -15,9 +15,20 @@ export class ReportesService {
    *
    * @param desde fecha ISO
    * @param hasta fecha ISO
+   * @param sedeId sede (vacío = toda la empresa)
    */
-  gasto(desde: string, hasta: string): Observable<Gasto> {
-    return this.http.get<Gasto>(api('/api/reportes/gasto'), { params: parametros({ desde, hasta }) });
+  gasto(desde: string, hasta: string, sedeId: number | null = null): Observable<Gasto> {
+    return this.http.get<Gasto>(api('/api/reportes/gasto'), { params: parametros({ desde, hasta, sedeId }) });
+  }
+
+  /**
+   * Gasto del período repartido por la sede a la que llegan las órdenes.
+   *
+   * @param desde fecha ISO
+   * @param hasta fecha ISO
+   */
+  gastoPorSede(desde: string, hasta: string): Observable<GastoItem[]> {
+    return this.http.get<GastoItem[]>(api('/api/reportes/gasto/sedes'), { params: parametros({ desde, hasta }) });
   }
 
   /**
@@ -26,14 +37,30 @@ export class ReportesService {
    * @param desde       fecha ISO
    * @param hasta       fecha ISO
    * @param categoriaId categoría (vacío = todas)
+   * @param sedeId      sede (vacío = toda la empresa)
    */
-  rotacion(desde: string, hasta: string, categoriaId: number | null): Observable<Rotacion> {
-    return this.http.get<Rotacion>(api('/api/reportes/rotacion'), { params: parametros({ desde, hasta, categoriaId }) });
+  rotacion(desde: string, hasta: string, categoriaId: number | null, sedeId: number | null = null): Observable<Rotacion> {
+    return this.http.get<Rotacion>(api('/api/reportes/rotacion'), { params: parametros({ desde, hasta, categoriaId, sedeId }) });
   }
 
-  /** Ranking de proveedores por score en el periodo. */
-  ranking(desde: string, hasta: string): Observable<ProveedorRanking[]> {
-    return this.http.get<ProveedorRanking[]>(api('/api/reportes/proveedores'), { params: parametros({ desde, hasta }) });
+  /**
+   * Tablero del dueño: últimos doce meses de gasto, inventario y qué hay que pedir (todo calculado en el backend).
+   *
+   * @param sedeId sede (vacío = toda la empresa)
+   */
+  tablero(sedeId: number | null = null): Observable<Tablero> {
+    return this.http.get<Tablero>(api('/api/reportes/tablero'), { params: parametros({ sedeId }) });
+  }
+
+  /**
+   * Ranking de proveedores por score en el periodo.
+   *
+   * @param desde  fecha ISO
+   * @param hasta  fecha ISO
+   * @param sedeId sede (vacío = toda la empresa)
+   */
+  ranking(desde: string, hasta: string, sedeId: number | null = null): Observable<ProveedorRanking[]> {
+    return this.http.get<ProveedorRanking[]>(api('/api/reportes/proveedores'), { params: parametros({ desde, hasta, sedeId }) });
   }
 
   /**

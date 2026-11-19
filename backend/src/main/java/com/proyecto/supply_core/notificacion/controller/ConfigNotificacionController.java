@@ -5,10 +5,12 @@ import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.proyecto.supply_core.notificacion.dto.ConfigNotificacionCambioRequest;
 import com.proyecto.supply_core.notificacion.dto.ConfigNotificacionRequest;
 import com.proyecto.supply_core.notificacion.dto.ConfigNotificacionResponse;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
@@ -37,9 +39,9 @@ public class ConfigNotificacionController {
     }
 
     /**
-     * Lista la configuración.
+     * Lista la configuración de todos los eventos en los dos canales (los que nunca se cambiaron salen activos y sin id).
      *
-     * @return filas por evento y canal
+     * @return una entrada por evento y canal
      */
     @GetMapping
     public List<ConfigNotificacionResponse> listar() {
@@ -57,5 +59,16 @@ public class ConfigNotificacionController {
     public ConfigNotificacionResponse cambiar(@PathVariable @Positive(message = "debe ser un id válido") Long id,
             @Valid @RequestBody ConfigNotificacionRequest req) {
         return notificacionService.cambiarConfiguracion(id, req.activo());
+    }
+
+    /**
+     * Activa o desactiva un canal de un evento por su nombre; crea la configuración de la empresa si no existía.
+     *
+     * @param req evento, canal y nuevo estado
+     * @return configuración guardada
+     */
+    @PutMapping
+    public ConfigNotificacionResponse cambiarPorEvento(@Valid @RequestBody ConfigNotificacionCambioRequest req) {
+        return notificacionService.cambiarConfiguracion(req.evento(), req.canal(), req.activo());
     }
 }

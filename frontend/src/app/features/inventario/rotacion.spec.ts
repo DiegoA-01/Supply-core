@@ -41,6 +41,7 @@ describe('Rotación de productos', () => {
     backend.expectOne(r => r.url === '/api/categorias').flush([{ id: 1, nombre: 'Ferretería', activo: true }]);
     backend.expectOne(r => r.url === '/api/reportes/rotacion').flush(datos);
     fixture.detectChanges();
+    backend.expectOne(r => r.url === '/api/sedes').flush([]);   // selector de sede (con una sola no se muestra)
   });
 
   afterEach(() => backend.verify());

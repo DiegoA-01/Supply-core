@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  Bodega, CargaMasiva, Categoria, CorreoExportacion, Movimiento, MovimientoNuevo, RegistroMovimiento, StockBodega, InventarioResumen, Pagina, Producto, ProductoNuevo, Solicitud, SugerenciaReorden, UnidadMedida,
+  Bodega, CargaMasiva, Categoria, CorreoExportacion, Movimiento, MovimientoNuevo, RegistroMovimiento, StockBodega, InventarioResumen, Pagina, Producto, ProductoEnSede, ProductoNuevo, Reabastecimiento, ResumenSede, Solicitud, SugerenciaReorden, UnidadMedida,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
@@ -74,6 +74,59 @@ export class InventarioService {
   /** Cuánto pedir por producto (lo calcula el backend: máximo − stock − por recibir − ya solicitado). */
   sugerencias(): Observable<SugerenciaReorden[]> {
     return this.http.get<SugerenciaReorden[]>(api('/api/reorden/sugerencias'));
+  }
+
+  /**
+   * Plan de reabastecimiento: qué pedir, cuándo y cuánto según el consumo y el plazo de entrega (lo calcula el backend).
+   *
+   * @param sedeId sede (vacío = toda la empresa)
+   */
+  reabastecimiento(sedeId: number | null = null): Observable<Reabastecimiento> {
+    return this.http.get<Reabastecimiento>(api('/api/reabastecimiento'), { params: parametros({ sedeId }) });
+  }
+
+  /** Comparación de sedes: productos por pedir y traslados posibles en cada una (lo calcula el backend). */
+  resumenSedes(): Observable<ResumenSede[]> {
+    return this.http.get<ResumenSede[]>(api('/api/reabastecimiento/sedes'));
+  }
+
+  /** @param productoId producto; su stock y sus límites en cada sede */
+  productoEnSedes(productoId: number): Observable<ProductoEnSede[]> {
+    return this.http.get<ProductoEnSede[]>(api(`/api/productos/${productoId}/sedes`));
+  }
+
+  /**
+   * Fija el mínimo y el máximo de un producto en una sede.
+   *
+   * @param productoId  producto
+   * @param sedeId      sede
+   * @param stockMinimo mínimo en la sede (0 = sin mínimo propio)
+   * @param stockMaximo máximo en la sede (vacío = sin máximo)
+   */
+  guardarLimitesSede(productoId: number, sedeId: number, stockMinimo: number, stockMaximo: number | null): Observable<ProductoEnSede> {
+    return this.http.put<ProductoEnSede>(api(`/api/productos/${productoId}/sedes/${sedeId}`), { stockMinimo, stockMaximo });
+  }
+
+  /**
+   * Deja un borrador de solicitud con las cantidades del plan de reabastecimiento.
+   *
+   * @param fechaRequerida fecha requerida (ISO)
+   * @param productoIds    productos elegidos
+   * @param sedeId         sede del plan (vacío = toda la empresa)
+   */
+  borradorReabastecimiento(fechaRequerida: string, productoIds: number[], sedeId: number | null = null): Observable<Solicitud> {
+    return this.http.post<Solicitud>(api('/api/reabastecimiento/borrador'), { fechaRequerida, productoIds, sedeId });
+  }
+
+  /**
+   * Cambia los días hábiles de entrega y de seguridad de un producto (vacío = el de la empresa).
+   *
+   * @param id               producto
+   * @param plazoEntregaDias días hábiles que tarda el proveedor
+   * @param diasSeguridad    días hábiles de colchón
+   */
+  cambiarPlazo(id: number, plazoEntregaDias: number | null, diasSeguridad: number | null): Observable<Producto> {
+    return this.http.patch<Producto>(api(`/api/productos/${id}/plazo`), { plazoEntregaDias, diasSeguridad });
   }
 
   /**

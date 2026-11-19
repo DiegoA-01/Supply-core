@@ -62,6 +62,8 @@ public class MovimientoInventarioService {
     private final BodegaRepository bodegaRepository;
     private final AuditoriaService auditoriaService;
     private final NotificacionService notificacionService;
+    /** Aviso por sede; {@code null} en las pruebas que no lo necesitan. */
+    private final AlertaSedeService alertaSedeService;
 
     /**
      * @param stockRepository      existencias por bodega
@@ -75,6 +77,25 @@ public class MovimientoInventarioService {
             MovimientoInventarioRepository movimientoRepository, ProductoRepository productoRepository,
             BodegaRepository bodegaRepository, AuditoriaService auditoriaService,
             NotificacionService notificacionService) {
+        this(stockRepository, movimientoRepository, productoRepository, bodegaRepository, auditoriaService,
+                notificacionService, null);
+    }
+
+    /**
+     * @param stockRepository      existencias por bodega
+     * @param movimientoRepository kardex
+     * @param productoRepository   acceso a productos
+     * @param bodegaRepository     acceso a bodegas
+     * @param auditoriaService     registro de ajustes
+     * @param notificacionService  aviso a compradores de stock bajo mínimo
+     * @param alertaSedeService    aviso cuando una sede se queda corta
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    public MovimientoInventarioService(StockProductoBodegaRepository stockRepository,
+            MovimientoInventarioRepository movimientoRepository, ProductoRepository productoRepository,
+            BodegaRepository bodegaRepository, AuditoriaService auditoriaService,
+            NotificacionService notificacionService, AlertaSedeService alertaSedeService) {
+        this.alertaSedeService = alertaSedeService;
         this.stockRepository = stockRepository;
         this.movimientoRepository = movimientoRepository;
         this.productoRepository = productoRepository;
@@ -276,6 +297,9 @@ public class MovimientoInventarioService {
                             + "; motivo=" + guardado.getMotivo());
         }
 
+        if (alertaSedeService != null && origen != null) {
+            alertaSedeService.revisar(producto, origen, destino, cantidad);
+        }
         BigDecimal total = stockRepository.totalDeProducto(producto.getId());
         boolean bajoMinimo = total.compareTo(producto.getStockMinimo()) < 0;
         if (bajoMinimo) {

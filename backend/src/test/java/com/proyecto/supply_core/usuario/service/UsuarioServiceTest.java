@@ -90,6 +90,18 @@ class UsuarioServiceTest {
     }
 
     @Test
+    void elSolicitanteNecesitaCentroDeCosto() {
+        when(roles.findByCodigoIn(anyCollection())).thenReturn(List.of(rol("SOLICITANTE")));
+
+        var ex = assertThrows(NegocioException.class, () -> service.crear(new UsuarioRequest("Ana", "ana@demo.com",
+                "Secreta123", Set.of("SOLICITANTE"), null, null)));
+        assertEquals("CENTRO_COSTO_REQUERIDO", ex.getCodigo());
+        var ex2 = assertThrows(NegocioException.class, () -> service.actualizar(ADMIN_ID,
+                new UsuarioUpdateRequest("Admin", "admin@demo.com", Set.of("SOLICITANTE"), null, null)));
+        assertEquals("CENTRO_COSTO_REQUERIDO", ex2.getCodigo());
+    }
+
+    @Test
     void editarConCorreoDeOtroUsuarioSeRechaza() {
         when(usuarios.existsByCorreoIgnoreCaseAndIdNot("ana@demo.com", ADMIN_ID)).thenReturn(true);
         var ex = assertThrows(NegocioException.class, () -> service.actualizar(ADMIN_ID,

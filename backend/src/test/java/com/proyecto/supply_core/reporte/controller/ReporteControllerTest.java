@@ -2,6 +2,7 @@ package com.proyecto.supply_core.reporte.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -34,7 +35,7 @@ class ReporteControllerTest extends WebTestBase {
 
     @Test
     void gastoPasaLosFiltrosYLoVenLosRolesDeGestion() throws Exception {
-        when(reporteService.gasto(any(), any(), any(), any())).thenReturn(new GastoResponse(null, null, 0, CERO, CERO,
+        when(reporteService.gasto(any(), any(), any(), any(), any())).thenReturn(new GastoResponse(null, null, 0, CERO, CERO,
                 CERO, CERO, List.of(), List.of(), List.of()));
 
         mvc.perform(get("/api/reportes/gasto?desde=2026-10-01&hasta=2026-10-31&categoriaId=5&proveedorId=7")
@@ -42,7 +43,7 @@ class ReporteControllerTest extends WebTestBase {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.ordenes").value(0))
                 .andExpect(jsonPath("$.porProveedor").isEmpty());
-        verify(reporteService).gasto(eq(LocalDate.of(2026, 10, 1)), eq(LocalDate.of(2026, 10, 31)), eq(5L), eq(7L));
+        verify(reporteService).gasto(eq(LocalDate.of(2026, 10, 1)), eq(LocalDate.of(2026, 10, 31)), eq(5L), eq(7L), isNull());
         mvc.perform(get("/api/reportes/gasto").header(HttpHeaders.AUTHORIZATION, bearer("COMPRADOR")))
                 .andExpect(status().isOk());
     }
@@ -83,7 +84,7 @@ class ReporteControllerTest extends WebTestBase {
 
     @Test
     void rankingYEstadoDeCuenta() throws Exception {
-        when(reporteService.proveedores(any(), any(), any())).thenReturn(List.of());
+        when(reporteService.proveedores(any(), any(), any(), any())).thenReturn(List.of());
         when(reporteService.estadoCuenta(eq(9L), any(), any())).thenReturn(new EstadoCuentaResponse(9L, "Tech", "800-1",
                 null, null, CERO, CERO, CERO, CERO, List.of()));
 

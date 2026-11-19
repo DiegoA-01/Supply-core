@@ -55,9 +55,9 @@ class RotacionServiceTest {
     }
 
     private void dado(List<InventarioFila> productos, List<RotacionMovimiento> movimientos, List<RotacionUltima> ultimas) {
-        when(repo.inventario(any())).thenReturn(productos);
-        when(repo.movimientosPorProducto(any(), any(), any())).thenReturn(movimientos);
-        when(repo.ultimaSalida(any())).thenReturn(ultimas);
+        when(repo.inventario(any(), any())).thenReturn(productos);
+        when(repo.movimientosPorProducto(any(), any(), any(), any())).thenReturn(movimientos);
+        when(repo.ultimaSalida(any(), any())).thenReturn(ultimas);
     }
 
     @Test

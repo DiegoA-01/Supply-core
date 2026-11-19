@@ -1,0 +1,135 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Precios y margen</p>
+    <div class="encabezado">
+      <div><h1>Precios y margen</h1>
+        <p>El precio de venta de cada producto y cuánto ganas con él. El margen se mide sobre el precio sin IVA frente al último costo de compra. Cada cambio de precio queda en el historial.</p></div>
+      <div class="acciones">
+        <div class="campo selector-lista"><label for="lst">Lista de precios</label>
+          <select id="lst" class="entrada" [ngModel]="listaId()" (ngModelChange)="cambiarLista(+$event)">
+            @for (l of listas(); track l.id) { <option [ngValue]="l.id" [disabled]="!l.activo">{{ l.nombre }}{{ l.activo ? '' : ' (inactiva)' }}</option> }
+          </select></div>
+      </div>
+    </div>
+  </div>
+
+  @if (datos(); as d) {
+    <div class="rejilla kpis">
+      <div class="tarjeta kpi"><div class="etiqueta">Margen global</div>
+        <div class="valor">{{ d.margenPonderadoPct != null ? (d.margenPonderadoPct | numero) + ' %' : '—' }}</div>
+        <div class="nota">ponderado por lo que tienes en bodega</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Margen promedio</div>
+        <div class="valor">{{ d.margenPromedioPct != null ? (d.margenPromedioPct | numero) + ' %' : '—' }}</div>
+        <div class="nota">promedio simple por producto</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Ganancia del inventario</div>
+        <div class="valor">{{ d.margenInventario | pesos }}</div>
+        <div class="nota">si vendieras todo lo que hay a estos precios</div></div>
+      <button type="button" class="tarjeta kpi filtro-kpi" [class.activo]="filtro() === 'SIN_PRECIO'" (click)="filtro.set(filtro() === 'SIN_PRECIO' ? null : 'SIN_PRECIO')">
+        <div class="etiqueta">Sin precio</div><div class="valor" [class.peligro]="(d.sinPrecio ?? 0) > 0">{{ d.sinPrecio }}</div>
+        <div class="nota">de {{ d.productos }} productos vendibles</div></button>
+      <button type="button" class="tarjeta kpi filtro-kpi" [class.activo]="filtro() === 'BAJO_COSTO'" (click)="filtro.set(filtro() === 'BAJO_COSTO' ? null : 'BAJO_COSTO')">
+        <div class="etiqueta">Bajo el costo</div><div class="valor" [class.peligro]="(d.bajoCosto ?? 0) > 0">{{ d.bajoCosto }}</div>
+        <div class="nota">se venderían perdiendo</div></button>
+    </div>
+
+    @if (!d.puedeEditar) {
+      <section class="tarjeta aviso-lectura"><span class="material-symbols-outlined">visibility</span>
+        <p class="sin-margen texto-chico">Estás en modo consulta. Los precios los fija el dueño de la empresa; puede delegarlo al jefe de compras en Configuración › Datos de la empresa.</p></section>
+    }
+
+    <section class="tarjeta sin-relleno">
+      <div class="barra-herramientas">
+        <input class="entrada buscar" type="search" placeholder="Buscar producto" aria-label="Buscar producto" [ngModel]="texto()" (ngModelChange)="texto.set($event)">
+        <select class="entrada filtro" aria-label="Filtrar por alerta" [ngModel]="filtro()" (ngModelChange)="filtro.set($event)">
+          <option [ngValue]="null">Todos los productos</option>
+          <option value="SIN_PRECIO">Sin precio</option>
+          <option value="BAJO_COSTO">Bajo el costo</option>
+          <option value="SIN_COSTO">Sin costo</option>
+          <option value="SIN_IMPUESTO">Sin impuesto</option>
+        </select>
+      </div>
+      <div class="tabla-contenedor">
+        <table class="tabla">
+          <thead><tr><th>Producto</th><th>Impuesto</th><th class="num">Costo</th><th class="num">Precio</th><th class="num">Sin IVA</th><th class="num">Ganas</th><th class="num">Margen</th><th></th></tr></thead>
+          <tbody>
+            @for (p of filas(); track p.productoId) {
+              <tr>
+                <td><strong>{{ p.nombre }}</strong><span class="sub">{{ p.codigo }} · {{ p.categoria }}@if (p.codigoBarras) { · {{ p.codigoBarras }} }</span>
+                  @for (a of p.alertas ?? []; track a) { <span class="chip mini {{ a === 'BAJO_COSTO' || a === 'MINIMO_BAJO_COSTO' ? 'rojo' : 'ambar' }}">{{ alerta(a) }}</span> }</td>
+                <td>{{ p.impuesto ?? '—' }}<span class="sub">{{ p.precioIncluyeImpuesto ? 'incluido en el precio' : 'se suma al precio' }}</span></td>
+                <td class="num">{{ p.costo != null ? (p.costo | pesos) : '—' }}</td>
+                <td class="num"><strong>{{ p.precio != null ? (p.precio | pesos) : '—' }}</strong>
+                  @if (p.precioMinimo != null) { <span class="sub">mínimo {{ p.precioMinimo | pesos }}</span> }</td>
+                <td class="num">{{ p.base != null ? (p.base | pesos) : '—' }}</td>
+                <td class="num" [class.rojo]="(p.margen ?? 0) < 0">{{ p.margen != null ? (p.margen | pesos) : '—' }}</td>
+                <td class="num">@if (p.margenPct != null) { <span class="chip {{ tono(p.margenPct) }}">{{ p.margenPct | numero }} %</span> } @else { — }</td>
+                <td class="num"><div class="fila fin">
+                  @if (d.puedeEditar) { <button type="button" class="boton chico" (click)="editar(p)">{{ p.precio != null ? 'Cambiar' : 'Poner precio' }}</button> }
+                  @if (p.precio != null) { <button type="button" class="boton chico" (click)="verHistorial(p)">Historial</button> }
+                </div></td>
+              </tr>
+              @if (edicion(); as e) {
+                @if (e.productoId === p.productoId) {
+                  <tr class="detalle"><td colspan="8"><div class="detalle-contenido">
+                    <div class="formulario edicion">
+                      <div class="campo"><label for="pr-{{ p.productoId }}">Precio de venta ({{ p.unidad }})</label>
+                        <input id="pr-{{ p.productoId }}" type="number" min="0" class="entrada num" [ngModel]="e.precio" (ngModelChange)="cambiar('precio', $event === '' ? null : +$event)"></div>
+                      <div class="campo"><label for="pm-{{ p.productoId }}">Precio mínimo (opcional)</label>
+                        <input id="pm-{{ p.productoId }}" type="number" min="0" class="entrada num" [ngModel]="e.minimo" (ngModelChange)="cambiar('minimo', $event === '' || $event === null ? null : +$event)"></div>
+                      <div class="campo"><label for="pi-{{ p.productoId }}">Impuesto</label>
+                        <select id="pi-{{ p.productoId }}" class="entrada" [ngModel]="e.tarifaId" (ngModelChange)="cambiar('tarifaId', $event)">
+                          <option [ngValue]="null">Sin definir</option>
+                          @for (t of impuestos(); track t.id) { <option [ngValue]="t.id">{{ t.nombre }}</option> }
+                        </select></div>
+                      <div class="campo"><label for="pb-{{ p.productoId }}">Código de barras (opcional)</label>
+                        <input id="pb-{{ p.productoId }}" class="entrada" maxlength="50" [ngModel]="e.barras" (ngModelChange)="cambiar('barras', $event)"></div>
+                      <label class="opcion"><input type="checkbox" [ngModel]="e.incluye" (ngModelChange)="cambiar('incluye', $event)"> El precio incluye el impuesto</label>
+                      <label class="opcion"><input type="checkbox" [ngModel]="e.vendible" (ngModelChange)="cambiar('vendible', $event)"> Se vende (desmarca si solo se consume internamente)</label>
+                      <div class="campo ancho"><label for="pmo-{{ p.productoId }}">Motivo del cambio (opcional)</label>
+                        <input id="pmo-{{ p.productoId }}" class="entrada" maxlength="300" placeholder="Ej.: alza del proveedor" [ngModel]="e.motivo" (ngModelChange)="cambiar('motivo', $event)"></div>
+                    </div>
+                    <div class="fila">
+                      <button type="button" class="boton primario" [disabled]="guardando()" (click)="guardar(p)">Guardar</button>
+                      <button type="button" class="boton" (click)="edicion.set(null)">Cancelar</button>
+                    </div>
+                    <p class="texto-chico texto-2 sin-margen">El precio anterior no se borra: queda en el historial con la fecha y quién lo cambió.</p>
+                  </div></td></tr>
+                }
+              }
+              @if (historial(); as h) {
+                @if (h.productoId === p.productoId) {
+                  <tr class="detalle"><td colspan="8"><div class="detalle-contenido">
+                    <table class="tabla historial">
+                      <thead><tr><th>Precio</th><th>Mínimo</th><th>Desde</th><th>Hasta</th><th>Quién</th><th>Motivo</th></tr></thead>
+                      <tbody>
+                        @for (x of h.filas; track $index) {
+                          <tr><td class="num">{{ x.precio | pesos }}</td><td class="num">{{ x.precioMinimo != null ? (x.precioMinimo | pesos) : '—' }}</td>
+                            <td>{{ x.vigenteDesde | fecha }}</td><td>{{ x.vigenteHasta ? (x.vigenteHasta | fecha) : 'Vigente' }}</td><td>{{ x.usuario }}</td><td>{{ x.motivo ?? '—' }}</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div></td></tr>
+                }
+              }
+            } @empty {
+              <tr><td colspan="8" class="vacio">No hay productos con este filtro.</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    @if (d.puedeEditar) {
+      <section class="tarjeta">
+        <h2>Listas de precios</h2>
+        <p class="texto-chico texto-2">La General es la de mostrador. Crea otras para mayoristas o talleres aliados y ponles su propio precio.</p>
+        <div class="fila nueva-lista">
+          <div class="campo"><label for="nl">Nueva lista</label><input id="nl" class="entrada" maxlength="100" placeholder="Ej.: Mayorista" [ngModel]="nuevaLista()" (ngModelChange)="nuevaLista.set($event)"></div>
+          <button type="button" class="boton" [disabled]="!nuevaLista().trim()" (click)="crearLista()">Crear lista</button>
+        </div>
+      </section>
+    }
+  } @else {
+    <p class="cargando">Cargando precios…</p>
+  }
+</div>

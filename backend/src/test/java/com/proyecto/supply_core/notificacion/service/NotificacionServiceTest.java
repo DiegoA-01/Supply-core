@@ -176,6 +176,36 @@ class NotificacionServiceTest {
         assertThrows(NoEncontradoException.class, () -> service.cambiarConfiguracion(99L, true));
     }
 
+    @Test
+    void laConfiguracionListaTodosLosEventosAunqueLaEmpresaNoTengaFilas() {
+        ConfigNotificacion apagado = new ConfigNotificacion(EventoNotificacion.STOCK_BAJO_MINIMO, CanalNotificacion.EMAIL, false);
+        when(config.findAllByOrderByEventoAscCanalAsc()).thenReturn(java.util.List.of(apagado));
+
+        var lista = service.configuracion();
+
+        assertEquals(EventoNotificacion.values().length * CanalNotificacion.values().length, lista.size());
+        var correoStock = lista.stream().filter(r -> r.evento() == EventoNotificacion.STOCK_BAJO_MINIMO
+                && r.canal() == CanalNotificacion.EMAIL).findFirst().orElseThrow();
+        assertEquals(false, correoStock.activo());
+        // los que nunca se cambiaron salen activos y sin id
+        assertTrue(lista.stream().filter(r -> r.evento() == EventoNotificacion.REABASTECIMIENTO_DIARIO)
+                .allMatch(r -> r.activo() && r.id() == null));
+    }
+
+    @Test
+    void cambiarPorEventoCreaLaFilaSiLaEmpresaNoLaTenia() {
+        when(config.findByEventoAndCanal(EventoNotificacion.REABASTECIMIENTO_DIARIO, CanalNotificacion.EMAIL))
+                .thenReturn(Optional.empty());
+        when(config.save(any(ConfigNotificacion.class))).thenAnswer(i -> i.getArgument(0));
+
+        var r = service.cambiarConfiguracion(EventoNotificacion.REABASTECIMIENTO_DIARIO, CanalNotificacion.EMAIL, false);
+
+        assertEquals(false, r.activo());
+        verify(config).save(any(ConfigNotificacion.class));
+        verify(auditoria).exito(eq(AccionAuditoria.CONFIG_NOTIFICACION_CAMBIAR),
+                eq(EntidadAuditada.CONFIG_NOTIFICACION), any(), anyString());
+    }
+
     /**
      * Usuario activo de prueba.
      *

@@ -62,7 +62,7 @@ class EmpresaModuloControllerTest extends WebTestBase {
 
     @Test
     void cualquierInternoConsultaPeroElProveedorNo() throws Exception {
-        when(empresaService.obtener()).thenReturn(new EmpresaResponse(1L, "Demo", "900000000-1", null, "COP", null, null, null, 24, null, "demo"));
+        when(empresaService.obtener()).thenReturn(new EmpresaResponse(1L, "Demo", "900000000-1", null, "COP", null, null, null, 24, null, "demo", 5, 2, 30, false));
         when(sedeService.listar(any())).thenReturn(List.of(new SedeResponse(1L, "Principal", null, null, null, true)));
 
         mvc.perform(get("/api/empresa").header(HttpHeaders.AUTHORIZATION, bearer("SOLICITANTE")))

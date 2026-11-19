@@ -10,6 +10,12 @@ public enum EventoNotificacion {
     PROVEEDOR_PENDIENTE("Proveedor pendiente de aprobación"),
     /** Un producto quedó por debajo de su stock mínimo (destino: COMPRADOR). */
     STOCK_BAJO_MINIMO("Producto bajo stock mínimo"),
+    /** Una sede quedó bajo su mínimo propio o sin existencias, aunque el total de la empresa alcance (destino:
+     *  COMPRADOR y ALMACENISTA). */
+    STOCK_BAJO_SEDE("Una sede se quedó corta de un producto"),
+    /** Resumen de la mañana con los productos que hay que pedir ya según su plazo de entrega (destino: COMPRADOR y
+     *  ADMIN_COMPRAS). */
+    REABASTECIMIENTO_DIARIO("Productos que hay que pedir hoy"),
     /** Una solicitud de compra espera aprobación (destino: el rol aprobador de la política). */
     SOLICITUD_PENDIENTE_APROBACION("Solicitud de compra pendiente de aprobación"),
     /** El aprobador decidió sobre una solicitud (destino: el solicitante). */
@@ -62,6 +68,12 @@ public enum EventoNotificacion {
     DELEGACION_ASIGNADA("Delegación de aprobación asignada"),
     /** El administrador de la empresa le pidió un informe de compras al área de compras. */
     INFORME_PEDIDO("Informe de compras pedido"),
+    /** Alguien de la empresa avisó que necesita un producto (destino: COMPRADOR y ADMIN_COMPRAS). */
+    PEDIDO_INTERNO("Pedido interno de un producto"),
+    /** Compras respondió un pedido interno (destino: quien lo pidió). */
+    PEDIDO_INTERNO_RESPONDIDO("Respuesta a tu pedido interno"),
+    /** Un proveedor subió o actualizó su catálogo (destino: COMPRADOR y ADMIN_COMPRAS). */
+    CATALOGO_ACTUALIZADO("Un proveedor actualizó su catálogo"),
     /** El área de compras envió un informe de compras al administrador de la empresa. */
     INFORME_RECIBIDO("Informe de compras recibido");
 
