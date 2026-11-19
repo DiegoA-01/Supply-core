@@ -27,6 +27,10 @@ jobs:
     env:
       DB_USER: root
       IA_PROVEEDOR: ninguno
+      # La misma zona horaria que Docker (docker-compose.yml) y la conexión (serverTimezone=America/Bogota). En UTC,
+      # entre las 19:00 y las 24:00 UTC las fechas guardadas por MySQL se leían en el día siguiente y fallaban las
+      # pruebas que filtran por periodo (rotación, reabastecimiento, facturas).
+      TZ: America/Bogota
     steps:
       - uses: actions/checkout@v5
 
@@ -51,6 +55,7 @@ jobs:
           docker run -d --name mysql-pruebas -p 3306:3306 \
             -e MYSQL_ROOT_PASSWORD="$DB_PASSWORD" \
             -e MYSQL_DATABASE=supply_core_test \
+            -e TZ=America/Bogota \
             mysql:8.4
           for i in $(seq 1 60); do
             if docker exec mysql-pruebas mysqladmin ping -h 127.0.0.1 -uroot -p"$DB_PASSWORD" --silent 2>/dev/null; then

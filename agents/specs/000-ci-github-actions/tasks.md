@@ -17,3 +17,7 @@ graph del repositorio.
 
 Notas de la verificación local (2026-11-19): `./mvnw verify` pasa y deja el reporte en `target/site/jacoco/`;
 `npm test -- --watch=false` pasa (127 pruebas). Los workflows solo se pueden probar en GitHub (T6).
+
+Ajuste del 2026-11-19 (PR de la spec 002): el trabajo `backend` y su MySQL corren con `TZ=America/Bogota`, igual que
+Docker. En UTC, entre las 19:00 y las 24:00 UTC, las fechas que guarda MySQL se leían en el día siguiente y fallaban
+las pruebas que filtran por periodo (rotación, reabastecimiento, facturas). Se reprodujo y se comprobó con MySQL 8.4.
