@@ -97,3 +97,20 @@ Este `nginx` habla HTTP. En un servidor real ponlo detrás de quien termine el H
 - `port is already allocated`: otro programa usa el puerto; cambiar `WEB_PORT` en `.env`.
 - El backend queda `unhealthy` la primera vez: la migración inicial tarda; `docker compose logs api` muestra el avance.
 - El código MFA no funciona: sincronizar la hora del equipo y del celular. Cinco intentos fallidos bloquean la cuenta 15 minutos.
+
+## Integración continua (GitHub Actions)
+
+Cada PR hacia `develop` o `main` (y cada push a esas ramas) corre `.github/workflows/ci.yml`:
+
+- `backend`: Java 21, MySQL 8.4 levantado en el job, `./mvnw verify` (incluidas las pruebas de fuga entre empresas), Javadoc con `doclint=all` y el reporte de cobertura de JaCoCo como artefacto (`cobertura-backend`).
+- `frontend`: Node 24, `npm ci`, pruebas con Vitest y build de producción.
+- `docker`: construye las imágenes `api` y `web` sin publicarlas y las escanea con Trivy; falla si hay vulnerabilidades CRÍTICAS con arreglo disponible.
+
+Además, `dependency-review.yml` revisa las dependencias de cada PR y `codeql.yml` analiza el código cada lunes. El CI no usa secretos: las claves de MySQL y del JWT se generan dentro del job y se enmascaran en el registro.
+
+**Protección de ramas (la activa el dueño del repositorio, una vez):** en GitHub, *Settings → Branches → Add branch ruleset* (o *Add rule*) para `develop` y otra para `main`:
+
+1. Marcar *Require a pull request before merging* con al menos una aprobación.
+2. Marcar *Require status checks to pass* y elegir `backend`, `frontend` y `docker` (aparecen después de la primera ejecución del CI).
+3. Marcar *Require branches to be up to date before merging*.
+4. Opcional: *Block force pushes* y *Restrict deletions*.

@@ -12,8 +12,10 @@ Corre en cada PR hacia `develop` y `main`, y en cada push a esas ramas.
 
 Notas del backend:
 - `application-test.yaml` apunta a `localhost:3306`; la clave sale de `DB_PASSWORD` (en local, de
-  `application-local.yaml`, que no existe en el CI). El job genera una clave aleatoria para el servicio MySQL y la pasa
-  como `DB_PASSWORD` y `DB_USER=root`.
+  `application-local.yaml`, que no existe en el CI). El job genera una clave aleatoria (y un `JWT_SECRET`), las
+  enmascara y las pasa como `DB_PASSWORD` y `DB_USER=root`. Como un `services:` de GitHub arranca antes de los pasos y no
+  puede usar una clave generada en el job, MySQL 8.4 se levanta con `docker run` en un paso y se espera a que responda.
+- `mvnw` no tiene permiso de ejecución en el repositorio: el job lo llama con `sh mvnw`.
 - JaCoCo no está en el `pom.xml`: se agrega el plugin `jacoco-maven-plugin` (`prepare-agent` + `report` en `verify`).
   Es dependencia de build nueva: pedir el visto bueno antes de agregarla.
 

@@ -1,6 +1,6 @@
 # 000 - Integración continua
 
-**Estado:** Propuesta · **Rama:** `feature/ci-github-actions` · **Depende de:** —
+**Estado:** En construcción (aprobada el 2026-11-19) · **Rama:** `feature/ci-github-actions` · **Depende de:** —
 
 ## Objetivo
 Que cada cambio que llega a `develop` o `main` se compruebe solo: que compila, que pasan todas las pruebas (incluidas
