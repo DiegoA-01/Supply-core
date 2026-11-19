@@ -8,15 +8,19 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.proyecto.supply_core.auditoria.enums.AccionAuditoria;
 import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
+import com.proyecto.supply_core.catalogo.entity.UnidadMedida;
+import com.proyecto.supply_core.catalogo.repository.UnidadMedidaRepository;
+import com.proyecto.supply_core.catalogo.service.UnidadMedidaService;
 import com.proyecto.supply_core.common.exception.AccesoDenegadoException;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
@@ -34,6 +38,7 @@ import com.proyecto.supply_core.venta.dto.ListaPrecioRequest;
 import com.proyecto.supply_core.venta.dto.ListaPrecioResponse;
 import com.proyecto.supply_core.venta.dto.PrecioFila;
 import com.proyecto.supply_core.venta.dto.PrecioRequest;
+import com.proyecto.supply_core.venta.dto.PrecioUnidad;
 import com.proyecto.supply_core.venta.dto.PreciosResponse;
 import com.proyecto.supply_core.venta.dto.ProductoVentaRequest;
 import com.proyecto.supply_core.venta.dto.TarifaImpuestoRequest;
@@ -52,6 +57,8 @@ import com.proyecto.supply_core.venta.repository.TarifaImpuestoRepository;
  *   <li>Cambiar un precio cierra la vigencia del anterior y crea uno nuevo: el historial no se borra.</li>
  *   <li>El margen lo calcula Java ({@link CalculoMargen}) sobre la base sin impuesto y el costo de referencia.</li>
  *   <li>Cada empresa arranca con IVA 19 %, IVA 5 %, exento, excluido y la lista General (se crean si faltan).</li>
+ *   <li>Un producto puede tener precio en su unidad y en otras convertibles (la caja de 24, decisión D9): hay un solo
+ *       precio vigente por producto, lista y unidad, y la base de datos lo garantiza (V31).</li>
  * </ul>
  */
 @Service
@@ -65,6 +72,8 @@ public class PreciosService {
     private final UsuarioRepository usuarioRepository;
     private final EmpresaService empresaService;
     private final AuditoriaService auditoriaService;
+    private final UnidadMedidaService unidadMedidaService;
+    private final UnidadMedidaRepository unidadRepository;
 
     /**
      * @param tarifaRepository  impuestos de venta
@@ -75,11 +84,16 @@ public class PreciosService {
      * @param usuarioRepository nombres en el historial
      * @param empresaService    delegación de precios al jefe de compras
      * @param auditoriaService  registro de cambios
+     * @param unidadMedidaService conversión entre la unidad del precio y la del producto
+     * @param unidadRepository  unidades de medida
      */
     public PreciosService(TarifaImpuestoRepository tarifaRepository, ListaPrecioRepository listaRepository,
             PrecioProductoRepository precioRepository, ProductoRepository productoRepository,
             StockProductoBodegaRepository stockRepository, UsuarioRepository usuarioRepository,
-            EmpresaService empresaService, AuditoriaService auditoriaService) {
+            EmpresaService empresaService, AuditoriaService auditoriaService, UnidadMedidaService unidadMedidaService,
+            UnidadMedidaRepository unidadRepository) {
+        this.unidadMedidaService = unidadMedidaService;
+        this.unidadRepository = unidadRepository;
         this.tarifaRepository = tarifaRepository;
         this.listaRepository = listaRepository;
         this.precioRepository = precioRepository;
@@ -208,23 +222,27 @@ public class PreciosService {
         asegurarBase();
         ListaPrecio lista = listaId == null ? general() : lista(listaId);
         List<Producto> productos = precioRepository.productosVendibles();
-        Map<Long, PrecioProducto> vigentes = precioRepository.vigentes(lista.getId()).stream()
-                .collect(Collectors.toMap(p -> p.getProducto().getId(), Function.identity(), (a, b) -> a));
+        Map<Long, List<PrecioProducto>> vigentes = precioRepository.vigentes(lista.getId()).stream()
+                .collect(Collectors.groupingBy(p -> p.getProducto().getId()));
         Map<Long, BigDecimal> stock = productos.isEmpty() ? Map.of()
                 : stockRepository.totalesDe(productos.stream().map(Producto::getId).toList()).stream()
                         .collect(Collectors.toMap(TotalPorProducto::getProductoId, TotalPorProducto::getTotal));
+        Map<Long, UnidadMedida> unidades = new HashMap<>();
         List<PrecioFila> filas = productos.stream()
-                .map(p -> fila(p, vigentes.get(p.getId()), stock.getOrDefault(p.getId(), BigDecimal.ZERO))).toList();
+                .map(p -> filaConUnidades(p, vigentes.getOrDefault(p.getId(), List.of()),
+                        stock.getOrDefault(p.getId(), BigDecimal.ZERO), unidades))
+                .toList();
         return resumen(ListaPrecioResponse.of(lista), filas, puedeEditar());
     }
 
     /**
      * Fija el precio de un producto en una lista: cierra el vigente y crea el nuevo.
      *
-     * @param req lista, producto, precio, mínimo y motivo
+     * @param req lista, producto, unidad, precio, mínimo y motivo
      * @return la fila del producto con su nuevo margen
-     * @throws NoEncontradoException si la lista o el producto no son de la empresa
-     * @throws NegocioException      si la lista está inactiva o el producto no es vendible
+     * @throws NoEncontradoException si la lista, el producto o la unidad no existen para la empresa
+     * @throws NegocioException      si la lista está inactiva, el producto no es vendible, la unidad está inactiva o
+     *                               no se convierte a la del producto, o si otra persona fijó el mismo precio a la vez
      */
     @Transactional
     public PrecioFila fijarPrecio(PrecioRequest req) {
@@ -238,39 +256,53 @@ public class PreciosService {
         if (!producto.isActivo() || !producto.isVendible()) {
             throw new NegocioException("PRODUCTO_NO_VENDIBLE", "El producto " + producto.getCodigo() + " no se vende");
         }
+        UnidadMedida unidad = unidadDelPrecio(producto, req.unidadMedidaId());
         LocalDateTime ahora = LocalDateTime.now();
         BigDecimal anterior = null;
-        PrecioProducto vigente = precioRepository.vigenteParaCambiar(lista.getId(), producto.getId()).orElse(null);
-        if (vigente != null) {
-            anterior = vigente.getPrecio();
-            vigente.setVigenteHasta(ahora);
-        }
         PrecioProducto nuevo = new PrecioProducto();
         nuevo.setLista(lista);
         nuevo.setProducto(producto);
-        nuevo.setUnidadMedidaId(producto.getUnidadMedida().getId());
+        nuevo.setUnidadMedidaId(unidad.getId());
         nuevo.setPrecio(req.precio().setScale(2, RoundingMode.HALF_UP));
         nuevo.setPrecioMinimo(req.precioMinimo() == null ? null : req.precioMinimo().setScale(2, RoundingMode.HALF_UP));
         nuevo.setVigenteDesde(ahora);
         nuevo.setCreadoPorUsuarioId(SesionActual.usuario().id());
         nuevo.setMotivo(req.motivo() == null || req.motivo().isBlank() ? null : req.motivo().trim());
-        precioRepository.saveAndFlush(nuevo);
+        // Si dos personas fijan a la vez el primer precio, MySQL deja pasar a una: la otra choca con la regla única
+        // (V31) o pierde el bloqueo mutuo; en los dos casos se le pide recargar, y nunca quedan dos vigentes.
+        try {
+            PrecioProducto vigente = precioRepository
+                    .vigenteParaCambiar(lista.getId(), producto.getId(), unidad.getId()).orElse(null);
+            if (vigente != null) {
+                anterior = vigente.getPrecio();
+                vigente.setVigenteHasta(ahora);
+                precioRepository.saveAndFlush(vigente);
+            }
+            precioRepository.saveAndFlush(nuevo);
+        } catch (DataIntegrityViolationException | PessimisticLockingFailureException e) {
+            throw new NegocioException("PRECIO_CONCURRENTE", "Otra persona acaba de fijar el precio de "
+                    + producto.getCodigo() + " en " + lista.getNombre() + ". Recargue y vuelva a intentarlo");
+        }
         auditoriaService.exito(AccionAuditoria.PRECIO_CAMBIAR, EntidadAuditada.PRECIO_PRODUCTO, nuevo.getId(),
-                producto.getCodigo() + " en " + lista.getNombre() + ": " + (anterior == null ? "sin precio" : anterior)
+                producto.getCodigo() + " (" + unidad.getCodigo() + ") en " + lista.getNombre() + ": "
+                        + (anterior == null ? "sin precio" : anterior)
                         + " -> " + nuevo.getPrecio() + (nuevo.getMotivo() == null ? "" : "; motivo=" + nuevo.getMotivo()));
-        return fila(producto, nuevo, stockRepository.totalDeProducto(producto.getId()));
+        return filaCompleta(producto, lista.getId());
     }
 
     /**
      * @param listaId    lista
      * @param productoId producto
-     * @return todos sus precios en la lista, del más reciente al más antiguo
+     * @param unidadId   unidad del precio ({@code null} = la del producto)
+     * @return todos sus precios en la lista y la unidad, del más reciente al más antiguo
      */
     @Transactional(readOnly = true)
-    public List<HistorialPrecio> historial(Long listaId, Long productoId) {
+    public List<HistorialPrecio> historial(Long listaId, Long productoId, Long unidadId) {
         lista(listaId);
-        productoRepository.findById(productoId).orElseThrow(() -> new NoEncontradoException("Producto no encontrado"));
-        List<PrecioProducto> precios = precioRepository.historial(listaId, productoId);
+        Producto producto = productoRepository.findById(productoId)
+                .orElseThrow(() -> new NoEncontradoException("Producto no encontrado"));
+        List<PrecioProducto> precios = precioRepository.historial(listaId, productoId,
+                unidadId == null ? producto.getUnidadMedida().getId() : unidadId);
         Set<Long> ids = precios.stream().map(PrecioProducto::getCreadoPorUsuarioId).collect(Collectors.toSet());
         Map<Long, String> nombres = new HashMap<>();
         usuarioRepository.findAllById(ids).forEach(u -> nombres.put(u.getId(), u.getNombreCompleto()));
@@ -308,10 +340,7 @@ public class PreciosService {
                 "venta; antes: " + antes + " | después: impuesto=" + (tarifa == null ? "—" : tarifa.getCodigo())
                         + ", vendible=" + p.isVendible() + ", incluye=" + p.isPrecioIncluyeImpuesto() + ", barras="
                         + codigoBarras);
-        ListaPrecio general = general();
-        return fila(p, precioRepository.vigentes(general.getId()).stream()
-                .filter(x -> x.getProducto().getId().equals(productoId)).findFirst().orElse(null),
-                stockRepository.totalDeProducto(productoId));
+        return filaCompleta(p, general().getId());
     }
 
     // ----------------------------------------------------------------- cálculo
@@ -322,9 +351,10 @@ public class PreciosService {
      * @param p       producto
      * @param precio  precio vigente o {@code null}
      * @param stock   stock total
+     * @param otras   precios del producto en otras unidades
      * @return fila
      */
-    static PrecioFila fila(Producto p, PrecioProducto precio, BigDecimal stock) {
+    static PrecioFila fila(Producto p, PrecioProducto precio, BigDecimal stock, List<PrecioUnidad> otras) {
         TarifaImpuesto t = p.getTarifaImpuesto();
         BigDecimal pct = t == null ? null : t.getPorcentaje();
         BigDecimal costo = p.getCostoReferencia();
@@ -340,7 +370,7 @@ public class PreciosService {
             return new PrecioFila(p.getId(), p.getCodigo(), p.getNombre(), p.getCategoria().getNombre(),
                     p.getUnidadMedida().getCodigo(), p.isVendible(), p.getCodigoBarras(), t == null ? null : t.getId(),
                     t == null ? null : t.getNombre(), pct, p.isPrecioIncluyeImpuesto(), costo, null, null, null, null,
-                    null, null, null, stock, List.copyOf(alertas));
+                    null, null, null, stock, List.copyOf(alertas), otras);
         }
         CalculoMargen.Resultado r = CalculoMargen.calcular(precio.getPrecio(), p.isPrecioIncluyeImpuesto(), pct, costo);
         if (r.margen() != null && r.margen().signum() < 0) {
@@ -354,7 +384,7 @@ public class PreciosService {
                 p.getUnidadMedida().getCodigo(), p.isVendible(), p.getCodigoBarras(), t == null ? null : t.getId(),
                 t == null ? null : t.getNombre(), pct, p.isPrecioIncluyeImpuesto(), costo, precio.getPrecio(),
                 precio.getPrecioMinimo(), precio.getVigenteDesde(), r.base(), r.impuesto(), r.margen(), r.margenPct(),
-                stock, List.copyOf(alertas));
+                stock, List.copyOf(alertas), otras);
     }
 
     /**
@@ -386,6 +416,81 @@ public class PreciosService {
                 ponderado, sumaMargen.setScale(2, RoundingMode.HALF_UP), puedeEditar, filas);
     }
 
+    // ----------------------------------------------------------------- unidades (D9)
+
+    /**
+     * Fila de un producto en una lista, leyendo sus precios vigentes y su stock.
+     *
+     * @param p       producto
+     * @param listaId lista
+     * @return fila con el precio en su unidad y en las demás
+     */
+    private PrecioFila filaCompleta(Producto p, Long listaId) {
+        return filaConUnidades(p, precioRepository.vigentesDeProducto(listaId, p.getId()),
+                stockRepository.totalDeProducto(p.getId()), new HashMap<>());
+    }
+
+    /**
+     * Separa el precio en la unidad del producto de los precios en otras unidades y calcula el margen de cada uno.
+     *
+     * @param p        producto
+     * @param vigentes precios vigentes del producto en la lista (uno por unidad)
+     * @param stock    stock total
+     * @param unidades caché de unidades por id
+     * @return fila
+     */
+    private PrecioFila filaConUnidades(Producto p, List<PrecioProducto> vigentes, BigDecimal stock,
+            Map<Long, UnidadMedida> unidades) {
+        Long unidadProducto = p.getUnidadMedida().getId();
+        PrecioProducto base = vigentes.stream().filter(x -> x.getUnidadMedidaId().equals(unidadProducto)).findFirst()
+                .orElse(null);
+        List<PrecioUnidad> otras = vigentes.stream().filter(x -> !x.getUnidadMedidaId().equals(unidadProducto))
+                .map(x -> precioEnUnidad(p, x, unidades)).toList();
+        return fila(p, base, stock, otras);
+    }
+
+    /**
+     * Precio en otra unidad con su margen contra el costo convertido a esa unidad.
+     *
+     * @param p        producto
+     * @param precio   precio vigente en la otra unidad
+     * @param unidades caché de unidades por id
+     * @return precio con margen
+     */
+    private PrecioUnidad precioEnUnidad(Producto p, PrecioProducto precio, Map<Long, UnidadMedida> unidades) {
+        UnidadMedida u = unidades.computeIfAbsent(precio.getUnidadMedidaId(),
+                id -> unidadRepository.findById(id).orElse(null));
+        BigDecimal pct = p.getTarifaImpuesto() == null ? null : p.getTarifaImpuesto().getPorcentaje();
+        BigDecimal costo = p.getCostoReferencia() == null ? null
+                : p.getCostoReferencia().multiply(unidadMedidaService.convertir(BigDecimal.ONE,
+                        precio.getUnidadMedidaId(), p.getUnidadMedida().getId()));
+        CalculoMargen.Resultado r = CalculoMargen.calcular(precio.getPrecio(), p.isPrecioIncluyeImpuesto(), pct, costo);
+        return new PrecioUnidad(precio.getUnidadMedidaId(), u == null ? "?" : u.getCodigo(), precio.getPrecio(),
+                precio.getPrecioMinimo(), precio.getVigenteDesde(), r.base(), r.margenPct());
+    }
+
+    /**
+     * Unidad en la que se fija un precio: la del producto o una activa que se convierta a ella.
+     *
+     * @param producto producto
+     * @param unidadId unidad pedida ({@code null} = la del producto)
+     * @return unidad
+     * @throws NoEncontradoException si la unidad no existe
+     * @throws NegocioException      si está inactiva o mide otra cosa
+     */
+    UnidadMedida unidadDelPrecio(Producto producto, Long unidadId) {
+        if (unidadId == null || unidadId.equals(producto.getUnidadMedida().getId())) {
+            return producto.getUnidadMedida();
+        }
+        UnidadMedida u = unidadRepository.findById(unidadId)
+                .orElseThrow(() -> new NoEncontradoException("Unidad de medida no encontrada"));
+        if (!u.isActivo()) {
+            throw new NegocioException("UNIDAD_INACTIVA", "La unidad " + u.getCodigo() + " está inactiva");
+        }
+        unidadMedidaService.convertir(BigDecimal.ONE, u.getId(), producto.getUnidadMedida().getId());
+        return u;
+    }
+
     // ----------------------------------------------------------------- apoyo
 
     /**
@@ -400,7 +505,7 @@ public class PreciosService {
     /**
      * @throws AccesoDenegadoException si la sesión no puede fijar precios
      */
-    private void exigirEdicion() {
+    void exigirEdicion() {
         if (!puedeEditar()) {
             throw new AccesoDenegadoException("Solo el dueño fija los precios de venta (o el jefe de compras si se lo delegó)");
         }

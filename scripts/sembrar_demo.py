@@ -107,6 +107,10 @@ def main():
         ('Comprador', 'comprador@ferreteriademo.local', ['COMPRADOR']),
         ('Tesorería', 'tesoreria@ferreteriademo.local', ['ADMINISTRATIVO']),
         ('Auditor', 'auditor@ferreteriademo.local', ['AUDITOR']),
+        # Ventas (spec 001): el cajero cobra, el vendedor atiende y el supervisor autoriza con su PIN
+        ('Cajero', 'cajero@ferreteriademo.local', ['CAJERO']),
+        ('Vendedor', 'vendedor@ferreteriademo.local', ['VENDEDOR']),
+        ('Supervisor ventas', 'supervisor.ventas@ferreteriademo.local', ['SUPERVISOR_VENTAS']),
     ]
     claves = {}
     for nombre, correo, roles in cuentas:
@@ -137,16 +141,34 @@ def main():
         ('GUA-01', 'Guantes de carnaza', 'Herramientas', 7500, 120, 100),
         ('LAM-09', 'Lámpara LED 9 W', 'Eléctrico', 6800, 60, 6),
     ]
+    ids_producto = {}
     for codigo, nombre, cat, costo, entra, sale in productos:
         p = exigir('producto ' + codigo, llamar('POST', '/api/productos', {
             'codigo': codigo, 'nombre': nombre, 'categoriaId': categorias[cat], 'unidadMedidaId': unidad,
             'stockMinimo': 5, 'costoReferencia': costo}, tok_compras))
+        ids_producto[codigo] = p['id']
         exigir('existencia inicial ' + codigo, llamar('POST', '/api/inventario/movimientos', {
             'productoId': p['id'], 'tipo': 'AJUSTE_POSITIVO', 'bodegaDestinoId': bodega['id'],
             'cantidad': entra, 'motivo': 'Inventario inicial de la demostración'}, tok_bodega))
         if sale:
             exigir('salida de ' + codigo, llamar('POST', '/api/inventario/movimientos', {
                 'productoId': p['id'], 'tipo': 'SALIDA_CONSUMO', 'bodegaOrigenId': bodega['id'], 'cantidad': sale}, tok_bodega))
+
+    # 5b. Precios de venta en la lista General (los fija el dueño). Son datos de ejemplo: el margen lo calcula el
+    #     backend. Los guantes también se venden por docena (DOC), con precio propio (decisión D9).
+    general = exigir('listas de precios', llamar('GET', '/api/ventas/listas', token=tok_admin))[0]['id']
+    precios = {'CEM-50': 49500, 'TOR-01': 6900, 'CAB-12': 4300, 'PIN-20': 285000, 'BRO-03': 13900,
+               'BRK-20': 32500, 'GUA-01': 11500, 'LAM-09': 10500}
+    for codigo, precio in precios.items():
+        exigir('precio ' + codigo, llamar('PUT', '/api/ventas/precios', {
+            'listaId': general, 'productoId': ids_producto[codigo], 'precio': precio,
+            'motivo': 'Precio inicial de la demostración'}, tok_admin))
+    docena = next((u['id'] for u in exigir('unidades', llamar('GET', '/api/unidades-medida', token=tok_compras))
+                   if u['codigo'] == 'DOC'), None)
+    if docena:
+        exigir('precio por docena GUA-01', llamar('PUT', '/api/ventas/precios', {
+            'listaId': general, 'productoId': ids_producto['GUA-01'], 'precio': 126000, 'precioMinimo': 120000,
+            'unidadMedidaId': docena, 'motivo': 'Precio por docena'}, tok_admin))
 
     # 6. Políticas de aprobación: las solicitudes las aprueba el jefe de compras; las adjudicaciones, el aprobador
     #    (nadie aprueba lo suyo: el backend lo impide por segregación de funciones)

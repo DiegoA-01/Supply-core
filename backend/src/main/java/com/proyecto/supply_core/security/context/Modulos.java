@@ -28,6 +28,10 @@ public final class Modulos {
     public static final String AUDITORIA = "AUDITORIA";
     /** Precios de venta, listas de precios, impuestos y margen (fase F1 de ventas). */
     public static final String VENTAS = "VENTAS";
+    /** Cajas, turnos, movimientos de caja, arqueo y cierre ciego (V31; se construye en la spec 003). */
+    public static final String CAJA = "CAJA";
+    /** Ventas a crédito, cupos, abonos y edades de cartera (V31; se construye en la spec 007). */
+    public static final String CARTERA = "CARTERA";
 
     /** Clase utilitaria: no se instancia. */
     private Modulos() {

@@ -87,6 +87,8 @@ const ROLES: Record<string, string> = {
   APROBADOR: 'Aprobador',
   ALMACENISTA: 'Bodega',
   CAJERO: 'Caja',
+  SUPERVISOR_VENTAS: 'Supervisor de ventas',
+  VENDEDOR: 'Vendedor',
   ADMINISTRATIVO: 'Tesorería',
   AUDITOR: 'Auditoría',
   PROVEEDOR: 'Proveedor',

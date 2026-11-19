@@ -11,8 +11,8 @@ Estados de una spec: **Propuesta** (en revisión) → **Aprobada** (se puede pla
 
 | Spec | Fase de la spec original | Qué entrega | Rama | Depende de | Estado |
 |---|---|---|---|---|---|
-| [000-ci-github-actions](000-ci-github-actions/spec.md) | F0 | CI con GitHub Actions, Dependency Review y CodeQL | `feature/ci-github-actions` | — | Propuesta |
-| [001-ventas-catalogo](001-ventas-catalogo/spec.md) | F1 | Módulos, roles, impuestos, código de barras, listas y precios con historial | `feature/ventas-catalogo` | 000 | En construcción (en parte hecha en `feature/mejoras-negocio`) |
+| [000-ci-github-actions](000-ci-github-actions/spec.md) | F0 | CI con GitHub Actions, Dependency Review y CodeQL | `feature/ci-github-actions` | — | Hecha (PR #26) |
+| [001-ventas-catalogo](001-ventas-catalogo/spec.md) | F1 | Módulos, roles, impuestos, código de barras, listas y precios con historial | `feature/ventas-catalogo` | 000 | Hecha (V29 + V31), pendiente de mezclar |
 | [002-ventas-clientes](002-ventas-clientes/spec.md) | F2 | Clientes, consumidor final, autorización de datos | `feature/ventas-clientes` | 001 | Propuesta |
 | [003-caja-turnos](003-caja-turnos/spec.md) | F3 | Cajas, turnos, libro de caja, PIN de supervisor, cierre ciego | `feature/caja-turnos` | 001 | Propuesta |
 | [004-venta-backend](004-venta-backend/spec.md) | F4 | La venta en una sola transacción: precios, descuentos, impuestos, pagos, stock, caja, idempotencia | `feature/ventas-pos-backend` | 002, 003 | Propuesta |
@@ -37,11 +37,11 @@ referencias cruzadas; catálogos de proveedor en PDF leídos con IA; correo real
 | D2 | ¿El precio de mostrador incluye IVA? | **Sí**, como es costumbre en Colombia; Java separa base e impuesto. | **Tomada** (construida en V29) | 001 |
 | D3 | ¿Redondear el total en efectivo a $50? | **Sí**, guardando la diferencia en `redondeo` para que cuadre. | Recomendada | 004 |
 | D4 | ¿Crédito a clientes en la primera versión? | **No**: dejarlo para la 007 y salir primero con contado. | Recomendada | 007 |
-| D5 | ¿Roles nuevos `SUPERVISOR_VENTAS` y `VENDEDOR`? | **Sí**; el dueño puede asignar los dos a la misma persona en negocios pequeños. | Recomendada | 001 |
+| D5 | ¿Roles nuevos `SUPERVISOR_VENTAS` y `VENDEDOR`? | **Sí**; el dueño puede asignar los dos a la misma persona en negocios pequeños. | **Tomada** (2026-11-19) | 001 |
 | D6 | ¿Tolerancia de diferencia de caja sin aprobación? | $2.000, configurable por empresa. | Recomendada | 003 |
 | D7 | ¿Una caja puede descontar de varias bodegas? | **No**: una caja, una bodega. Los traslados ya existen. | Recomendada | 003 |
 | D8 | ¿Quién fija precios: solo el dueño o también el jefe de compras? | El dueño, con opción de delegarlo a `ADMIN_COMPRAS`. | **Tomada** (construida en V29) | 001 |
-| D9 | ¿Precio distinto por caja y por unidad del mismo producto? | **Sí**, como pedía la spec original; hoy el precio se guarda solo en la unidad del producto. | Recomendada | 001 |
+| D9 | ¿Precio distinto por caja y por unidad del mismo producto? | **Sí**, como pedía la spec original; hoy el precio se guarda solo en la unidad del producto. | **Tomada** (2026-11-19) | 001 |
 
 Una decisión **Recomendada** pasa a **Tomada** cuando la aprueba el equipo; se anota aquí antes de aprobar la spec.
 
@@ -51,9 +51,9 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | Versión | Rama | Qué |
 |---|---|---|
 | V25 | (en `develop`) | Informe de compras |
-| V26 a V30 | `feature/mejoras-negocio` | Reabastecimiento, inventario por sede, pedidos internos, precios de venta (V29), catálogos de proveedores |
-| V31 | `feature/ventas-catalogo` | Completar la spec 001 |
-| V32 en adelante | libre | Se reserva al empezar cada spec |
+| V26 a V30 | (en `develop`, PR #27) | Reabastecimiento, inventario por sede, pedidos internos, precios de venta (V29), catálogos de proveedores |
+| V31 | `feature/ventas-catalogo` | Completar la spec 001: módulos, roles y precio vigente único |
+| V32 en adelante | libre | Se reserva al empezar cada spec (la siguiente es la 002, clientes) |
 
 ## Riesgos generales
 

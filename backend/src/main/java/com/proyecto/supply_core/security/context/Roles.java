@@ -26,6 +26,10 @@ public final class Roles {
     public static final String AUDITOR = "AUDITOR";
     /** Cobra y registra ventas o entregas en caja (V16). */
     public static final String CAJERO = "CAJERO";
+    /** Autoriza con su PIN anulaciones, descuentos, devoluciones y diferencias de caja (V31, decisión D5). */
+    public static final String SUPERVISOR_VENTAS = "SUPERVISOR_VENTAS";
+    /** Atiende al cliente y arma pedidos de venta sin cobrar (V31, decisión D5). */
+    public static final String VENDEDOR = "VENDEDOR";
 
     /** Clase de constantes: no se instancia. */
     private Roles() {
