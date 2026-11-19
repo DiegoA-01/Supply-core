@@ -40,7 +40,7 @@ export const ROLES_REPORTES = ['AUDITOR', 'ADMIN_COMPRAS', 'COMPRADOR', 'APROBAD
 /** Roles que leen proveedores. */
 export const ROLES_PROVEEDORES = ['ADMIN_COMPRAS', 'COMPRADOR', 'AUDITOR'];
 /** Roles internos (todos menos PROVEEDOR). */
-export const INTERNOS = ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'SOLICITANTE', 'COMPRADOR', 'APROBADOR', 'ALMACENISTA', 'CAJERO', 'ADMINISTRATIVO', 'AUDITOR'];
+export const INTERNOS = ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'SOLICITANTE', 'COMPRADOR', 'APROBADOR', 'ALMACENISTA', 'CAJERO', 'SUPERVISOR_VENTAS', 'VENDEDOR', 'ADMINISTRATIVO', 'AUDITOR'];
 
 /** Menú de la empresa, en el orden del mockup. Los roles y módulos son los mismos que exige el backend. */
 export const MENU: SeccionMenu[] = [

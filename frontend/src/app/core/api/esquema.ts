@@ -3336,6 +3336,18 @@ export interface components {
             margenPct?: number;
             stock?: number;
             alertas?: string[];
+            otrasUnidades?: components["schemas"]["PrecioUnidad"][];
+        };
+        PrecioUnidad: {
+            /** Format: int64 */
+            unidadMedidaId?: number;
+            unidad?: string;
+            precio?: number;
+            precioMinimo?: number;
+            /** Format: date-time */
+            vigenteDesde?: string;
+            base?: number;
+            margenPct?: number;
         };
         PrecioVentaRequest: {
             /** Format: int64 */
@@ -3345,6 +3357,8 @@ export interface components {
             precio: number;
             precioMinimo?: number;
             motivo?: string;
+            /** Format: int64 */
+            unidadMedidaId?: number;
             minimoValido?: boolean;
         };
         ListaPrecioRequest: {
@@ -4151,6 +4165,36 @@ export interface components {
             /** Format: int32 */
             fila?: number;
             mensaje?: string;
+        };
+        CargaPreciosResponse: {
+            soloValidar?: boolean;
+            aplicado?: boolean;
+            /** Format: int32 */
+            filas?: number;
+            /** Format: int32 */
+            precios?: number;
+            errores?: components["schemas"]["ErrorFila"][];
+        };
+        ProductoParaVender: {
+            /** Format: int64 */
+            productoId?: number;
+            codigo?: string;
+            codigoBarras?: string;
+            nombre?: string;
+            /** Format: int64 */
+            unidadMedidaId?: number;
+            unidad?: string;
+            porcentajeImpuesto?: number;
+            precioIncluyeImpuesto?: boolean;
+            precio?: number;
+            otrasUnidades?: components["schemas"]["PrecioEnUnidad"][];
+            stock?: number;
+        };
+        PrecioEnUnidad: {
+            /** Format: int64 */
+            unidadMedidaId?: number;
+            unidad?: string;
+            precio?: number;
         };
         PresupuestoRequest: {
             /** Format: int64 */

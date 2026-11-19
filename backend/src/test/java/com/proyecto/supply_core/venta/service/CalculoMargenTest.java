@@ -51,7 +51,7 @@ class CalculoMargenTest {
     private static PrecioFila fila(String base, String margen, String pct, String stock) {
         return new PrecioFila(1L, "X", "X", "C", "UND", true, null, 1L, "IVA", BigDecimal.ZERO, true, BigDecimal.ONE,
                 new BigDecimal(base), null, null, new BigDecimal(base), BigDecimal.ZERO, new BigDecimal(margen),
-                new BigDecimal(pct), new BigDecimal(stock), List.of());
+                new BigDecimal(pct), new BigDecimal(stock), List.of(), List.of());
     }
 
     @Test

@@ -1,7 +1,7 @@
 # 001 - Catálogo de venta: módulos, roles, impuestos y precios
 
-**Estado:** En construcción. Gran parte quedó hecha en la rama `feature/mejoras-negocio` (migración V29), pendiente de
-mezclar a `develop`; lo que falta va en `feature/ventas-catalogo`. · **Depende de:** 000
+**Estado:** Hecha (2026-11-19), pendiente de mezclar. Gran parte quedó hecha en la rama `feature/mejoras-negocio` (migración V29), ya mezclada a
+`develop` por el PR #27 con el CI en verde; lo que falta va en `feature/ventas-catalogo`. · **Depende de:** 000
 
 ## Objetivo
 Dejar listo todo lo que el punto de venta necesita saber antes de cobrar: qué módulos contrató la empresa, quién puede
@@ -29,8 +29,8 @@ lista, con el historial de cada cambio.
 
 ## Criterios de aceptación
 - [x] El módulo Ventas existe y viene en los planes Profesional y Empresarial. *(V29)*
-- [ ] Los módulos Caja (Profesional y Empresarial) y Cartera (solo Empresarial) existen.
-- [ ] Los roles `VENDEDOR` y `SUPERVISOR_VENTAS` existen y el administrador los puede asignar.
+- [x] Los módulos Caja (Profesional y Empresarial) y Cartera (solo Empresarial) existen.
+- [x] Los roles `VENDEDOR` y `SUPERVISOR_VENTAS` existen y el administrador los puede asignar.
 - [x] Cada empresa tiene IVA 19 %, IVA 5 %, exento y excluido, y puede crear o desactivar tarifas. *(V29)*
 - [x] El código de barras es único dentro de la empresa; dos empresas pueden repetirlo. *(V29)*
 - [x] Cada empresa tiene una lista "General" obligatoria y puede crear más. *(V29)*
@@ -38,16 +38,16 @@ lista, con el historial de cada cambio.
 - [x] El precio mínimo nunca es mayor que el precio. *(V29)*
 - [x] El precio de mostrador incluye IVA (D2) y el margen lo calcula el sistema. *(V29)*
 - [x] Solo el dueño fija precios, salvo que los delegue al jefe de compras (D8). *(V29)*
-- [ ] Nunca hay dos precios vigentes para el mismo producto, lista y unidad, ni siquiera si dos personas guardan a la vez.
-- [ ] Un producto puede tener precio por caja y por unidad (D9).
-- [ ] El cambio masivo de precios por Excel funciona y es todo o nada.
-- [ ] La búsqueda para vender encuentra por código, código de barras o nombre y trae precio vigente y stock.
-- [ ] Una empresa nunca ve ni cambia impuestos, listas o precios de otra.
-- [ ] Todas las pruebas pasan, incluidas las de fuga entre empresas.
+- [x] Nunca hay dos precios vigentes para el mismo producto, lista y unidad, ni siquiera si dos personas guardan a la vez.
+- [x] Un producto puede tener precio por caja y por unidad (D9).
+- [x] El cambio masivo de precios por Excel funciona y es todo o nada.
+- [x] La búsqueda para vender encuentra por código, código de barras o nombre y trae precio vigente y stock.
+- [x] Una empresa nunca ve ni cambia impuestos, listas o precios de otra.
+- [x] Todas las pruebas pasan, incluidas las de fuga entre empresas.
 
 ## Fuera de alcance
 - Clientes (spec 002), caja (003) y la venta (004).
 - Costo promedio (008): el margen de esta spec usa el último costo de compra.
 
 ## Decisiones
-D2 y D8 **tomadas**; D5 y D9 recomendadas (ver `agents/specs/README.md`).
+D2, D5, D8 y D9 **tomadas** (ver `agents/specs/README.md`).

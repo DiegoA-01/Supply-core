@@ -1,6 +1,6 @@
 # Plan 001
 
-## Ya construido en `feature/mejoras-negocio` (V29, paquete `venta/`)
+## Ya construido (rama `feature/mejoras-negocio`, en `develop` por el PR #27; V29, paquete `venta/`)
 Revisarlo antes de tocar nada para no duplicar.
 
 **Datos**

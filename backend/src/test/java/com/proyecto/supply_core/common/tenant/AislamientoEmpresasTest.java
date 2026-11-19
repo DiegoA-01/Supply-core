@@ -1992,6 +1992,149 @@ class AislamientoEmpresasTest {
     }
 
     @Test
+    void elCatalogoDeVentaTienePrecioPorUnidadUnSoloVigenteYUnaBusquedaSinCostos() throws Exception {
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        String duenoA = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+        String cajeroA = token(empresaA, usuarioA, "CAJERO");
+        Long unidadProducto = jdbc.queryForObject("SELECT unidad_medida_id FROM producto WHERE id = ?", Long.class, productoA);
+        // una unidad que se convierte a la del producto (misma magnitud) y otra que mide otra cosa
+        List<Long> convertibles = jdbc.queryForList("SELECT id FROM unidad_medida WHERE activo = 1 AND id <> ? "
+                + "AND magnitud = (SELECT magnitud FROM unidad_medida WHERE id = ?) ORDER BY id", Long.class,
+                unidadProducto, unidadProducto);
+        List<Long> incompatibles = jdbc.queryForList("SELECT id FROM unidad_medida WHERE activo = 1 "
+                + "AND magnitud <> (SELECT magnitud FROM unidad_medida WHERE id = ?) ORDER BY id", Long.class, unidadProducto);
+        assertFalse(convertibles.isEmpty(), "la prueba necesita una unidad convertible a la del producto");
+        Long caja = convertibles.get(0);
+        String codigoCaja = jdbc.queryForObject("SELECT codigo FROM unidad_medida WHERE id = ?", String.class, caja);
+        String codigoProducto = jdbc.queryForObject("SELECT codigo FROM producto WHERE id = ?", String.class, productoA);
+        String listas = mvc.perform(get("/api/ventas/listas").header(HttpHeaders.AUTHORIZATION, duenoA))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        long generalA = new com.fasterxml.jackson.databind.ObjectMapper().readTree(listas).get(0).get("id").asLong();
+        try {
+            jdbc.update("UPDATE producto SET costo_referencia = 1000, codigo_barras = '7701234567890' WHERE id = ?", productoA);
+
+            // V31: módulos nuevos en sus planes y roles de venta en el catálogo
+            assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM plan_modulo pm JOIN plan p ON p.id = pm.plan_id "
+                    + "WHERE pm.modulo_codigo = 'CAJA' AND p.codigo IN ('PROFESIONAL', 'EMPRESARIAL')", Integer.class));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM plan_modulo pm JOIN plan p ON p.id = pm.plan_id "
+                    + "WHERE pm.modulo_codigo = 'CARTERA'", Integer.class));
+            assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM rol WHERE codigo IN ('SUPERVISOR_VENTAS', 'VENDEDOR')",
+                    Integer.class));
+
+            // precio en la unidad del producto y otro en la unidad convertible (D9): dos vigentes que no se pisan
+            mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"listaId\":" + generalA + ",\"productoId\":" + productoA + ",\"precio\":1500}"))
+                    .andExpect(status().isOk());
+            mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"listaId\":" + generalA + ",\"productoId\":" + productoA + ",\"precio\":15000,"
+                                    + "\"precioMinimo\":14000,\"unidadMedidaId\":" + caja + "}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.precio").value(1500.0))
+                    .andExpect(jsonPath("$.otrasUnidades[0].unidad").value(codigoCaja))
+                    .andExpect(jsonPath("$.otrasUnidades[0].precio").value(15000.0));
+            mvc.perform(get("/api/ventas/precios/historial?listaId=" + generalA + "&productoId=" + productoA
+                            + "&unidadMedidaId=" + caja).header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$.length()").value(1))
+                    .andExpect(jsonPath("$[0].precio").value(15000.0));
+            if (!incompatibles.isEmpty()) {
+                mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                                .content("{\"listaId\":" + generalA + ",\"productoId\":" + productoA + ",\"precio\":1,"
+                                        + "\"unidadMedidaId\":" + incompatibles.get(0) + "}"))
+                        .andExpect(status().isConflict())
+                        .andExpect(jsonPath("$.codigo").value("UNIDADES_INCOMPATIBLES"));
+            }
+
+            // dos personas fijan a la vez el primer precio en otra lista: nunca quedan dos vigentes
+            String mayorista = mvc.perform(post("/api/ventas/listas").header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content("{\"nombre\":\"Mayorista prueba\"}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
+            long listaMayorista = new com.fasterxml.jackson.databind.ObjectMapper().readTree(mayorista).get("id").asLong();
+            java.util.concurrent.CountDownLatch salida = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.ExecutorService hilos = java.util.concurrent.Executors.newFixedThreadPool(2);
+            List<java.util.concurrent.Future<Integer>> respuestas = new java.util.ArrayList<>();
+            for (int i = 0; i < 2; i++) {
+                int precio = 1300 + i;
+                respuestas.add(hilos.submit(() -> {
+                    salida.await();
+                    return mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA)
+                                    .contentType(json).content("{\"listaId\":" + listaMayorista + ",\"productoId\":"
+                                            + productoA + ",\"precio\":" + precio + "}"))
+                            .andReturn().getResponse().getStatus();
+                }));
+            }
+            salida.countDown();
+            List<Integer> estados = new java.util.ArrayList<>();
+            for (var r : respuestas) {
+                estados.add(r.get(30, java.util.concurrent.TimeUnit.SECONDS));
+            }
+            hilos.shutdown();
+            assertTrue(estados.contains(200), "al menos uno fija el precio: " + estados);
+            assertTrue(estados.stream().allMatch(s -> s == 200 || s == 409), "solo 200 o 409: " + estados);
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM precio_producto WHERE lista_precio_id = ? "
+                    + "AND producto_id = ? AND vigente_hasta IS NULL", Integer.class, listaMayorista, productoA));
+
+            // búsqueda para vender: el cajero encuentra por código de barras, sin costos ni precio mínimo
+            mvc.perform(get("/api/ventas/productos?q=7701234567890&bodegaId=" + bodegaA)
+                            .header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].productoId").value(productoA))
+                    .andExpect(jsonPath("$[0].precio").value(1500.0))
+                    .andExpect(jsonPath("$[0].otrasUnidades[0].precio").value(15000.0))
+                    .andExpect(jsonPath("$[0].costo").doesNotExist())
+                    .andExpect(jsonPath("$[0].precioMinimo").doesNotExist())
+                    .andExpect(jsonPath("$[0].otrasUnidades[0].precioMinimo").doesNotExist());
+            mvc.perform(get("/api/ventas/productos?q=" + codigoProducto).header(HttpHeaders.AUTHORIZATION,
+                            token(empresaA, usuarioA, "VENDEDOR")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].productoId").value(productoA));
+            // ni la bodega ni el producto de A existen para B
+            mvc.perform(get("/api/ventas/productos?q=7701234567890&bodegaId=" + bodegaB)
+                            .header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isNotFound());
+            mvc.perform(get("/api/ventas/productos?q=7701234567890")
+                            .header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "CAJERO")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.length()").value(0));
+            // el cajero busca, pero no ve márgenes ni fija precios
+            mvc.perform(get("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isForbidden());
+
+            // carga por Excel: todo o nada
+            String[] cabecera = { "codigo", "lista", "unidad", "precio", "precio_minimo", "motivo" };
+            var conError = excel(cabecera, new Object[] { codigoProducto, "General", null, 1600, null, "alza" },
+                    new Object[] { "NO-EXISTE", "General", null, 10, null, null });
+            mvc.perform(multipart("/api/ventas/precios/carga").file(new org.springframework.mock.web.MockMultipartFile(
+                            "archivo", "precios.xlsx", conError.getContentType(), conError.getBytes()))
+                            .header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.aplicado").value(false))
+                    .andExpect(jsonPath("$.errores[0].fila").value(3));
+            assertEquals(0, new java.math.BigDecimal("1500").compareTo(jdbc.queryForObject("SELECT precio FROM precio_producto "
+                    + "WHERE lista_precio_id = ? AND producto_id = ? AND unidad_medida_id = ? AND vigente_hasta IS NULL",
+                    java.math.BigDecimal.class, generalA, productoA, unidadProducto)));
+            var bueno = excel(cabecera, new Object[] { codigoProducto, "General", codigoCaja, 16000, 15500, null });
+            mvc.perform(multipart("/api/ventas/precios/carga").file(new org.springframework.mock.web.MockMultipartFile(
+                            "archivo", "precios.xlsx", bueno.getContentType(), bueno.getBytes()))
+                            .header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.aplicado").value(true))
+                    .andExpect(jsonPath("$.precios").value(1));
+            assertEquals(0, new java.math.BigDecimal("16000").compareTo(jdbc.queryForObject("SELECT precio FROM precio_producto "
+                    + "WHERE lista_precio_id = ? AND producto_id = ? AND unidad_medida_id = ? AND vigente_hasta IS NULL",
+                    java.math.BigDecimal.class, generalA, productoA, caja)));
+            // el jefe de compras sin delegación no carga precios
+            mvc.perform(multipart("/api/ventas/precios/carga").file(new org.springframework.mock.web.MockMultipartFile(
+                            "archivo", "precios.xlsx", bueno.getContentType(), bueno.getBytes()))
+                            .header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "ADMIN_COMPRAS")))
+                    .andExpect(status().isForbidden());
+        } finally {
+            jdbc.update("DELETE FROM precio_producto WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM lista_precio WHERE empresa_id = ? AND nombre = 'Mayorista prueba'", empresaA);
+            jdbc.update("UPDATE producto SET costo_referencia = NULL, codigo_barras = NULL WHERE id = ?", productoA);
+        }
+    }
+
+    @Test
     void elCatalogoDelProveedorSeCruzaConElInventarioSinQueElProveedorVeaNadaNuestro() throws Exception {
         String portalA = tokenProveedor(empresaA, usuarioA, proveedorA);
         String comprasA = token(empresaA, usuarioA, "ADMIN_COMPRAS");

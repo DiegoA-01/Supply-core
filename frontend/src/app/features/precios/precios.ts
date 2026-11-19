@@ -2,10 +2,13 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
-import { HistorialPrecio, ListaPrecio, PrecioFila, Precios, TarifaImpuesto } from '../../core/api/modelos';
+import {
+  CargaPrecios, HistorialPrecio, ListaPrecio, PrecioFila, Precios, TarifaImpuesto, UnidadMedida,
+} from '../../core/api/modelos';
 import { FechaPipe, NumeroPipe, PesosPipe } from '../../core/formato/formato';
+import { InventarioService } from '../../core/servicios/inventario.service';
 import { VentasService } from '../../core/servicios/ventas.service';
-import { Avisos } from '../../core/ui/avisos';
+import { Avisos, descargar } from '../../core/ui/avisos';
 
 /** Texto de cada alerta de un producto. */
 const ALERTAS: Record<string, string> = {
@@ -19,6 +22,8 @@ const ALERTAS: Record<string, string> = {
 /** Precio y datos de venta en edición. */
 interface Edicion {
   productoId: number;
+  /** Unidad del precio que se edita: null = la del producto (decisión D9: también por caja). */
+  unidadId: number | null;
   precio: number | null;
   minimo: number | null;
   motivo: string;
@@ -41,6 +46,7 @@ interface Edicion {
 export class PreciosMargen implements OnInit {
   private readonly ventas = inject(VentasService);
   private readonly avisos = inject(Avisos);
+  private readonly inventario = inject(InventarioService);
 
   protected readonly listas = signal<ListaPrecio[]>([]);
   protected readonly impuestos = signal<TarifaImpuesto[]>([]);
@@ -49,7 +55,12 @@ export class PreciosMargen implements OnInit {
   protected readonly texto = signal('');
   protected readonly filtro = signal<string | null>(null);
   protected readonly edicion = signal<Edicion | null>(null);
-  protected readonly historial = signal<{ productoId: number; filas: HistorialPrecio[] } | null>(null);
+  protected readonly historial = signal<{ productoId: number; unidad: string; filas: HistorialPrecio[] } | null>(null);
+  protected readonly unidades = signal<UnidadMedida[]>([]);
+  /** Archivo de precios elegido y lo que dijo la revisión (todo o nada). */
+  protected readonly archivo = signal<File | null>(null);
+  protected readonly carga = signal<CargaPrecios | null>(null);
+  protected readonly cargando = signal(false);
   protected readonly nuevaLista = signal('');
   protected readonly guardando = signal(false);
 
@@ -63,6 +74,7 @@ export class PreciosMargen implements OnInit {
   ngOnInit(): void {
     this.ventas.listas().subscribe({ next: l => this.listas.set(l), error: e => this.avisos.error(e) });
     this.ventas.impuestos().subscribe({ next: l => this.impuestos.set(l.filter(t => t.activo)), error: () => undefined });
+    this.inventario.unidades().subscribe({ next: l => this.unidades.set(l), error: () => undefined });
     this.cargar();
   }
 
@@ -93,8 +105,33 @@ export class PreciosMargen implements OnInit {
   /** @param p producto a editar */
   protected editar(p: PrecioFila): void {
     this.historial.set(null);
-    this.edicion.set({ productoId: p.productoId!, precio: p.precio ?? null, minimo: p.precioMinimo ?? null, motivo: '',
+    this.edicion.set({ productoId: p.productoId!, unidadId: null, precio: p.precio ?? null, minimo: p.precioMinimo ?? null, motivo: '',
       tarifaId: p.tarifaImpuestoId ?? null, incluye: p.precioIncluyeImpuesto ?? true, vendible: p.vendible ?? true, barras: p.codigoBarras ?? '' });
+  }
+
+  /**
+   * Unidades en las que se puede poner precio a un producto: la suya y las activas de la misma magnitud (se convierten).
+   *
+   * @param p producto
+   */
+  protected unidadesDe(p: PrecioFila): UnidadMedida[] {
+    const propia = this.unidades().find(u => u.codigo === p.unidad);
+    return propia ? this.unidades().filter(u => u.id !== propia.id && u.magnitud === propia.magnitud) : [];
+  }
+
+  /**
+   * Cambia la unidad del precio que se edita y trae el precio vigente en esa unidad, si tiene.
+   *
+   * @param p        producto
+   * @param unidadId unidad (null = la del producto)
+   */
+  protected cambiarUnidad(p: PrecioFila, unidadId: number | null): void {
+    const otra = unidadId === null ? null : (p.otrasUnidades ?? []).find(o => o.unidadMedidaId === unidadId);
+    this.edicion.update(e => (e ? {
+      ...e, unidadId,
+      precio: unidadId === null ? p.precio ?? null : otra?.precio ?? null,
+      minimo: unidadId === null ? p.precioMinimo ?? null : otra?.precioMinimo ?? null,
+    } : e));
   }
 
   /** @param campo dato; @param valor valor escrito */
@@ -119,7 +156,9 @@ export class PreciosMargen implements OnInit {
     }
     const cambiaVenta = e.tarifaId !== (p.tarifaImpuestoId ?? null) || e.incluye !== p.precioIncluyeImpuesto
       || e.vendible !== p.vendible || (e.barras.trim() || null) !== (p.codigoBarras ?? null);
-    const cambiaPrecio = e.precio !== (p.precio ?? null) || e.minimo !== (p.precioMinimo ?? null);
+    const otra = e.unidadId === null ? null : (p.otrasUnidades ?? []).find(o => o.unidadMedidaId === e.unidadId);
+    const actual = e.unidadId === null ? { precio: p.precio, minimo: p.precioMinimo } : { precio: otra?.precio, minimo: otra?.precioMinimo };
+    const cambiaPrecio = e.precio !== (actual.precio ?? null) || e.minimo !== (actual.minimo ?? null);
     this.guardando.set(true);
     const terminar = () => {
       this.guardando.set(false);
@@ -132,7 +171,8 @@ export class PreciosMargen implements OnInit {
       this.avisos.error(err);
     };
     const fijar = () => cambiaPrecio
-      ? this.ventas.fijarPrecio(lista, e.productoId, e.precio!, e.minimo, e.motivo.trim() || null).subscribe({ next: terminar, error: fallo })
+      ? this.ventas.fijarPrecio(lista, e.productoId, e.precio!, e.minimo, e.motivo.trim() || null, e.unidadId)
+        .subscribe({ next: terminar, error: fallo })
       : terminar();
     if (cambiaVenta) {
       this.ventas.configurarProducto(e.productoId, e.tarifaId, e.vendible, e.incluye, e.barras.trim() || null)
@@ -142,19 +182,69 @@ export class PreciosMargen implements OnInit {
     }
   }
 
-  /** @param p producto; muestra u oculta su historial de precios en la lista */
-  protected verHistorial(p: PrecioFila): void {
+  /**
+   * Muestra u oculta el historial de precios del producto en la lista, en su unidad o en otra.
+   *
+   * @param p        producto
+   * @param unidadId unidad (null = la del producto)
+   * @param unidad   código de la unidad para el título
+   */
+  protected verHistorial(p: PrecioFila, unidadId: number | null = null, unidad = p.unidad ?? ''): void {
     const lista = this.listaId();
     if (lista === null) {
       return;
     }
-    if (this.historial()?.productoId === p.productoId) {
+    const h = this.historial();
+    if (h && h.productoId === p.productoId && h.unidad === unidad) {
       this.historial.set(null);
       return;
     }
     this.edicion.set(null);
-    this.ventas.historial(lista, p.productoId!).subscribe({
-      next: filas => this.historial.set({ productoId: p.productoId!, filas }),
+    this.ventas.historial(lista, p.productoId!, unidadId).subscribe({
+      next: filas => this.historial.set({ productoId: p.productoId!, unidad, filas }),
+      error: e => this.avisos.error(e),
+    });
+  }
+
+  /** @param evento cambio del campo de archivo; guarda el Excel elegido y lo revisa sin guardar */
+  protected elegirArchivo(evento: Event): void {
+    const entrada = evento.target as HTMLInputElement;
+    const f = entrada.files?.[0] ?? null;
+    entrada.value = '';
+    this.archivo.set(f);
+    this.carga.set(null);
+    if (f) {
+      this.subir(true);
+    }
+  }
+
+  /** @param soloValidar true para revisar; false para fijar los precios (todo o nada) */
+  protected subir(soloValidar: boolean): void {
+    const f = this.archivo();
+    if (!f) {
+      return;
+    }
+    this.cargando.set(true);
+    this.ventas.cargarPrecios(f, soloValidar).subscribe({
+      next: r => {
+        this.cargando.set(false);
+        this.carga.set(r);
+        if (r.aplicado) {
+          this.avisos.ok(`${r.precios} precios fijados. El anterior de cada uno quedó en el historial.`);
+          this.archivo.set(null);
+          this.cargar();
+        }
+      },
+      error: e => {
+        this.cargando.set(false);
+        this.avisos.error(e);
+      },
+    });
+  }
+
+  protected bajarPlantilla(): void {
+    this.ventas.plantillaPrecios().subscribe({
+      next: b => descargar(b, 'plantilla-precios.xlsx'),
       error: e => this.avisos.error(e),
     });
   }

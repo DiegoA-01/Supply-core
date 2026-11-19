@@ -5,9 +5,9 @@
 - [x] T3: Agregar el trabajo `frontend` (Node 24, `npm ci`, pruebas, build de producción)
 - [x] T4: Agregar el trabajo `docker` (build de `api` y `web` + Trivy con falla en CRÍTICAS)
 - [x] T5: Crear `dependency-review.yml` y `codeql.yml` con permisos mínimos
-- [ ] T6: Abrir un PR de prueba: todo en verde; romper una prueba a propósito y ver el rojo; revertirla
+- [x] T6: Abrir un PR de prueba: todo en verde; romper una prueba a propósito y ver el rojo; revertirla
 - [x] T7: Escribir en `DOCKER.md` (o en la skill) cómo se configura la protección de `develop` y `main`
-- [ ] T8: Verificar los criterios de aceptación de la spec
+- [x] T8: Verificar los criterios de aceptación de la spec
 
 Primera ejecución en GitHub (PR #26): `backend` y `frontend` en verde. `docker` falló primero porque la etiqueta
 `0.28.0` de trivy-action ya no existe (se usa `v0.36.0`) y después porque Trivy encontró CVE críticas reales: Tomcat

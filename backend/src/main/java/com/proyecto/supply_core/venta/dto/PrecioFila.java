@@ -28,10 +28,11 @@ import java.util.List;
  * @param margenPct            margen sobre la base en %
  * @param stock                stock total
  * @param alertas              SIN_PRECIO, SIN_COSTO, SIN_IMPUESTO, BAJO_COSTO, MINIMO_BAJO_COSTO
+ * @param otrasUnidades        precios vigentes del producto en otras unidades (por ejemplo la caja), decisión D9
  */
 public record PrecioFila(Long productoId, String codigo, String nombre, String categoria, String unidad,
         boolean vendible, String codigoBarras, Long tarifaImpuestoId, String impuesto, BigDecimal porcentajeImpuesto,
         boolean precioIncluyeImpuesto, BigDecimal costo, BigDecimal precio, BigDecimal precioMinimo,
         LocalDateTime vigenteDesde, BigDecimal base, BigDecimal valorImpuesto, BigDecimal margen, BigDecimal margenPct,
-        BigDecimal stock, List<String> alertas) {
+        BigDecimal stock, List<String> alertas, List<PrecioUnidad> otrasUnidades) {
 }

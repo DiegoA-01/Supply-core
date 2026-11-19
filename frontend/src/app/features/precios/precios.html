@@ -59,7 +59,11 @@
                 <td>{{ p.impuesto ?? '—' }}<span class="sub">{{ p.precioIncluyeImpuesto ? 'incluido en el precio' : 'se suma al precio' }}</span></td>
                 <td class="num">{{ p.costo != null ? (p.costo | pesos) : '—' }}</td>
                 <td class="num"><strong>{{ p.precio != null ? (p.precio | pesos) : '—' }}</strong>
-                  @if (p.precioMinimo != null) { <span class="sub">mínimo {{ p.precioMinimo | pesos }}</span> }</td>
+                  @if (p.precioMinimo != null) { <span class="sub">mínimo {{ p.precioMinimo | pesos }}</span> }
+                  @for (o of p.otrasUnidades ?? []; track o.unidadMedidaId) {
+                    <button type="button" class="sub enlace otra-unidad" (click)="verHistorial(p, o.unidadMedidaId!, o.unidad!)"
+                      [attr.aria-label]="'Historial del precio por ' + o.unidad">{{ o.unidad }}: {{ o.precio | pesos }}@if (o.margenPct != null) { · {{ o.margenPct | numero }} % }</button>
+                  }</td>
                 <td class="num">{{ p.base != null ? (p.base | pesos) : '—' }}</td>
                 <td class="num" [class.rojo]="(p.margen ?? 0) < 0">{{ p.margen != null ? (p.margen | pesos) : '—' }}</td>
                 <td class="num">@if (p.margenPct != null) { <span class="chip {{ tono(p.margenPct) }}">{{ p.margenPct | numero }} %</span> } @else { — }</td>
@@ -72,7 +76,14 @@
                 @if (e.productoId === p.productoId) {
                   <tr class="detalle"><td colspan="8"><div class="detalle-contenido">
                     <div class="formulario edicion">
-                      <div class="campo"><label for="pr-{{ p.productoId }}">Precio de venta ({{ p.unidad }})</label>
+                      @if (unidadesDe(p).length > 0) {
+                        <div class="campo"><label for="pu-{{ p.productoId }}">Precio por</label>
+                          <select id="pu-{{ p.productoId }}" class="entrada" [ngModel]="e.unidadId" (ngModelChange)="cambiarUnidad(p, $event)">
+                            <option [ngValue]="null">{{ p.unidad }} (unidad del producto)</option>
+                            @for (u of unidadesDe(p); track u.id) { <option [ngValue]="u.id">{{ u.codigo }} · {{ u.nombre }}</option> }
+                          </select></div>
+                      }
+                      <div class="campo"><label for="pr-{{ p.productoId }}">Precio de venta</label>
                         <input id="pr-{{ p.productoId }}" type="number" min="0" class="entrada num" [ngModel]="e.precio" (ngModelChange)="cambiar('precio', $event === '' ? null : +$event)"></div>
                       <div class="campo"><label for="pm-{{ p.productoId }}">Precio mínimo (opcional)</label>
                         <input id="pm-{{ p.productoId }}" type="number" min="0" class="entrada num" [ngModel]="e.minimo" (ngModelChange)="cambiar('minimo', $event === '' || $event === null ? null : +$event)"></div>
@@ -99,6 +110,7 @@
               @if (historial(); as h) {
                 @if (h.productoId === p.productoId) {
                   <tr class="detalle"><td colspan="8"><div class="detalle-contenido">
+                    <p class="texto-chico texto-2 sin-margen">Historial del precio por {{ h.unidad }}</p>
                     <table class="tabla historial">
                       <thead><tr><th>Precio</th><th>Mínimo</th><th>Desde</th><th>Hasta</th><th>Quién</th><th>Motivo</th></tr></thead>
                       <tbody>
@@ -127,6 +139,31 @@
           <div class="campo"><label for="nl">Nueva lista</label><input id="nl" class="entrada" maxlength="100" placeholder="Ej.: Mayorista" [ngModel]="nuevaLista()" (ngModelChange)="nuevaLista.set($event)"></div>
           <button type="button" class="boton" [disabled]="!nuevaLista().trim()" (click)="crearLista()">Crear lista</button>
         </div>
+      </section>
+
+      <section class="tarjeta">
+        <h2>Cambiar precios con Excel</h2>
+        <p class="texto-chico texto-2">Sube un Excel con las columnas codigo, lista, unidad, precio, precio_minimo y motivo. Primero se revisa todo el archivo: si una fila tiene un error no se cambia ningún precio. Lista vacía = General; unidad vacía = la del producto.</p>
+        <div class="fila">
+          <button type="button" class="boton" (click)="bajarPlantilla()">Descargar plantilla</button>
+          <label class="boton" for="excel-precios">Elegir archivo</label>
+          <input id="excel-precios" class="oculto" type="file" accept=".xlsx" (change)="elegirArchivo($event)">
+          @if (archivo(); as f) { <span class="texto-chico">{{ f.name }}</span> }
+        </div>
+        @if (cargando()) { <p class="cargando">Revisando el archivo…</p> }
+        @if (carga(); as r) {
+          @if ((r.errores ?? []).length > 0) {
+            <div class="resultado-carga error">
+              <p class="sin-margen"><strong>No se cambió ningún precio.</strong> Corrige estas filas y vuelve a subir el archivo:</p>
+              <ul>@for (x of r.errores ?? []; track x.fila) { <li>Fila {{ x.fila }}: {{ x.mensaje }}</li> }</ul>
+            </div>
+          } @else if (r.soloValidar) {
+            <div class="resultado-carga">
+              <p class="sin-margen">El archivo está bien: se fijarán {{ r.precios }} precios en {{ r.filas }} filas.</p>
+              <button type="button" class="boton primario" [disabled]="cargando()" (click)="subir(false)">Fijar los precios</button>
+            </div>
+          }
+        }
       </section>
     }
   } @else {
