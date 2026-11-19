@@ -42,6 +42,12 @@ export class Usuarios implements OnInit {
   protected readonly puedeEditar = computed(() => this.sesion.tieneRol(['ADMIN_SISTEMA']) && !this.sesion.soloLectura());
   /** Roles que el administrador asigna aquí (PROVEEDOR se asigna al habilitar un proveedor). */
   protected readonly asignables = computed(() => this.roles().filter(r => r.codigo !== 'PROVEEDOR'));
+
+  /** {@code true} si el formulario da el rol Solicitante sin centro de costo (el backend lo rechaza). */
+  protected faltaCentro(): boolean {
+    const v = this.form.getRawValue();
+    return (v.roles ?? []).includes('SOLICITANTE') && v.centroCostoId == null;
+  }
   protected readonly editando = computed(() => {
     const p = this.panel();
     return p.tipo === 'editar' ? p.usuario : null;

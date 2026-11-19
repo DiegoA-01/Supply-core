@@ -130,7 +130,11 @@
                 <option [ngValue]="null">Sin centro de costo</option>
                 @for (c of centros(); track c.id) { <option [ngValue]="c.id">{{ c.codigo }} · {{ c.nombre }}</option> }
               </select>
-              <span class="ayuda">Obligatorio para quien hace solicitudes: el gasto se carga a ese centro.</span>
+              @if (faltaCentro()) {
+                <span class="error" role="alert">El rol Solicitante necesita un centro de costo: ahí se cargan sus solicitudes.</span>
+              } @else {
+                <span class="ayuda">Obligatorio para quien hace solicitudes: el gasto se carga a ese centro.</span>
+              }
             </div>
             <div class="fila">
               <button type="submit" class="boton primario" [disabled]="trabajando()">{{ editando() ? 'Guardar cambios' : 'Crear usuario' }}</button>

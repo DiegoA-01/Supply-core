@@ -125,9 +125,11 @@ public class UsuarioService {
         u.setNombreCompleto(req.nombreCompleto().trim());
         u.setCorreo(normalizarCorreo(req.correo()));
         u.setHashPassword(passwordEncoder.encode(req.password()));
+        Set<Rol> rolesNuevos = resolverRoles(req.roles());
+        validarCentroDelSolicitante(rolesNuevos, req.centroCostoId());
         u.setCentroCostoId(req.centroCostoId());
         u.setProveedorId(req.proveedorId());
-        u.setRoles(resolverRoles(req.roles()));
+        u.setRoles(rolesNuevos);
         Usuario guardado = usuarioRepository.save(u);
         log.info("Usuario {} creado por {}", guardado.getId(), SesionActual.usuario().id());
         auditoriaService.exito(AccionAuditoria.USUARIO_CREAR, EntidadAuditada.USUARIO, guardado.getId(),
@@ -152,6 +154,7 @@ public class UsuarioService {
             throw new NegocioException("CORREO_DUPLICADO", "Ya existe un usuario con el correo " + correo);
         }
         Set<Rol> roles = resolverRoles(req.roles());
+        validarCentroDelSolicitante(roles, req.centroCostoId());
 
         boolean pierdeAdmin = u.codigosRoles().contains(Roles.ADMIN_SISTEMA)
                 && roles.stream().noneMatch(r -> Roles.ADMIN_SISTEMA.equals(r.getCodigo()));
@@ -169,6 +172,20 @@ public class UsuarioService {
         auditoriaService.exito(AccionAuditoria.USUARIO_EDITAR, EntidadAuditada.USUARIO, id,
                 "antes: " + antes + " | después: " + describir(u));
         return UsuarioResponse.of(u);
+    }
+
+    /**
+     * Quien pide compras carga sus solicitudes a un centro de costo: sin él no podría crear ninguna.
+     *
+     * @param roles         roles que tendrá el usuario
+     * @param centroCostoId centro de costo elegido
+     * @throws NegocioException si tendrá el rol SOLICITANTE y no tiene centro de costo
+     */
+    private static void validarCentroDelSolicitante(Set<Rol> roles, Long centroCostoId) {
+        if (centroCostoId == null && roles.stream().anyMatch(r -> Roles.SOLICITANTE.equals(r.getCodigo()))) {
+            throw new NegocioException("CENTRO_COSTO_REQUERIDO",
+                    "El rol Solicitante necesita un centro de costo: ahí se cargan sus solicitudes");
+        }
     }
 
     /**
