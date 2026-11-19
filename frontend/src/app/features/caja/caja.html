@@ -1,0 +1,163 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Cajas y turnos</p>
+    <div class="encabezado">
+      <div><h1>Cajas y turnos</h1>
+        <p>Cada turno se cierra a ciegas: el cajero cuenta sin ver cuánto debería tener y el sistema calcula la diferencia. Si pasa la tolerancia, un supervisor que no sea el cajero la explica y la aprueba.</p></div>
+    </div>
+  </div>
+
+  <div class="pestanas" role="tablist">
+    <button type="button" role="tab" [class.activa]="pestana() === 'turnos'" [attr.aria-selected]="pestana() === 'turnos'" (click)="pestana.set('turnos')">Turnos</button>
+    <button type="button" role="tab" [class.activa]="pestana() === 'cajas'" [attr.aria-selected]="pestana() === 'cajas'" (click)="pestana.set('cajas')">Cajas</button>
+    @if (puedeAprobar()) {
+      <button type="button" role="tab" [class.activa]="pestana() === 'pin'" [attr.aria-selected]="pestana() === 'pin'" (click)="pestana.set('pin')">Mi PIN</button>
+    }
+  </div>
+
+  @switch (pestana()) {
+    @case ('turnos') {
+      <section class="tarjeta sin-relleno">
+        <div class="barra-herramientas">
+          <label class="opcion"><input type="checkbox" [ngModel]="soloPendientes()" (ngModelChange)="soloPendientes.set($event); cargarTurnos()"> Solo diferencias por aprobar</label>
+        </div>
+        @if (turnos(); as p) {
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead><tr><th>Caja</th><th>Cajero</th><th>Estado</th><th>Abrió</th><th>Cerró</th><th class="num">Diferencia</th><th></th></tr></thead>
+              <tbody>
+                @for (t of p.contenido; track t.id) {
+                  <tr>
+                    <td><strong>{{ t.caja }}</strong></td>
+                    <td>{{ t.cajero }}</td>
+                    <td><span class="chip mini {{ t.estado === 'ABIERTO' ? 'verde' : t.requiereAprobacion && t.estado === 'CERRADO' ? 'rojo' : 'gris' }}">
+                      {{ t.estado === 'CERRADO' && t.requiereAprobacion ? 'Por aprobar' : t.estado === 'ABIERTO' ? 'Abierto' : t.estado === 'APROBADO' ? 'Aprobado' : 'Cerrado' }}</span></td>
+                    <td>{{ t.abiertoEn | fecha }}</td>
+                    <td>{{ t.cerradoEn ? (t.cerradoEn | fecha) : '—' }}</td>
+                    <td class="num {{ tono(t.diferencia) }}">{{ t.diferencia != null ? (t.diferencia | pesos) : '—' }}</td>
+                    <td class="num"><button type="button" class="boton chico" (click)="ver(t)">Ver</button></td>
+                  </tr>
+                } @empty {
+                  <tr><td colspan="7" class="vacio">{{ soloPendientes() ? 'No hay diferencias por aprobar.' : 'Todavía no hay turnos.' }}</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else { <p class="cargando">Cargando turnos…</p> }
+      </section>
+
+      @if (detalle(); as d) {
+        <section class="tarjeta detalle">
+          <div class="fila entre">
+            <h2>Turno {{ d.id }} · {{ d.caja }} · {{ d.cajero }}</h2>
+            <button type="button" class="boton chico" (click)="detalle.set(null)">Cerrar</button>
+          </div>
+          <p class="texto-chico texto-2 sin-margen">Abrió {{ d.abiertoEn | fecha }} con base {{ d.baseApertura | pesos }}@if (d.cerradoEn) { · cerró {{ d.cerradoEn | fecha }} }</p>
+          @if (d.estado !== 'ABIERTO') {
+            <table class="tabla cuadre">
+              <thead><tr><th>Medio</th><th class="num">Esperado</th><th class="num">Contado</th><th class="num">Diferencia</th></tr></thead>
+              <tbody>
+                @for (m of ordenMedios; track m) {
+                  <tr><td>{{ medios[m] }}</td><td class="num">{{ valor(d.esperado, m) | pesos }}</td><td class="num">{{ valor(d.contado, m) | pesos }}</td>
+                    <td class="num {{ tono(valor(d.diferencias, m)) }}">{{ valor(d.diferencias, m) | pesos }}</td></tr>
+                }
+                <tr class="total"><td>Total</td><td></td><td></td><td class="num {{ tono(d.diferencia) }}">{{ d.diferencia | pesos }}</td></tr>
+              </tbody>
+            </table>
+            @if (d.observacion) { <p class="texto-chico"><strong>Nota del cajero:</strong> {{ d.observacion }}</p> }
+            @if (d.estado === 'APROBADO') {
+              <p class="texto-chico"><strong>Aprobó {{ d.aprobadoPor }}</strong> el {{ d.aprobadoEn | fecha }}: {{ d.explicacionAprobacion }}</p>
+            }
+            @if (d.estado === 'CERRADO' && d.requiereAprobacion && puedeAprobar()) {
+              <div class="aprobar">
+                <div class="campo"><label for="expl">¿Qué pasó con la diferencia?</label>
+                  <textarea id="expl" class="entrada" rows="2" maxlength="500" [ngModel]="explicacion()" (ngModelChange)="explicacion.set($event)"></textarea></div>
+                <button type="button" class="boton primario" (click)="aprobar()">Aprobar diferencia</button>
+              </div>
+            }
+          }
+          <h3>Libro de caja</h3>
+          <table class="tabla movimientos">
+            <thead><tr><th>Hora</th><th>Tipo</th><th>Medio</th><th class="num">Monto</th><th>Motivo</th><th>Autorizó</th></tr></thead>
+            <tbody>
+              @for (m of d.movimientos ?? []; track m.id) {
+                <tr><td>{{ m.creadoEn | fecha }}</td><td>{{ m.tipo }}</td><td>{{ medios[m.medioPago!] }}</td>
+                  <td class="num" [class.rojo]="(m.monto ?? 0) < 0">{{ m.monto | pesos }}</td><td>{{ m.motivo ?? '—' }}@if (m.soporte) { <span class="sub">soporte {{ m.soporte }}</span> }</td>
+                  <td>{{ m.autorizadoPor ?? '—' }}</td></tr>
+              } @empty { <tr><td colspan="6" class="vacio">Sin movimientos.</td></tr> }
+            </tbody>
+          </table>
+        </section>
+      }
+    }
+
+    @case ('cajas') {
+      <section class="tarjeta sin-relleno">
+        <div class="barra-herramientas">
+          @if (esDueno()) { <button type="button" class="boton primario" (click)="editarCaja(null)">Nueva caja</button> }
+        </div>
+        <div class="tabla-contenedor">
+          <table class="tabla">
+            <thead><tr><th>Caja</th><th>Sede y bodega</th><th>Prefijo</th><th class="num">Tope de efectivo</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+              @for (c of cajas(); track c.id) {
+                <tr>
+                  <td><strong>{{ c.nombre }}</strong></td>
+                  <td>{{ c.sede }}<span class="sub">{{ c.bodega }}</span></td>
+                  <td>{{ c.prefijoConsecutivo }}</td>
+                  <td class="num">{{ (c.topeEfectivo ?? 0) > 0 ? (c.topeEfectivo | pesos) : 'sin aviso' }}</td>
+                  <td>{{ c.activa ? (c.turnoAbierto ? 'Turno abierto' : 'Libre') : 'Inactiva' }}</td>
+                  <td class="num">@if (esDueno()) { <button type="button" class="boton chico" (click)="editarCaja(c)">Editar</button> }</td>
+                </tr>
+              } @empty { <tr><td colspan="6" class="vacio">No hay cajas. Crea la primera para empezar a vender.</td></tr> }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      @if (edicion(); as e) {
+        <section class="tarjeta">
+          <h2>{{ e.id ? 'Editar caja' : 'Nueva caja' }}</h2>
+          <div class="formulario caja-form">
+            <div class="campo"><label for="cn">Nombre</label><input id="cn" class="entrada" maxlength="100" placeholder="Caja 1 mostrador" [ngModel]="e.nombre" (ngModelChange)="cambiar('nombre', $event)"></div>
+            <div class="campo"><label for="cb">Bodega de la que descuenta</label>
+              <select id="cb" class="entrada" [ngModel]="e.bodegaId" (ngModelChange)="cambiar('bodegaId', $event)">
+                <option [ngValue]="null">Elige una bodega</option>
+                @for (b of bodegas(); track b.id) { <option [ngValue]="b.id">{{ b.nombre }} · {{ b.sedeNombre }}</option> }
+              </select>
+              <span class="sub">Sede: {{ sedeDeBodega() }}</span></div>
+            <div class="campo"><label for="cp">Prefijo de los consecutivos</label><input id="cp" class="entrada" maxlength="10" placeholder="C1" [ngModel]="e.prefijo" (ngModelChange)="cambiar('prefijo', $event)"></div>
+            <div class="campo"><label for="ct">Tope de efectivo (0 = sin aviso)</label><input id="ct" type="number" min="0" class="entrada num" [ngModel]="e.tope" (ngModelChange)="cambiar('tope', $event === '' ? null : +$event)"></div>
+            @if (e.id) { <label class="opcion"><input type="checkbox" [ngModel]="e.activa" (ngModelChange)="cambiar('activa', $event)"> Activa</label> }
+          </div>
+          <div class="fila">
+            <button type="button" class="boton primario" [disabled]="guardando()" (click)="guardarCaja()">Guardar</button>
+            <button type="button" class="boton" (click)="edicion.set(null)">Cancelar</button>
+          </div>
+        </section>
+      }
+
+      <section class="tarjeta">
+        <h2>Tolerancia de diferencia</h2>
+        <p class="texto-chico texto-2">Diferencia por medio de pago que se acepta al cerrar sin aprobación de un supervisor.</p>
+        <div class="fila tolerancia">
+          <input class="entrada num" type="number" min="0" aria-label="Tolerancia de diferencia" [disabled]="!esDueno()"
+            [ngModel]="tolerancia()" (ngModelChange)="tolerancia.set($event === '' ? null : +$event)">
+          @if (esDueno()) { <button type="button" class="boton" (click)="guardarTolerancia()">Guardar</button> }
+        </div>
+      </section>
+    }
+
+    @case ('pin') {
+      <section class="tarjeta pin">
+        <h2>Mi PIN de supervisor</h2>
+        <p class="texto-chico texto-2">Con tu correo y este PIN autorizas en la pantalla del cajero retiros, gastos, anulaciones y descuentos. Se bloquea 15 minutos tras 5 intentos fallidos. {{ tienePin() ? 'Ya tienes un PIN; aquí lo cambias.' : 'Todavía no tienes PIN.' }}</p>
+        <form class="formulario" (ngSubmit)="guardarPin()" autocomplete="off">
+          <div class="campo"><label for="pp">Tu contraseña</label><input id="pp" name="password" type="password" class="entrada" autocomplete="current-password" [ngModel]="passwordActual()" (ngModelChange)="passwordActual.set($event)"></div>
+          <div class="campo"><label for="pn">PIN nuevo (6 dígitos)</label><input id="pn" name="pin" type="password" inputmode="numeric" maxlength="6" class="entrada" autocomplete="off" [ngModel]="pinNuevo()" (ngModelChange)="pinNuevo.set($event)"></div>
+          <button type="submit" class="boton primario">Guardar PIN</button>
+        </form>
+      </section>
+    }
+  }
+</div>

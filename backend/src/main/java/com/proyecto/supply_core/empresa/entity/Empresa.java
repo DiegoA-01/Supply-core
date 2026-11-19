@@ -77,6 +77,10 @@ public class Empresa {
     @Column(name = "precios_delegados_compras", nullable = false)
     private boolean preciosDelegadosCompras;
 
+    /** Diferencia de caja aceptada sin aprobación de un supervisor, por medio de pago (decisión D6, V33). */
+    @Column(name = "tolerancia_diferencia_caja", nullable = false, precision = 18, scale = 2)
+    private BigDecimal toleranciaDiferenciaCaja = new BigDecimal("2000.00");
+
     @Column(name = "creado_en", nullable = false, updatable = false, insertable = false)
     private LocalDateTime creadoEn;
 }

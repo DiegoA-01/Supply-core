@@ -34,6 +34,12 @@ export const ACCIONES: Record<string, string> = {
   // Ventas
   PRECIO_CONFIGURAR: 'Configuró un impuesto o una lista de precios', PRECIO_CAMBIAR: 'Cambió un precio de venta',
   CLIENTE_CREAR: 'Creó un cliente', CLIENTE_EDITAR: 'Editó un cliente', CLIENTE_CUPO_CAMBIAR: 'Cambió el cupo, el plazo o la lista de un cliente',
+  // Caja
+  CAJA_CREAR: 'Creó una caja', CAJA_EDITAR: 'Editó una caja', CAJA_CONFIGURAR: 'Cambió la tolerancia de diferencia de caja',
+  TURNO_ABRIR: 'Abrió un turno de caja', TURNO_MOVIMIENTO: 'Registró un retiro, gasto o ingreso de caja',
+  TURNO_CERRAR: 'Cerró un turno de caja', TURNO_APROBAR: 'Aprobó la diferencia de un turno',
+  AUTORIZACION_OTORGAR: 'Autorizó con su PIN una acción de caja', AUTORIZACION_FALLO: 'Intento de autorización fallido',
+  PIN_CAMBIAR: 'Fijó o cambió su PIN de supervisor',
   INVENTARIO_AJUSTE: 'Movió el inventario (salida, ajuste o traslado)', DOCUMENTO_SUBIR: 'Subió un documento',
   // Solicitudes
   SOLICITUD_CREAR: 'Creó una solicitud', SOLICITUD_EDITAR: 'Editó una solicitud', SOLICITUD_ENVIAR: 'Envió una solicitud', SOLICITUD_CANCELAR: 'Canceló una solicitud',
@@ -65,6 +71,7 @@ export const ENTIDADES: Record<string, string> = {
   RECEPCION: 'Recepción', FACTURA: 'Factura', EXPORTACION: 'Exportación', INFORME_COMPRAS: 'Informe de compras',
   PEDIDO_INTERNO: 'Pedido interno', TARIFA_IMPUESTO: 'Impuesto de venta', LISTA_PRECIO: 'Lista de precios',
   PRECIO_PRODUCTO: 'Precio de venta', CATALOGO_ITEM: 'Artículo de catálogo', CLIENTE: 'Cliente',
+  CAJA: 'Caja', TURNO_CAJA: 'Turno de caja', AUTORIZACION: 'Autorización de supervisor',
 };
 
 /** Pantalla donde se ve cada entidad, cuando existe una dirección por id. */

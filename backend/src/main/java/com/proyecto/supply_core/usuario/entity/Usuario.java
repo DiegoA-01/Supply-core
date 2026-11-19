@@ -75,6 +75,18 @@ public class Usuario {
     @Column(name = "bloqueado_hasta")
     private LocalDateTime bloqueadoHasta;
 
+    /** Hash BCrypt del PIN de supervisor de 6 dígitos (V33); {@code null} si no ha fijado uno. */
+    @Column(name = "pin_supervisor_hash", length = 100)
+    private String pinSupervisorHash;
+
+    /** Fallos seguidos del PIN; al llegar a 5 se bloquea el PIN 15 minutos (no la cuenta). */
+    @Column(name = "pin_intentos_fallidos", nullable = false)
+    private int pinIntentosFallidos;
+
+    /** Mientras sea futura, el PIN se rechaza aunque sea correcto. */
+    @Column(name = "pin_bloqueado_hasta")
+    private LocalDateTime pinBloqueadoHasta;
+
     /**
      * Sube en uno al cambiar la clave o desactivar al usuario. El JWT lleva la versión con la que se emitió y deja de
      * valer cuando ya no coincide.

@@ -3928,7 +3928,7 @@ export interface components {
         };
         ConfigNotificacionCambioRequest: {
             /** @enum {string} */
-            evento: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "INFORME_RECIBIDO";
+            evento: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA";
             /** @enum {string} */
             canal: "EMAIL" | "INTERNA";
             activo: boolean;
@@ -3937,7 +3937,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             /** @enum {string} */
-            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "INFORME_RECIBIDO";
+            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA";
             /** @enum {string} */
             canal?: "EMAIL" | "INTERNA";
             activo?: boolean;
@@ -4228,6 +4228,85 @@ export interface components {
             aceptaDatosEn?: string;
             /** Format: date-time */
             creadoEn?: string;
+        };
+        CajaResponse: {
+            /** Format: int64 */
+            id?: number;
+            nombre?: string;
+            /** Format: int64 */
+            sedeId?: number;
+            sede?: string;
+            /** Format: int64 */
+            bodegaId?: number;
+            bodega?: string;
+            prefijoConsecutivo?: string;
+            topeEfectivo?: number;
+            activa?: boolean;
+            turnoAbierto?: boolean;
+        };
+        CajaRequest: {
+            nombre: string;
+            /** Format: int64 */
+            sedeId: number;
+            /** Format: int64 */
+            bodegaId: number;
+            prefijoConsecutivo: string;
+            topeEfectivo: number;
+            activa?: boolean;
+        };
+        ConfiguracionCaja: {
+            toleranciaDiferencia: number;
+        };
+        MovimientoCajaResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** @enum {string} */
+            tipo?: "BASE" | "VENTA" | "DEVOLUCION" | "ANULACION" | "RETIRO" | "GASTO" | "INGRESO" | "ABONO_CARTERA";
+            /** @enum {string} */
+            medioPago?: "EFECTIVO" | "TARJETA_DEBITO" | "TARJETA_CREDITO" | "TRANSFERENCIA" | "BILLETERA";
+            monto?: number;
+            motivo?: string;
+            soporte?: string;
+            usuario?: string;
+            autorizadoPor?: string;
+            /** Format: date-time */
+            creadoEn?: string;
+        };
+        TurnoResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            cajaId?: number;
+            caja?: string;
+            bodega?: string;
+            /** Format: int64 */
+            cajeroId?: number;
+            cajero?: string;
+            /** @enum {string} */
+            estado?: "ABIERTO" | "CERRADO" | "APROBADO";
+            /** Format: date-time */
+            abiertoEn?: string;
+            baseApertura?: number;
+            debeRetirar?: boolean;
+            /** Format: date-time */
+            cerradoEn?: string;
+            esperado?: { [key: string]: number };
+            contado?: { [key: string]: number };
+            diferencias?: { [key: string]: number };
+            diferencia?: number;
+            requiereAprobacion?: boolean;
+            observacion?: string;
+            aprobadoPor?: string;
+            /** Format: date-time */
+            aprobadoEn?: string;
+            explicacionAprobacion?: string;
+            movimientos?: components["schemas"]["MovimientoCajaResponse"][];
+        };
+        AutorizacionResponse: {
+            token?: string;
+            /** Format: date-time */
+            venceEn?: string;
+            supervisor?: string;
         };
         PrecioEnUnidad: {
             /** Format: int64 */
@@ -5030,7 +5109,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             /** @enum {string} */
-            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "INFORME_RECIBIDO";
+            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA";
             mensaje?: string;
             leida?: boolean;
             /** Format: date-time */

@@ -220,5 +220,25 @@ public enum AccionAuditoria {
     /** Se editó, desactivó o reactivó un cliente. */
     CLIENTE_EDITAR,
     /** Cambió el cupo de crédito, el plazo o la lista de precios de un cliente. */
-    CLIENTE_CUPO_CAMBIAR
+    CLIENTE_CUPO_CAMBIAR,
+    /** Se creó una caja (spec 003). */
+    CAJA_CREAR,
+    /** Se editó, desactivó o reactivó una caja. */
+    CAJA_EDITAR,
+    /** Se cambió la tolerancia de diferencia de caja. */
+    CAJA_CONFIGURAR,
+    /** Un cajero abrió su turno con una base. */
+    TURNO_ABRIR,
+    /** Retiro, gasto o ingreso de efectivo en un turno, con autorización. */
+    TURNO_MOVIMIENTO,
+    /** Un cajero cerró su turno a ciegas. */
+    TURNO_CERRAR,
+    /** Un supervisor aprobó la diferencia de un turno. */
+    TURNO_APROBAR,
+    /** Un supervisor autorizó con su PIN una acción del cajero. */
+    AUTORIZACION_OTORGAR,
+    /** Intento de autorización con un correo o PIN que no sirven, o con el PIN bloqueado. */
+    AUTORIZACION_FALLO,
+    /** Un supervisor fijó o cambió su PIN. */
+    PIN_CAMBIAR
 }

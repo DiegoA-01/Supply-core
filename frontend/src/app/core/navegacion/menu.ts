@@ -35,6 +35,8 @@ export const ROLES_CATALOGOS = ['ADMIN_COMPRAS', 'COMPRADOR', 'AUDITOR', 'ADMIN_
 export const ROLES_PRECIOS = ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR'];
 /** Roles que consultan clientes (mismos que {@code GET /api/clientes}). */
 export const ROLES_CLIENTES = ['CAJERO', 'VENDEDOR', 'SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR'];
+/** Roles que ven cajas y turnos (mismos que {@code GET /api/turnos}). */
+export const ROLES_CAJA = ['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR'];
 /** Roles que ven el tablero del dueño (mismos que {@code GET /api/reportes/tablero}). */
 export const ROLES_TABLERO = ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR'];
 /** Roles que leen los reportes de gasto. */
@@ -75,6 +77,7 @@ export const MENU: SeccionMenu[] = [
     titulo: 'Ventas',
     opciones: [
       { texto: 'Clientes', icono: 'groups', ruta: '/app/clientes', roles: ROLES_CLIENTES, modulo: 'VENTAS' },
+      { texto: 'Cajas y turnos', icono: 'point_of_sale', ruta: '/app/caja', roles: ROLES_CAJA, modulo: 'CAJA' },
     ],
   },
   {

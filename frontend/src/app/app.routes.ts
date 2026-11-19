@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REABASTECIMIENTO, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS, ROLES_TABLERO, ROLES_PRECIOS, ROLES_CATALOGOS, ROLES_CLIENTES } from './core/navegacion/menu';
+import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REABASTECIMIENTO, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS, ROLES_TABLERO, ROLES_PRECIOS, ROLES_CATALOGOS, ROLES_CLIENTES, ROLES_CAJA } from './core/navegacion/menu';
 import { empresaGuard, invitadoGuard, permisoGuard, plataformaGuard, proveedorGuard } from './core/sesion/guards';
 
 /**
@@ -166,6 +166,13 @@ export const routes: Routes = [
         canActivate: [permisoGuard],
         data: { roles: ROLES_CLIENTES, modulo: 'VENTAS' },
         loadComponent: () => import('./features/clientes/clientes').then(m => m.Clientes),
+      },
+      {
+        path: 'caja',
+        title: 'Cajas y turnos · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_CAJA, modulo: 'CAJA' },
+        loadComponent: () => import('./features/caja/caja').then(m => m.CajasTurnos),
       },
       {
         path: 'pedidos',

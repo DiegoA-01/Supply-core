@@ -1,0 +1,21 @@
+h2 { margin: 0 0 8px; }
+h3 { margin: 16px 0 8px; font-size: 15px; }
+.pestanas { display: flex; gap: 6px; flex-wrap: wrap;
+  button { font: inherit; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--sc-borde); background: #fff; cursor: pointer;
+    &.activa { background: var(--sc-primario); border-color: var(--sc-primario); color: #fff; }
+    &:focus-visible { outline: 3px solid #f6b9a3; outline-offset: 2px; } } }
+.barra-herramientas { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--sc-borde); }
+.opcion { display: flex; align-items: center; gap: 8px; font-size: 13px; input { accent-color: var(--sc-primario); } }
+.sub { display: block; font-size: 12px; color: var(--sc-texto-2); }
+.chip.mini { font-size: 11px; padding: 1px 8px; }
+.chip.gris { background: #efefef; color: var(--sc-texto-2); }
+.rojo { color: var(--sc-rojo); }
+.ambar { color: #b26a00; }
+.entre { justify-content: space-between; align-items: center; }
+.detalle { display: grid; gap: 8px; }
+.cuadre { max-width: 560px; tr.total td { font-weight: 600; border-top: 2px solid var(--sc-borde); } }
+.movimientos { font-size: 13px; }
+.aprobar { display: grid; gap: 8px; max-width: 560px; }
+.caja-form { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 12px; }
+.tolerancia { gap: 10px; input { max-width: 200px; } }
+.pin .formulario { max-width: 420px; }
