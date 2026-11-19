@@ -1,6 +1,6 @@
 # Supply-Core — Progreso del backend
 
-> Última actualización: 2026-11-19 · Estado: **frontend completo (fases 0 a 8), stack de Docker, informe de compras para el dueño (V25) y spec del módulo de Ventas y Caja aprobada para empezar (ver sección 6)**. Antes: **pasos 0 a 18, 18-a a 18-d, SaaS fase 2 y SaaS fase 3 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración), consola de plataforma con planes y módulos (V23), seguridad restante de SaaS 3: sesiones que se cortan, recuperación de clave y MFA de administradores (V24), exportación a Excel y PDF con archivos legibles, y cruce de totales de la IA con Gemini como proveedor de lectura (sin migración)**.
+> Última actualización: 2026-11-19 · Estado: **Ventas y Caja en construcción por specs: hechas la 000 (CI), 001 (catálogo de venta), 002 (clientes) y 003 (cajas y turnos); sigue la 004, la venta (ver sección 7)**. Antes: frontend completo (fases 0 a 8), stack de Docker e informe de compras para el dueño (V25). Antes: **pasos 0 a 18, 18-a a 18-d, SaaS fase 2 y SaaS fase 3 completos + 11-bis (despachos) + giro a SaaS multiempresa: seguridad de sesión (V16), aislamiento por empresa (V17), recepción con calidad (V18), factura con cruce de tres vías (V19) y presupuesto por centro de costo (V20), contratos con orden directa (V21), delegación con SLA de aprobación (V22), reorden sugerida con carga masiva por Excel (sin migración), consola de plataforma con planes y módulos (V23), seguridad restante de SaaS 3: sesiones que se cortan, recuperación de clave y MFA de administradores (V24), exportación a Excel y PDF con archivos legibles, y cruce de totales de la IA con Gemini como proveedor de lectura (sin migración)**.
 > **796 pruebas del backend en verde** (1 omitida: la prueba en vivo contra Gemini), Javadoc sin advertencias (`doclint=all`), 33 migraciones Flyway (próxima V34); **166 pruebas del frontend** (Vitest, 29 archivos). CI con GitHub Actions en cada PR (spec 000), con la zona horaria de Bogotá. Specs de ventas en `agents/specs/`: 000 a 003 hechas. Al 2026-11-17 eran 714 pruebas del backend y 24 migraciones.
 > Detalle vivo para Claude: `.claude/skills/supply-core/references/estado.md`, `plan-backend.md` y `saas.md`. Reglas no negociables: `CLAUDE.md`.
 
@@ -461,7 +461,7 @@ Solo lo que no estaba en las secciones anteriores. Todo quedó mezclado en `deve
 
 **Spec del módulo de Ventas y Caja (PR #22 y #23).** Se escribió en tres partes y después se pasó al formato de Spec Driven Development (2026-11-19, ver más abajo).
 
-**Specs con Spec Driven Development (2026-11-19).** `AGENTS.md` en la raíz y la carpeta `agents/` con el contexto fijo (`product.md`, `tech-stack.md`, `architecture.md`) y una carpeta por spec en `agents/specs/NNN-nombre/` con `spec.md`, `plan.md` y `tasks.md`. La spec de ventas quedó repartida en las specs 000 (CI) a 010 (endurecimiento), una por fase F0 a F10, sin perder contenido; los archivos `SPEC_VENTAS*.md` se borraron. Se alineó con la rama `feature/mejoras-negocio` (de Advilmar24, aún sin mezclar): esa rama usa V26 a V30 y ya construyó gran parte de la F1 (precios, impuestos y listas bajo `/api/ventas/`), así que ventas sigue en V31 y las decisiones D2 y D8 quedan tomadas. Las migraciones se reservan en `agents/specs/README.md`.
+**Specs con Spec Driven Development (2026-11-19).** `AGENTS.md` en la raíz y la carpeta `agents/` con el contexto fijo (`product.md`, `tech-stack.md`, `architecture.md`) y una carpeta por spec en `agents/specs/NNN-nombre/` con `spec.md`, `plan.md` y `tasks.md`. La spec de ventas quedó repartida en las specs 000 (CI) a 010 (endurecimiento), una por fase F0 a F10, sin perder contenido; los archivos `SPEC_VENTAS*.md` se borraron. Se alineó con la rama `feature/mejoras-negocio` (de Advilmar24, mezclada después en el PR #27): esa rama usa V26 a V30 y ya construyó gran parte de la F1 (precios, impuestos y listas bajo `/api/ventas/`), así que ventas sigue en V31 y las decisiones D2 y D8 quedan tomadas. Las migraciones se reservan en `agents/specs/README.md`.
 
 **Herramientas y forma de trabajo.**
 - **Flujo de git:**
@@ -479,6 +479,9 @@ Solo lo que no estaba en las secciones anteriores. Todo quedó mezclado en `deve
 - **Local sin Docker:** backend en el puerto 8081, porque el 8080 lo ocupa un relé de WSL; `frontend/proxy.conf.json` apunta a 8081 y ese cambio no se sube.
 
 ### Qué falta y cómo lo pensamos hacer (en este orden)
+
+> **Actualizado en la sección 7.** Los puntos 1 a 3 ya están hechos y el 4 va por la mitad (003 hecha). La lista se deja como estaba ese día para conservar la historia.
+
 1. **Mezclar `feature/mejoras-negocio`** a `develop` (V26 a V30) después de confirmar que sus pruebas pasan, y aprobar las decisiones pendientes (D1, D3 a D7 y D9) en `agents/specs/README.md`. D2 y D8 ya quedaron tomadas y `CLAUDE.md` ya incluye Ventas y Caja en el alcance.
 2. **Spec 000, CI con GitHub Actions** (rama `feature/ci-github-actions`, detalle en `agents/specs/000-ci-github-actions/`):
    - `.github/workflows/ci.yml` con `backend` (Java 21, MySQL 8 de servicio, `./mvnw verify`, Javadoc con doclint, JaCoCo), `frontend` (`npm ci`, pruebas y build de producción) y `docker` (construir las imágenes y escanearlas con Trivy).
@@ -519,3 +522,98 @@ Solo lo que no estaba en las secciones anteriores. Todo quedó mezclado en `deve
 - **CLI de GitHub:** no está instalado (`gh`). Los PR se crean desde la página de GitHub con la sesión del usuario.
 - **Finales de línea:** muchos archivos usan CRLF y `sed` no casa los cambios de varias líneas. Mejor editar con un script de Python que normalice los saltos de línea.
 - **Límite de ingreso:** después de muchos ingresos seguidos, `/api/auth/login` responde 429 por un minuto. Es el rate limit funcionando.
+
+---
+
+## 7. Specs de Ventas y Caja: qué está hecho y qué falta (corte del 2026-11-19, después del PR #30)
+
+Las specs viven en `agents/specs/NNN-nombre/` (`spec.md`, `plan.md`, `tasks.md`); el índice, las decisiones y la reserva
+de migraciones están en `agents/specs/README.md`. Flujo: spec aprobada → plan → tasks una a una con sus pruebas → criterios
+de aceptación verificados → rama propia desde `develop` → PR que crea y mezcla el dueño del repositorio.
+
+### Estado del repositorio
+- `develop` = `origin/develop` (`cc5cca4`, merge del PR #30); `main` sigue en el commit inicial.
+- **Backend:** 796 pruebas en verde (1 omitida, la de Gemini en vivo), Javadoc sin advertencias, 33 migraciones
+  (próxima libre **V34**).
+- **Frontend:** 166 pruebas en verde (29 archivos); build de producción sin advertencias.
+- **CI:** cada PR corre `backend`, `frontend`, `docker` (Trivy) y Dependency Review; CodeQL los lunes.
+
+### Avance por spec
+
+| Spec | Qué entrega | Migración | PR | Estado |
+|---|---|---|---|---|
+| 000 CI | GitHub Actions: backend con MySQL 8.4, frontend, imágenes con Trivy, Dependency Review, CodeQL | — | #26 (+ zona horaria en #29) | **Hecha** |
+| 001 Catálogo de venta | Módulos `VENTAS`, `CAJA`, `CARTERA`; roles `SUPERVISOR_VENTAS` y `VENDEDOR`; impuestos, listas y precios con historial; precio por unidad; carga de precios por Excel; búsqueda para vender | V29 + V31 | #27 + #28 | **Hecha** |
+| 002 Clientes | Clientes con consumidor final, documento validado (NIT con dígito DIAN), autorización de datos, cupo solo para dueño o supervisor, exportación | V32 | #29 | **Hecha** |
+| 003 Cajas y turnos | Cajas, turnos, libro de caja, PIN de supervisor, autorizaciones de un solo uso, cierre ciego, aprobación de diferencias | V33 | #30 | **Hecha** |
+| 004 La venta | Venta en una sola transacción: precio vigente, descuentos con límite por rol, impuestos, pagos mixtos, cambio, redondeo, stock, caja, idempotencia, pedido de venta | (V34) | — | Propuesta |
+| 005 POS | POS con lector y atajos, cobro, tiquete de 80 mm, "Mi turno" (con la foto del recibo del gasto), historial de ventas | — | — | Propuesta |
+| 006 Anulación y devolución | Anular en el turno, devolver con estado del producto y reembolso, rotación que las descuenta | — | — | Propuesta |
+| 007 Cartera | Venta a crédito con cupo y mora, abonos en la caja, edades, saldo a favor | — | — | Propuesta |
+| 008 Costo promedio | Costo promedio ponderado en la recepción, costo en la línea de venta, margen real | — | — | Propuesta |
+| 009 Reportes y cuadre | Reportes de ventas y caja, bloque de ventas en el tablero, cuadre diario automático | — | — | Propuesta |
+| 010 Endurecimiento | Alertas por cajero, Playwright en el CI, prueba de carga de 50 ventas por minuto | — | — | Propuesta |
+
+### Lo que dejó cada spec hecha (lo esencial para retomar)
+- **000:** `.github/workflows/ci.yml`, `dependency-review.yml` y `codeql.yml`; JaCoCo en el `pom.xml`. Trivy obligó a fijar
+  Tomcat 11.0.29 (`tomcat.version`) y a pasar la imagen `web` a `nginx-unprivileged:1.31-alpine` con `apk upgrade`.
+  El job `backend` y su MySQL corren con `TZ=America/Bogota`, igual que Docker.
+- **001:** paquete `venta/` (`PreciosService`, `PrecioCargaService`, `VentaProductoService`). Un solo precio vigente por
+  producto, lista y unidad garantizado con la columna generada `vigente_unico`; dos personas a la vez ⇒ una gana y la
+  otra recibe 409 `PRECIO_CONCURRENTE`. Rutas bajo `/api/ventas/` (no las de la spec original).
+- **002:** paquete `cliente/`. El consumidor final (CC `222222222222`) se crea solo en la primera consulta para las
+  empresas nuevas: la consola de plataforma no toca tablas de negocio. `GET /api/ventas/listas` lo leen también caja y
+  venta (solo nombres).
+- **003:** paquete `caja/` con `CalculoCaja`. El cajero no ve ventas ni esperado con el turno abierto, solo `debeRetirar`.
+  La tolerancia se configura en `/api/cajas/configuracion`. `AutorizacionPin` (frontend) queda listo para el POS y la
+  anulación.
+
+### Decisiones
+
+| # | Tema | Estado |
+|---|---|---|
+| D2 | Precio de mostrador con IVA incluido | Tomada |
+| D5 | Roles `SUPERVISOR_VENTAS` y `VENDEDOR` | Tomada |
+| D6 | Tolerancia de diferencia de caja $2.000, configurable | Tomada |
+| D7 | Una caja, una bodega | Tomada |
+| D8 | Precios los fija el dueño, delegable a compras | Tomada |
+| D9 | Precio por caja y por unidad | Tomada |
+| **D1** | ¿Vender sin stock? Recomendado: **no** | **Pendiente: hace falta para la 004** |
+| **D3** | ¿Redondear el efectivo a $50? Recomendado: **sí**, guardando la diferencia | **Pendiente: hace falta para la 004** |
+| **D4** | ¿Crédito en la primera versión? Recomendado: **no**, llega en la 007 | **Pendiente: hace falta para la 007** |
+
+### Pendientes que dejaron las specs hechas
+1. **Regenerar los tipos del frontend** con `npm run api:tipos` (desde la 001 se agregan a mano en `esquema.ts`, porque el
+   backend local no arrancó desde el panel).
+2. **Volver a sembrar la demo** desde cero (`docker compose down -v`, `up -d --build` y `scripts/sembrar_demo.py`): el
+   script ya crea cajero, vendedor, supervisor de ventas, precios (uno por docena), dos clientes, una caja y el PIN del
+   supervisor, pero no se ha ejecutado con esos cambios.
+3. **Revisar en el navegador** las pantallas nuevas: precios (unidad y Excel), `/app/clientes` y `/app/caja`. Hasta ahora
+   solo tienen pruebas Vitest.
+4. **Protección de ramas en GitHub** (la activa el dueño del repositorio, guía en `DOCKER.md`) y confirmar la primera
+   ejecución semanal de CodeQL.
+5. **Decidir si el usuario tendrá sede asignada**; mientras tanto el cajero ve todas las cajas activas.
+
+### Qué sigue, en orden
+1. **Spec 004, la venta** (rama `feature/ventas-pos-backend`, migración V34): tomar D1 y D3, aprobar la spec, y construir
+   `venta`, `venta_linea`, `venta_pago`, el pedido de venta y los límites de descuento por rol; la venta en una sola
+   transacción con bloqueo de stock en orden de id, idempotencia por `Idempotency-Key`, autorizaciones de la 003 y
+   pruebas de concurrencia y de propiedades de dinero.
+2. **Spec 005, el POS:** pantalla con lector y atajos, cobro con pagos mixtos, tiquete de 80 mm, "Mi turno" con la foto
+   del recibo del gasto y `POST /api/ventas/cotizar`. Usa `ClienteFormulario` (002) y `AutorizacionPin` (003).
+3. **Spec 006, anulación y devolución:** tipos `ANULACION_VENTA` y `DEVOLUCION_CLIENTE`, saldo a favor, bodega de averías.
+   Con ella el negocio ya puede **vender y cuadrar caja**.
+4. **Specs 007 a 010:** cartera (con D4), costo promedio y margen real, reportes y cuadre diario, y endurecimiento con
+   Playwright en el CI.
+5. **Lo que sigue de la sección 6:** pendientes del frontend (fases 9 y 10), paso 19 del backend, IA con cotizaciones
+   reales, SaaS 4, documento de exposición y mezcla de `develop` a `main`.
+
+### Trampas nuevas de este entorno
+- **Zona horaria del CI:** en UTC, entre las 19:00 y las 24:00 UTC, las fechas que guarda MySQL se leían en el día
+  siguiente y fallaban las pruebas por periodo. Se corrigió con `TZ=America/Bogota` en el CI. Para reproducir el CI en
+  local: Docker Desktop encendido, un MySQL 8.4 en el puerto 3307 y `SPRING_DATASOURCE_URL`, `DB_USER` y `DB_PASSWORD` como
+  variables de entorno.
+- **Panel del navegador:** no arranca el backend local (`preview_start` sale sin mostrar el error) y no tiene la sesión de
+  GitHub; los registros del CI y la creación de PR se ven desde el navegador del usuario.
+- **Límite de intentos:** `/api/autorizaciones` comparte el límite por IP de `RateLimitFilter`; en pruebas se sube con
+  `app.sesion.limite-por-minuto`.

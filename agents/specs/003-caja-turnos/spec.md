@@ -1,6 +1,6 @@
 # 003 - Cajas, turnos y cierre ciego
 
-**Estado:** Hecha (2026-11-19), pendiente de mezclar · **Rama:** `feature/caja-turnos` · **Depende de:** 001
+**Estado:** Hecha (2026-11-19, PR #30) · **Rama:** `feature/caja-turnos` · **Depende de:** 001
 
 ## Objetivo
 Saber en todo momento cuánto dinero debe haber en cada caja, quién la tuvo y si al cerrar faltó o sobró, sin que el

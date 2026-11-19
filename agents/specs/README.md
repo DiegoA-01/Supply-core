@@ -14,7 +14,7 @@ Estados de una spec: **Propuesta** (en revisión) → **Aprobada** (se puede pla
 | [000-ci-github-actions](000-ci-github-actions/spec.md) | F0 | CI con GitHub Actions, Dependency Review y CodeQL | `feature/ci-github-actions` | — | Hecha (PR #26) |
 | [001-ventas-catalogo](001-ventas-catalogo/spec.md) | F1 | Módulos, roles, impuestos, código de barras, listas y precios con historial | `feature/ventas-catalogo` | 000 | Hecha (V29 + V31, PR #28) |
 | [002-ventas-clientes](002-ventas-clientes/spec.md) | F2 | Clientes, consumidor final, autorización de datos | `feature/ventas-clientes` | 001 | Hecha (V32, PR #29) |
-| [003-caja-turnos](003-caja-turnos/spec.md) | F3 | Cajas, turnos, libro de caja, PIN de supervisor, cierre ciego | `feature/caja-turnos` | 001 | Hecha, pendiente de mezclar |
+| [003-caja-turnos](003-caja-turnos/spec.md) | F3 | Cajas, turnos, libro de caja, PIN de supervisor, cierre ciego | `feature/caja-turnos` | 001 | Hecha (V33, PR #30) |
 | [004-venta-backend](004-venta-backend/spec.md) | F4 | La venta en una sola transacción: precios, descuentos, impuestos, pagos, stock, caja, idempotencia | `feature/ventas-pos-backend` | 002, 003 | Propuesta |
 | [005-pos-frontend](005-pos-frontend/spec.md) | F5 | POS con lector y atajos, cobro, tiquete de 80 mm, mi turno | `feature/ventas-pos-frontend` | 004 | Propuesta |
 | [006-anulacion-devolucion](006-anulacion-devolucion/spec.md) | F6 | Anulación en el turno y devolución de cliente | `feature/ventas-anulacion-devolucion` | 004 | Propuesta |
