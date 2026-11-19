@@ -1685,6 +1685,16 @@ class AislamientoEmpresasTest {
                     .andExpect(jsonPath("$.items[?(@.productoId==" + productoA + ")]").isEmpty())
                     // otras pruebas de esta clase también dejan salidas en B: basta con que tenga consumo
                     .andExpect(jsonPath("$.items[?(@.productoId==" + productoB + " && @.consumoDiario >= 10)]").isNotEmpty());
+            // los avisos: B apaga un correo; A sigue viendo todos sus avisos activos
+            String adminB = token(empresaB, usuarioB, "ADMIN_SISTEMA");
+            mvc.perform(put("/api/config-notificaciones").header(HttpHeaders.AUTHORIZATION, adminB)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"evento\":\"REABASTECIMIENTO_DIARIO\",\"canal\":\"EMAIL\",\"activo\":false}"))
+                    .andExpect(status().isOk());
+            mvc.perform(get("/api/config-notificaciones").header(HttpHeaders.AUTHORIZATION, adminB))
+                    .andExpect(jsonPath("$[?(@.evento=='REABASTECIMIENTO_DIARIO' && @.canal=='EMAIL')].activo").value(false));
+            mvc.perform(get("/api/config-notificaciones").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "ADMIN_SISTEMA")))
+                    .andExpect(jsonPath("$[?(@.evento=='REABASTECIMIENTO_DIARIO' && @.canal=='EMAIL')].activo").value(true));
             // el tablero del dueño tampoco mezcla empresas
             mvc.perform(get("/api/reportes/tablero").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "ADMIN_SISTEMA")))
                     .andExpect(status().isOk())
@@ -1712,6 +1722,7 @@ class AislamientoEmpresasTest {
                     productoB));
         } finally {
             jdbc.update("DELETE FROM movimiento_inventario WHERE empresa_id = ? AND cantidad = 900", empresaB);
+            jdbc.update("DELETE FROM config_notificacion WHERE evento = 'REABASTECIMIENTO_DIARIO'");
             jdbc.update("UPDATE producto SET plazo_entrega_dias = NULL, dias_seguridad = NULL WHERE id IN (?, ?)",
                     productoA, productoB);
         }

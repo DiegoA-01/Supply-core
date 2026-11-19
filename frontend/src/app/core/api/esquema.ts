@@ -308,6 +308,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/config-notificaciones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listar"];
+        put: operations["cambiarPorEvento"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/centros-costo/{id}": {
         parameters: {
             query?: never;
@@ -379,7 +395,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar"];
+        get: operations["listar_1"];
         put?: never;
         post: operations["crear_1"];
         delete?: never;
@@ -459,7 +475,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_1"];
+        get: operations["listar_2"];
         put?: never;
         post: operations["crear_3"];
         delete?: never;
@@ -683,7 +699,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_2"];
+        get: operations["listar_3"];
         put?: never;
         post: operations["crear_6"];
         delete?: never;
@@ -811,7 +827,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_3"];
+        get: operations["listar_4"];
         put?: never;
         post: operations["crear_7"];
         delete?: never;
@@ -843,7 +859,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_4"];
+        get: operations["listar_5"];
         put?: never;
         post: operations["crear_9"];
         delete?: never;
@@ -1067,7 +1083,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_5"];
+        get: operations["listar_6"];
         put?: never;
         post: operations["enviar_2"];
         delete?: never;
@@ -1243,7 +1259,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_6"];
+        get: operations["listar_7"];
         put?: never;
         post: operations["subir"];
         delete?: never;
@@ -1371,7 +1387,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_7"];
+        get: operations["listar_8"];
         put?: never;
         post: operations["crear_13"];
         delete?: never;
@@ -1387,7 +1403,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_8"];
+        get: operations["listar_9"];
         put?: never;
         post: operations["crear_14"];
         delete?: never;
@@ -1403,7 +1419,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_9"];
+        get: operations["listar_10"];
         put?: never;
         post: operations["crear_15"];
         delete?: never;
@@ -2075,7 +2091,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_10"];
+        get: operations["listar_11"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2091,7 +2107,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_11"];
+        get: operations["listar_12"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2916,22 +2932,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/config-notificaciones": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["listar_12"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/auth/me": {
         parameters: {
             query?: never;
@@ -3552,6 +3552,22 @@ export interface components {
             umbralConfianza?: number;
             campos?: components["schemas"]["Campo"][];
             alertas?: string[];
+        };
+        ConfigNotificacionCambioRequest: {
+            /** @enum {string} */
+            evento: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "INFORME_RECIBIDO";
+            /** @enum {string} */
+            canal: "EMAIL" | "INTERNA";
+            activo: boolean;
+        };
+        ConfigNotificacionResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** @enum {string} */
+            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "INFORME_RECIBIDO";
+            /** @enum {string} */
+            canal?: "EMAIL" | "INTERNA";
+            activo?: boolean;
         };
         CentroCostoUpdateRequest: {
             codigo: string;
@@ -4527,15 +4543,6 @@ export interface components {
         };
         ConfigNotificacionRequest: {
             activo: boolean;
-        };
-        ConfigNotificacionResponse: {
-            /** Format: int64 */
-            id?: number;
-            /** @enum {string} */
-            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "INFORME_RECIBIDO";
-            /** @enum {string} */
-            canal?: "EMAIL" | "INTERNA";
-            activo?: boolean;
         };
         Pageable: {
             /** Format: int32 */
@@ -5979,6 +5986,50 @@ export interface operations {
             };
         };
     };
+    listar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConfigNotificacionResponse"][];
+                };
+            };
+        };
+    };
+    cambiarPorEvento: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigNotificacionCambioRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ConfigNotificacionResponse"];
+                };
+            };
+        };
+    };
     obtener_11: {
         parameters: {
             query?: never;
@@ -6172,7 +6223,7 @@ export interface operations {
             };
         };
     };
-    listar: {
+    listar_1: {
         parameters: {
             query?: {
                 activo?: boolean;
@@ -6342,7 +6393,7 @@ export interface operations {
             };
         };
     };
-    listar_1: {
+    listar_2: {
         parameters: {
             query?: {
                 activo?: boolean;
@@ -6791,7 +6842,7 @@ export interface operations {
             };
         };
     };
-    listar_2: {
+    listar_3: {
         parameters: {
             query?: {
                 centroCostoId?: number;
@@ -7011,7 +7062,7 @@ export interface operations {
             };
         };
     };
-    listar_3: {
+    listar_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -7099,7 +7150,7 @@ export interface operations {
             };
         };
     };
-    listar_4: {
+    listar_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -7588,7 +7639,7 @@ export interface operations {
             };
         };
     };
-    listar_5: {
+    listar_6: {
         parameters: {
             query: {
                 pageable: components["schemas"]["Pageable"];
@@ -7880,7 +7931,7 @@ export interface operations {
             };
         };
     };
-    listar_6: {
+    listar_7: {
         parameters: {
             query: {
                 entidad: "PROVEEDOR" | "COTIZACION" | "ORDEN_COMPRA" | "PAGO" | "RECEPCION" | "FACTURA";
@@ -8169,7 +8220,7 @@ export interface operations {
             };
         };
     };
-    listar_7: {
+    listar_8: {
         parameters: {
             query?: {
                 activo?: boolean;
@@ -8215,7 +8266,7 @@ export interface operations {
             };
         };
     };
-    listar_8: {
+    listar_9: {
         parameters: {
             query?: {
                 activo?: boolean;
@@ -8261,7 +8312,7 @@ export interface operations {
             };
         };
     };
-    listar_9: {
+    listar_10: {
         parameters: {
             query?: {
                 activo?: boolean;
@@ -9248,7 +9299,7 @@ export interface operations {
             };
         };
     };
-    listar_10: {
+    listar_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -9268,7 +9319,7 @@ export interface operations {
             };
         };
     };
-    listar_11: {
+    listar_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -10420,26 +10471,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["OfertaContratoResponse"][];
-                };
-            };
-        };
-    };
-    listar_12: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ConfigNotificacionResponse"][];
                 };
             };
         };

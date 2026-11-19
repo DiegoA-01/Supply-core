@@ -60,7 +60,8 @@ export class NotificacionesConfig implements OnInit {
   private readonly avisos = inject(Avisos);
 
   protected readonly lista = signal<ConfigNotificacion[] | null>(null);
-  protected readonly guardando = signal<number | null>(null);
+  /** Evento y canal que se está guardando ({@code EVENTO/CANAL}). */
+  protected readonly guardando = signal<string | null>(null);
 
   protected readonly filas = computed<FilaEvento[]>(() => {
     const porEvento = new Map<string, FilaEvento>();
@@ -89,14 +90,15 @@ export class NotificacionesConfig implements OnInit {
 
   /** @param c canal de un evento; lo activa o desactiva y deja la lista con lo que guardó el servidor */
   protected alternar(c: ConfigNotificacion | undefined): void {
-    if (!c?.id || this.guardando() !== null) {
+    if (!c?.evento || !c.canal || this.guardando() !== null) {
       return;
     }
-    this.guardando.set(c.id);
-    this.servicio.cambiarConfiguracion(c.id, !c.activo).subscribe({
+    this.guardando.set(`${c.evento}/${c.canal}`);
+    // por evento y canal: los avisos que la empresa nunca cambió no tienen id todavía
+    this.servicio.cambiarPorEvento(c.evento, c.canal, !c.activo).subscribe({
       next: r => {
         this.guardando.set(null);
-        this.lista.update(l => (l ?? []).map(x => (x.id === r.id ? r : x)));
+        this.lista.update(l => (l ?? []).map(x => (x.evento === r.evento && x.canal === r.canal ? r : x)));
       },
       error: e => {
         this.guardando.set(null);

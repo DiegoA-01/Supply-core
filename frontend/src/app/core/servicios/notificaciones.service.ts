@@ -34,6 +34,17 @@ export class NotificacionesService {
     return this.http.patch<ConfigNotificacion>(api(`/api/config-notificaciones/${id}`), { activo });
   }
 
+  /**
+   * Activa o desactiva un canal de un evento por su nombre; el backend crea la configuración si la empresa no la tenía.
+   *
+   * @param evento evento del aviso
+   * @param canal  EMAIL o INTERNA
+   * @param activo nuevo estado
+   */
+  cambiarPorEvento(evento: string, canal: string, activo: boolean): Observable<ConfigNotificacion> {
+    return this.http.put<ConfigNotificacion>(api('/api/config-notificaciones'), { evento, canal, activo });
+  }
+
   /** Marca todas como leídas. */
   marcarTodas(): Observable<unknown> {
     return this.http.patch(api('/api/notificaciones/leidas'), {}).pipe(tap(() => this.noLeidas.set(0)));
