@@ -31,6 +31,12 @@ export class Configuracion {
 
   protected readonly grupos: { titulo: string; entradas: Entrada[] }[] = [
     {
+      titulo: 'Empresa',
+      entradas: [
+        { titulo: 'Datos y reglas de la empresa', descripcion: 'Razón social, NIT, tope de anticipos, plazo para aprobar y tolerancia de factura.', icono: 'domain', ruta: '/app/configuracion/empresa', edita: ['ADMIN_SISTEMA'] },
+      ],
+    },
+    {
       titulo: 'Catálogos',
       entradas: [
         ...CATALOGOS.map(c => ({ titulo: c.titulo, descripcion: c.descripcion, icono: c.icono, ruta: `/app/configuracion/${c.clave}`, edita: c.roles })),

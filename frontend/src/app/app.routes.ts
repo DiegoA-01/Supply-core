@@ -189,6 +189,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/auditoria/auditoria').then(m => m.Auditoria),
       },
       {
+        path: 'configuracion/empresa',
+        title: 'Datos de la empresa · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ['ADMIN_SISTEMA'] },
+        loadComponent: () => import('./features/configuracion/empresa').then(m => m.ConfigEmpresa),
+      },
+      {
         path: 'configuracion/notificaciones',
         title: 'Avisos y correos · Supply-Core',
         canActivate: [permisoGuard],

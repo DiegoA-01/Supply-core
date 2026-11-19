@@ -88,6 +88,7 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 
 ## Pendiente
 - Plan completo y por fases: `PLAN_FRONTEND.md` (fases 0 y 1 hechas; el kardex se exporta en la fase 3, donde se elige el producto).
-- Pantallas: auditoría de la empresa (placeholder), despachos de caja (CAJERO), movimientos de inventario (ajustes y traslados), catálogos de configuración (sedes, centros de costo, bodegas, categorías, políticas, pesos, presupuestos, contratos, delegaciones), perfil del proveedor en el portal y su registro público.
+- Pantallas de las fases 2 a 8 hechas (ver `PLAN_FRONTEND.md`). Datos y reglas de la empresa (`/app/configuracion/empresa`, `PUT /api/empresa`) agregada el 2026-11-18.
+- Notificaciones: una empresa sin filas en `config_notificacion` no puede apagar avisos (todos activos); el backend debería crearlas al dar de alta la empresa.
 - Datos que la API no trae y el mockup muestra: nombre del solicitante en la bandeja (solo ADMIN_SISTEMA/AUDITOR leen `/api/usuarios`), usuarios por empresa en la consola, variación frente al mes anterior.
 - Exportar a Excel los reportes (backend, parte 2). Recuperación de clave (SaaS 3).

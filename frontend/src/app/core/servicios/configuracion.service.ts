@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  Contrato, ContratoNuevo, ContratoResumen, Evaluacion, Pagina, Pesos, Politica, PoliticaNueva, Presupuesto, PresupuestoNuevo, Proveedor,
+  Contrato, Empresa, EmpresaCambios, ContratoNuevo, ContratoResumen, Evaluacion, Pagina, Pesos, Politica, PoliticaNueva, Presupuesto, PresupuestoNuevo, Proveedor,
   ProveedorCambios,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
@@ -12,6 +12,11 @@ import { api, parametros } from '../http/api';
 @Injectable({ providedIn: 'root' })
 export class ConfiguracionService {
   private readonly http = inject(HttpClient);
+
+  /** Cambia los datos generales y las reglas de la empresa (solo ADMIN_SISTEMA). @param datos datos nuevos */
+  actualizarEmpresa(datos: EmpresaCambios): Observable<Empresa> {
+    return this.http.put<Empresa>(api('/api/empresa'), datos);
+  }
 
   // ---- Políticas de aprobación ----
 

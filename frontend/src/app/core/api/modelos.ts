@@ -30,6 +30,7 @@ export type UsuarioNuevo = S['UsuarioRequest'];
 export type UsuarioCambios = S['UsuarioUpdateRequest'];
 export type Rol = S['RolResponse'];
 export type Empresa = S['EmpresaResponse'];
+export type EmpresaCambios = S['EmpresaRequest'];
 export type ModulosEmpresa = S['ModulosEmpresaResponse'];
 export type Notificacion = S['NotificacionResponse'];
 export type CentroCosto = S['CentroCostoResponse'];
