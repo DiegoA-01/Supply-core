@@ -19,6 +19,8 @@ import org.springframework.stereotype.Service;
 import com.proyecto.supply_core.auditoria.enums.AccionAuditoria;
 import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
+import com.proyecto.supply_core.cliente.dto.ClienteResponse;
+import com.proyecto.supply_core.cliente.service.ClienteService;
 import com.proyecto.supply_core.common.dto.PageResponse;
 import com.proyecto.supply_core.common.exception.FormatoNoSoportadoException;
 import com.proyecto.supply_core.common.exception.NegocioException;
@@ -80,6 +82,7 @@ public class ExportacionService {
     private final OrdenPdfGenerador ordenPdf;
     private final AuditoriaService auditoriaService;
     private final EmailClient emailClient;
+    private final ClienteService clienteService;
 
     /**
      * @param movimientoService  existencias y kardex
@@ -93,11 +96,14 @@ public class ExportacionService {
      * @param ordenPdf           generador del PDF de la orden
      * @param auditoriaService   registro de cada exportación
      * @param emailClient        envío del adjunto
+     * @param clienteService     clientes (spec 002)
      */
     public ExportacionService(MovimientoInventarioService movimientoService, SolicitudService solicitudService,
             OrdenCompraService ordenService, EmpresaService empresaService, UsuarioService usuarioService,
             CentroCostoService centroCostoService, ProveedorService proveedorService, ExcelGenerador excel,
-            OrdenPdfGenerador ordenPdf, AuditoriaService auditoriaService, EmailClient emailClient) {
+            OrdenPdfGenerador ordenPdf, AuditoriaService auditoriaService, EmailClient emailClient,
+            ClienteService clienteService) {
+        this.clienteService = clienteService;
         this.movimientoService = movimientoService;
         this.solicitudService = solicitudService;
         this.ordenService = ordenService;
@@ -109,6 +115,31 @@ public class ExportacionService {
         this.ordenPdf = ordenPdf;
         this.auditoriaService = auditoriaService;
         this.emailClient = emailClient;
+    }
+
+    /**
+     * Clientes de la empresa en Excel (spec 002). Solo para el dueño y auditoría: son datos personales.
+     *
+     * @param formato {@code xlsx}
+     * @param activo  filtro por estado ({@code null} = todos)
+     * @param destino descarga o correo
+     * @return archivo generado
+     * @throws FormatoNoSoportadoException si el formato no es xlsx
+     * @throws ParametroInvalidoException  si supera {@link #MAX_FILAS}
+     */
+    public ArchivoExportado clientes(String formato, Boolean activo, DestinoExportacion destino) {
+        FormatoExportacion f = exigir(formato, SOLO_EXCEL, "Los clientes");
+        List<ClienteResponse> clientes = clienteService.todos(activo);
+        exigirTope(clientes.size());
+        List<List<Object>> filas = clientes.stream().<List<Object>>map(c -> Arrays.asList(c.tipoDocumento().name(),
+                c.numeroDocumento(), c.nombre(), c.telefono(), c.correo(), c.direccion(),
+                c.listaPrecio() == null ? "General" : c.listaPrecio(), c.cupoCredito(), c.plazoDias(),
+                c.aceptaDatosEn(), c.activo() ? "Sí" : "No")).toList();
+        byte[] bytes = excel.generar("Clientes", empresa(), usuario().nombre(),
+                List.of("Tipo", "Documento", "Nombre", "Teléfono", "Correo", "Dirección", "Lista de precios",
+                        "Cupo de crédito", "Plazo (días)", "Autorizó datos", "Activo"), filas);
+        ArchivoExportado archivo = new ArchivoExportado(nombre("clientes", f), f, bytes, filas.size());
+        return entregar(archivo, destino, null, "CLIENTES; activo=" + activo);
     }
 
     /**

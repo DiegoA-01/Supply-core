@@ -4190,6 +4190,45 @@ export interface components {
             otrasUnidades?: components["schemas"]["PrecioEnUnidad"][];
             stock?: number;
         };
+        ClienteRequest: {
+            /** @enum {string} */
+            tipoDocumento: "CC" | "NIT" | "CE" | "PAS";
+            numeroDocumento: string;
+            nombre: string;
+            telefono?: string;
+            correo?: string;
+            direccion?: string;
+            aceptaDatos?: boolean;
+            /** Format: int64 */
+            listaPrecioId?: number;
+            cupoCredito?: number;
+            /** Format: int32 */
+            plazoDias?: number;
+            activo?: boolean;
+        };
+        ClienteResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** @enum {string} */
+            tipoDocumento?: "CC" | "NIT" | "CE" | "PAS";
+            numeroDocumento?: string;
+            nombre?: string;
+            telefono?: string;
+            correo?: string;
+            direccion?: string;
+            /** Format: int64 */
+            listaPrecioId?: number;
+            listaPrecio?: string;
+            cupoCredito?: number;
+            /** Format: int32 */
+            plazoDias?: number;
+            esConsumidorFinal?: boolean;
+            activo?: boolean;
+            /** Format: date-time */
+            aceptaDatosEn?: string;
+            /** Format: date-time */
+            creadoEn?: string;
+        };
         PrecioEnUnidad: {
             /** Format: int64 */
             unidadMedidaId?: number;

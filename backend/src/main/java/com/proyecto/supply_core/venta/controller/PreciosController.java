@@ -105,9 +105,14 @@ public class PreciosController {
     }
 
     /**
+     * Listas de precios (solo nombre y estado, sin costos): también las leen caja y venta para elegir la lista de un
+     * cliente o de una venta.
+     *
      * @return listas de precios
      */
     @GetMapping("/listas")
+    @RequiereRol({ Roles.ADMIN_SISTEMA, Roles.ADMIN_COMPRAS, Roles.AUDITOR, Roles.SUPERVISOR_VENTAS, Roles.CAJERO,
+            Roles.VENDEDOR })
     public List<ListaPrecioResponse> listas() {
         return preciosService.listas();
     }

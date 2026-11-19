@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REABASTECIMIENTO, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS, ROLES_TABLERO, ROLES_PRECIOS, ROLES_CATALOGOS } from './core/navegacion/menu';
+import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REABASTECIMIENTO, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS, ROLES_TABLERO, ROLES_PRECIOS, ROLES_CATALOGOS, ROLES_CLIENTES } from './core/navegacion/menu';
 import { empresaGuard, invitadoGuard, permisoGuard, plataformaGuard, proveedorGuard } from './core/sesion/guards';
 
 /**
@@ -159,6 +159,13 @@ export const routes: Routes = [
         canActivate: [permisoGuard],
         data: { roles: ROLES_PRECIOS, modulo: 'VENTAS' },
         loadComponent: () => import('./features/precios/precios').then(m => m.PreciosMargen),
+      },
+      {
+        path: 'clientes',
+        title: 'Clientes · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_CLIENTES, modulo: 'VENTAS' },
+        loadComponent: () => import('./features/clientes/clientes').then(m => m.Clientes),
       },
       {
         path: 'pedidos',

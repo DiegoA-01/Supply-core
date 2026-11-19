@@ -90,7 +90,7 @@ class ExportacionServiceTest {
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
     private final EmailClient email = mock(EmailClient.class);
     private final ExportacionService service = new ExportacionService(movimientos, solicitudes, ordenes, empresas,
-            usuarios, centros, proveedores, new ExcelGenerador(), new OrdenPdfGenerador(), auditoria, email);
+            usuarios, centros, proveedores, new ExcelGenerador(), new OrdenPdfGenerador(), auditoria, email, null);
 
     @BeforeEach
     void sesion() {

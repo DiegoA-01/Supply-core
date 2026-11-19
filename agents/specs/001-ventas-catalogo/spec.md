@@ -1,6 +1,6 @@
 # 001 - Catálogo de venta: módulos, roles, impuestos y precios
 
-**Estado:** Hecha (2026-11-19), pendiente de mezclar. Gran parte quedó hecha en la rama `feature/mejoras-negocio` (migración V29), ya mezclada a
+**Estado:** Hecha (2026-11-19, PR #28). Gran parte quedó hecha en la rama `feature/mejoras-negocio` (migración V29), ya mezclada a
 `develop` por el PR #27 con el CI en verde; lo que falta va en `feature/ventas-catalogo`. · **Depende de:** 000
 
 ## Objetivo

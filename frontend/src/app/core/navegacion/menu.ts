@@ -33,6 +33,8 @@ export const ROLES_REABASTECIMIENTO = ['ADMIN_COMPRAS', 'COMPRADOR', 'ALMACENIST
 export const ROLES_CATALOGOS = ['ADMIN_COMPRAS', 'COMPRADOR', 'AUDITOR', 'ADMIN_SISTEMA'];
 /** Roles que ven precios, costos y margen (mismos que {@code /api/ventas}). */
 export const ROLES_PRECIOS = ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR'];
+/** Roles que consultan clientes (mismos que {@code GET /api/clientes}). */
+export const ROLES_CLIENTES = ['CAJERO', 'VENDEDOR', 'SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR'];
 /** Roles que ven el tablero del dueño (mismos que {@code GET /api/reportes/tablero}). */
 export const ROLES_TABLERO = ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR'];
 /** Roles que leen los reportes de gasto. */
@@ -67,6 +69,12 @@ export const MENU: SeccionMenu[] = [
       { texto: 'Movimientos de stock', icono: 'swap_horiz', ruta: '/app/inventario/movimientos', modulo: 'INVENTARIO' },
       { texto: 'Proveedores', icono: 'group', ruta: '/app/proveedores', roles: ROLES_PROVEEDORES, modulo: 'PROVEEDORES' },
       { texto: 'Catálogos de proveedores', icono: 'storefront', ruta: '/app/catalogos', roles: ROLES_CATALOGOS, modulo: 'PROVEEDORES' },
+    ],
+  },
+  {
+    titulo: 'Ventas',
+    opciones: [
+      { texto: 'Clientes', icono: 'groups', ruta: '/app/clientes', roles: ROLES_CLIENTES, modulo: 'VENTAS' },
     ],
   },
   {
