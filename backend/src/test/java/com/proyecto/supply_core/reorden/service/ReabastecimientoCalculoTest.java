@@ -110,6 +110,51 @@ class ReabastecimientoCalculoTest {
     }
 
     @Test
+    void elSobranteEsLoQueSuperaLoQueLaSedeNecesita() {
+        // necesita 1 x (8 + 4 + 30) = 42: con 100 le sobran 58; con 40 no le sobra nada
+        igual("58", calcular("100", "0", "90", null, "0").sobrante());
+        igual("0", calcular("40", "0", "90", null, "0").sobrante());
+        // nunca cede su mínimo: sin consumo y mínimo 30, de 50 cede 20
+        igual("20", calcular("50", "30", "0", null, "0").sobrante());
+    }
+
+    @Test
+    void sugiereTrasladarDesdeLaSedeConMasSobranteAntesDeComprar() {
+        ReabastecimientoItem centro = calcular("10", "0", "90", null, "0");          // necesita 32
+        ReabastecimientoItem norte = calcular("50", "0", "45", null, "0");           // le sobran 50 - 21 = 29
+        ReabastecimientoItem sur = calcular("100", "0", "90", null, "0");            // le sobran 58
+        ReabastecimientoResponse planCentro = new ReabastecimientoResponse(HOY, 90, 6, 2, 30, 0, 1, 0, 0, 0,
+                List.of(centro));
+        java.util.Map<Long, ReabastecimientoResponse> planes = java.util.Map.of(1L, planCentro,
+                2L, new ReabastecimientoResponse(HOY, 90, 6, 2, 30, 0, 0, 0, 1, 0, List.of(norte)),
+                3L, new ReabastecimientoResponse(HOY, 90, 6, 2, 30, 0, 0, 0, 1, 0, List.of(sur)));
+
+        ReabastecimientoItem conTraslado = ReabastecimientoService.conTraslados(1L, planCentro, planes,
+                java.util.Map.of(1L, "Centro", 2L, "Norte", 3L, "Sur")).items().get(0);
+
+        igual("32", conTraslado.cantidadTraslado());                 // todo lo que necesita sale del Sur
+        assertEquals("Sur", conTraslado.trasladoDesdeSede());
+        igual("0", conTraslado.cantidadComprar());
+        assertTrue(ReabastecimientoAvisoService.lineaDeSede(List.of(conTraslado))
+                .contains("trasladar 32 UND desde Sur"));
+    }
+
+    @Test
+    void sinSobranteEnOtraSedeTodoSeCompra() {
+        ReabastecimientoItem centro = calcular("10", "0", "90", null, "0");
+        ReabastecimientoResponse planCentro = new ReabastecimientoResponse(HOY, 90, 6, 2, 30, 0, 1, 0, 0, 0,
+                List.of(centro));
+        ReabastecimientoItem r = ReabastecimientoService.conTraslados(1L, planCentro,
+                java.util.Map.of(1L, planCentro, 2L, new ReabastecimientoResponse(HOY, 90, 6, 2, 30, 0, 1, 0, 0, 0,
+                        List.of(calcular("5", "0", "90", null, "0")))),
+                java.util.Map.of(1L, "Centro", 2L, "Norte")).items().get(0);
+        igual("0", r.cantidadTraslado());
+        igual("32", r.cantidadComprar());
+        assertEquals("comprar 32 UND", ReabastecimientoAvisoService.lineaDeSede(List.of(r)).replace("URGENTE ", "")
+                .replace("TOR-001 (", "").replace(")", ""));
+    }
+
+    @Test
     void elMensajeDelResumenNombraLosProductosYLaCantidad() {
         ReabastecimientoItem urgente = calcular("5", "0", "90", null, "0");
         ReabastecimientoResponse plan = new ReabastecimientoResponse(HOY, 90, 6, 2, 30, 1, 0, 0, 0, 0, List.of(urgente));

@@ -50,6 +50,8 @@ public class ProductoService {
     private final StockProductoBodegaRepository stockRepository;
     private final MovimientoInventarioRepository movimientoRepository;
     private final AuditoriaService auditoriaService;
+    /** Impuesto de venta por defecto de los productos nuevos; {@code null} en pruebas que no lo usan. */
+    private final com.proyecto.supply_core.venta.repository.TarifaImpuestoRepository tarifaRepository;
 
     /**
      * @param productoRepository   acceso a productos
@@ -62,6 +64,25 @@ public class ProductoService {
     public ProductoService(ProductoRepository productoRepository, CategoriaProductoRepository categoriaRepository,
             UnidadMedidaRepository unidadRepository, StockProductoBodegaRepository stockRepository,
             MovimientoInventarioRepository movimientoRepository, AuditoriaService auditoriaService) {
+        this(productoRepository, categoriaRepository, unidadRepository, stockRepository, movimientoRepository,
+                auditoriaService, null);
+    }
+
+    /**
+     * @param productoRepository   acceso a productos
+     * @param categoriaRepository  acceso a categorías
+     * @param unidadRepository     acceso a unidades
+     * @param stockRepository      totales de stock (solo lectura)
+     * @param movimientoRepository para saber si el producto ya tiene movimientos
+     * @param auditoriaService     registro de cambios
+     * @param tarifaRepository     impuesto de venta por defecto (IVA 19 %) de los productos nuevos
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    public ProductoService(ProductoRepository productoRepository, CategoriaProductoRepository categoriaRepository,
+            UnidadMedidaRepository unidadRepository, StockProductoBodegaRepository stockRepository,
+            MovimientoInventarioRepository movimientoRepository, AuditoriaService auditoriaService,
+            com.proyecto.supply_core.venta.repository.TarifaImpuestoRepository tarifaRepository) {
+        this.tarifaRepository = tarifaRepository;
         this.productoRepository = productoRepository;
         this.categoriaRepository = categoriaRepository;
         this.unidadRepository = unidadRepository;
@@ -124,6 +145,10 @@ public class ProductoService {
     public ProductoResponse crear(ProductoRequest req) {
         Producto p = new Producto();
         p.setCodigo(normalizarCodigo(req.codigo()));
+        if (tarifaRepository != null) {
+            // como en la migración V29: los productos nuevos arrancan con IVA 19 %; se cambia en Precios y margen
+            tarifaRepository.findByCodigo("IVA19").ifPresent(p::setTarifaImpuesto);
+        }
         aplicar(p, req.nombre(), req.descripcion(), categoria(req.categoriaId()), unidad(req.unidadMedidaId()),
                 req.stockMinimo(), req.stockMaximo(), req.costoReferencia());
         Producto guardado = productoRepository.save(p);

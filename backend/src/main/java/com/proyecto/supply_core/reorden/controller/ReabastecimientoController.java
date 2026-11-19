@@ -1,5 +1,7 @@
 package com.proyecto.supply_core.reorden.controller;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.proyecto.supply_core.compra.solicitud.dto.SolicitudResponse;
 import com.proyecto.supply_core.reorden.dto.ReabastecimientoBorradorRequest;
 import com.proyecto.supply_core.reorden.dto.ReabastecimientoResponse;
+import com.proyecto.supply_core.reorden.dto.ResumenSede;
 import com.proyecto.supply_core.reorden.service.ReabastecimientoService;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.annotation.RequiereRol;
@@ -54,6 +57,18 @@ public class ReabastecimientoController {
     public ReabastecimientoResponse plan(
             @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long sedeId) {
         return reabastecimientoService.plan(sedeId);
+    }
+
+    /**
+     * Comparación de las sedes: cuántos productos tiene cada una por pedir y cuántos podría cubrir trasladando.
+     *
+     * @return una fila por sede activa
+     */
+    @GetMapping("/sedes")
+    @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.ALMACENISTA, Roles.SOLICITANTE, Roles.AUDITOR,
+            Roles.ADMIN_SISTEMA })
+    public List<ResumenSede> sedes() {
+        return reabastecimientoService.resumenSedes();
     }
 
     /**

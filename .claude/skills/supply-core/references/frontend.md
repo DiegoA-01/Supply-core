@@ -97,3 +97,11 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 - Pantallas de las fases 2 a 8 hechas (ver `PLAN_FRONTEND.md`). Datos y reglas de la empresa (`/app/configuracion/empresa`, `PUT /api/empresa`) agregada el 2026-11-18.
 - Datos que la API no trae y el mockup muestra: nombre del solicitante en la bandeja (solo ADMIN_SISTEMA/AUDITOR leen `/api/usuarios`), usuarios por empresa en la consola, variación frente al mes anterior.
 - Exportar a Excel los reportes (backend, parte 2). Recuperación de clave (SaaS 3).
+
+## Mejoras de negocio (2026-11-19, rama `feature/mejoras-negocio`)
+- `/app/pedidos` (todo usuario interno): pedir un producto del catálogo o con descripción libre; compras (ADMIN_COMPRAS, COMPRADOR) ve todos y responde; descartar exige explicación. `?productoId=` lo llena desde el plan ("Necesito este producto").
+- `/app/precios` (módulo VENTAS): precio de venta con IVA incluido, impuesto, historial y margen por producto y global; todo lo calcula el backend. Delegar precios a compras: casilla en Datos de la empresa.
+- `/app/catalogos` (módulo PROVEEDORES; ADMIN_COMPRAS, COMPRADOR, AUDITOR, ADMIN_SISTEMA): pestañas Oportunidades y Catálogo completo; confirmar, cambiar o descartar la equivalencia (solo ADMIN_COMPRAS y COMPRADOR). Servicio `catalogos.proveedor.service.ts`.
+- `/portal/catalogo`: el proveedor sube su Excel (todo o nada, errores por fila) y ve su lista; nunca ve stock ni necesidades.
+- Plan de reabastecimiento: comparación de sedes, chip de traslado, mínimo y máximo por sede (ADMIN_COMPRAS) y "Ofertas en catálogos de proveedores" en el detalle.
+- Reportes, Inicio e Informe de compras con selector de sede o tabla "Compras por sede".

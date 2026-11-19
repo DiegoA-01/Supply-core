@@ -62,5 +62,15 @@ public enum EntidadAuditada {
     /** Exportación de información (archivo descargado o enviado por correo). */
     EXPORTACION,
     /** Tabla {@code informe_compras}. */
-    INFORME_COMPRAS
+    INFORME_COMPRAS,
+    /** Tabla {@code pedido_interno}. */
+    PEDIDO_INTERNO,
+    /** Tabla {@code tarifa_impuesto}. */
+    TARIFA_IMPUESTO,
+    /** Tabla {@code lista_precio}. */
+    LISTA_PRECIO,
+    /** Tabla {@code precio_producto}. */
+    PRECIO_PRODUCTO,
+    /** Tabla {@code catalogo_item}. */
+    CATALOGO_ITEM
 }

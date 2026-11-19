@@ -84,7 +84,7 @@ class ReporteControllerTest extends WebTestBase {
 
     @Test
     void rankingYEstadoDeCuenta() throws Exception {
-        when(reporteService.proveedores(any(), any(), any())).thenReturn(List.of());
+        when(reporteService.proveedores(any(), any(), any(), any())).thenReturn(List.of());
         when(reporteService.estadoCuenta(eq(9L), any(), any())).thenReturn(new EstadoCuentaResponse(9L, "Tech", "800-1",
                 null, null, CERO, CERO, CERO, CERO, List.of()));
 

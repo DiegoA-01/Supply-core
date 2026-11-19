@@ -80,4 +80,21 @@ public class Producto {
     /** Días hábiles de colchón para este producto; {@code null} = el valor de la empresa. */
     @Column(name = "dias_seguridad")
     private Integer diasSeguridad;
+
+    /** Código de barras para el lector del punto de venta (único en la empresa). */
+    @Column(name = "codigo_barras", length = 50)
+    private String codigoBarras;
+
+    /** Impuesto de venta; {@code null} si aún no se definió. */
+    @jakarta.persistence.ManyToOne(fetch = jakarta.persistence.FetchType.LAZY)
+    @jakarta.persistence.JoinColumn(name = "tarifa_impuesto_id")
+    private com.proyecto.supply_core.venta.entity.TarifaImpuesto tarifaImpuesto;
+
+    /** {@code false} para productos que solo se consumen internamente. */
+    @Column(nullable = false)
+    private boolean vendible = true;
+
+    /** El precio de mostrador incluye el impuesto (costumbre en Colombia); Java separa base e impuesto. */
+    @Column(name = "precio_incluye_impuesto", nullable = false)
+    private boolean precioIncluyeImpuesto = true;
 }

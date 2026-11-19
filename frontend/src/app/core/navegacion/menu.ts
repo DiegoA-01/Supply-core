@@ -29,6 +29,10 @@ export const ROLES_ROTACION = ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'COMPRADOR', 'A
 /** Roles que leen reportes de gasto y proveedores. */
 /** Roles que ven el plan de reabastecimiento (mismos que {@code GET /api/reabastecimiento}). */
 export const ROLES_REABASTECIMIENTO = ['ADMIN_COMPRAS', 'COMPRADOR', 'ALMACENISTA', 'SOLICITANTE', 'AUDITOR', 'ADMIN_SISTEMA'];
+/** Roles que ven los catálogos de proveedores y las oportunidades (mismos que {@code /api/catalogos}). */
+export const ROLES_CATALOGOS = ['ADMIN_COMPRAS', 'COMPRADOR', 'AUDITOR', 'ADMIN_SISTEMA'];
+/** Roles que ven precios, costos y margen (mismos que {@code /api/ventas}). */
+export const ROLES_PRECIOS = ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR'];
 /** Roles que ven el tablero del dueño (mismos que {@code GET /api/reportes/tablero}). */
 export const ROLES_TABLERO = ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR'];
 /** Roles que leen los reportes de gasto. */
@@ -47,6 +51,7 @@ export const MENU: SeccionMenu[] = [
       { texto: 'Solicitudes', icono: 'description', ruta: '/app/solicitudes', modulo: 'COMPRAS', contador: 'solicitudes' },
       { texto: 'Cotizaciones con IA', icono: 'auto_awesome', ruta: '/app/cotizaciones', roles: ROLES_RFQ, modulo: 'RFQ_COTIZACIONES' },
       { texto: 'Adjudicaciones', icono: 'fact_check', ruta: '/app/adjudicaciones', roles: INTERNOS, modulo: 'RFQ_COTIZACIONES' },
+      { texto: 'Pedidos internos', icono: 'campaign', ruta: '/app/pedidos', roles: INTERNOS, modulo: 'COMPRAS' },
       { texto: 'Órdenes y pagos', icono: 'receipt_long', ruta: '/app/ordenes', roles: ROLES_ORDENES, modulo: 'ORDENES_PAGOS' },
       { texto: 'Recepción', icono: 'local_shipping', ruta: '/app/recepcion', roles: ROLES_ORDENES, modulo: 'RECEPCION' },
       { texto: 'Pagos', icono: 'payments', ruta: '/app/pagos', roles: ROLES_PAGOS, modulo: 'ORDENES_PAGOS' },
@@ -61,12 +66,14 @@ export const MENU: SeccionMenu[] = [
       { texto: 'Despachos', icono: 'outbox', ruta: '/app/despachos', roles: ROLES_DESPACHOS, modulo: 'DESPACHOS' },
       { texto: 'Movimientos de stock', icono: 'swap_horiz', ruta: '/app/inventario/movimientos', modulo: 'INVENTARIO' },
       { texto: 'Proveedores', icono: 'group', ruta: '/app/proveedores', roles: ROLES_PROVEEDORES, modulo: 'PROVEEDORES' },
+      { texto: 'Catálogos de proveedores', icono: 'storefront', ruta: '/app/catalogos', roles: ROLES_CATALOGOS, modulo: 'PROVEEDORES' },
     ],
   },
   {
     titulo: 'Gestión',
     opciones: [
       { texto: 'Tablero del dueño', icono: 'monitoring', ruta: '/app/tablero', roles: ROLES_TABLERO, modulo: 'REPORTES' },
+      { texto: 'Precios y margen', icono: 'sell', ruta: '/app/precios', roles: ROLES_PRECIOS, modulo: 'VENTAS' },
       { texto: 'Reportes', icono: 'bar_chart', ruta: '/app/reportes', roles: ROLES_REPORTES, modulo: 'REPORTES' },
       { texto: 'Informe de compras', icono: 'summarize', ruta: '/app/informes', roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS'], modulo: 'COMPRAS' },
       { texto: 'Delegaciones', icono: 'group_add', ruta: '/app/delegaciones', roles: INTERNOS, modulo: 'COMPRAS' },

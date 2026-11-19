@@ -23,10 +23,12 @@ import com.proyecto.supply_core.reporte.dto.GastoResponse;
  * @param adjudicaciones adjudicaciones decididas
  * @param gasto          gasto de las órdenes vigentes del periodo (el mismo reporte de gasto)
  * @param recortado      {@code true} si alguna lista superó el máximo de filas
+ * @param gastoPorSede   gasto del periodo repartido por la sede a la que llegan las órdenes (comparación de sedes)
  */
 public record InformeContenido(LocalDate desde, LocalDate hasta, LocalDateTime generadoEn, Resumen resumen,
         List<SolicitudFila> solicitudes, List<RfqFila> rfqs, List<CotizacionFila> cotizaciones,
-        List<AdjudicacionFila> adjudicaciones, GastoResponse gasto, boolean recortado) {
+        List<AdjudicacionFila> adjudicaciones, GastoResponse gasto, boolean recortado,
+        List<com.proyecto.supply_core.reporte.dto.GastoItem> gastoPorSede) {
 
     /** Filas máximas por lista. */
     public static final int MAXIMO_FILAS = 200;

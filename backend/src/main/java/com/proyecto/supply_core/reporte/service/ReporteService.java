@@ -168,9 +168,25 @@ public class ReporteService {
      * @throws ParametroInvalidoException si {@code desde} es posterior a {@code hasta}
      */
     public List<ProveedorRanking> proveedores(LocalDate desde, LocalDate hasta, Long categoriaId) {
+        return proveedores(desde, hasta, categoriaId, null);
+    }
+
+    /**
+     * Ranking de proveedores; con sede, solo las órdenes que llegan a bodegas de esa sede.
+     *
+     * @param desde       emisión desde (incluida), opcional
+     * @param hasta       emisión hasta (incluida), opcional
+     * @param categoriaId solo líneas de esta categoría, opcional
+     * @param sedeId      solo órdenes con bodega destino en esta sede, opcional
+     * @return ranking, vacío si no hubo órdenes
+     * @throws ParametroInvalidoException si {@code desde} es posterior a {@code hasta}
+     * @throws NoEncontradoException      si la sede no es de la empresa
+     */
+    public List<ProveedorRanking> proveedores(LocalDate desde, LocalDate hasta, Long categoriaId, Long sedeId) {
         validarRango(desde, hasta);
+        validarSede(reporteRepository, sedeId);
         List<GastoItem> gasto = reporteRepository
-                .gastoPorProveedor(NO_VIGENTES, inicio(desde), fin(hasta), categoriaId, null, null).stream()
+                .gastoPorProveedor(NO_VIGENTES, inicio(desde), fin(hasta), categoriaId, null, sedeId).stream()
                 .map(ReporteService::item).toList();
         Map<Long, BigDecimal> scores = new HashMap<>();
         for (Proveedor p : proveedorRepository.findAllById(gasto.stream().map(GastoItem::id).toList())) {

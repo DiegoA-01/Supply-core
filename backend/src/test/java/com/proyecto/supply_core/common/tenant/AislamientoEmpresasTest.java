@@ -1787,6 +1787,277 @@ class AislamientoEmpresasTest {
         }
     }
 
+    @Test
+    void cadaSedeTieneSusLimitesYElPlanSugiereTrasladarDesdeLaQueLeSobra() throws Exception {
+        Long sedeA = jdbc.queryForObject("SELECT sede_id FROM bodega WHERE id = ?", Long.class, bodegaA);
+        Long sedeB = jdbc.queryForObject("SELECT sede_id FROM bodega WHERE id = ?", Long.class, bodegaB);
+        jdbc.update("INSERT INTO sede (empresa_id, nombre) VALUES (?, 'Sede sur')", empresaA);
+        Long sedeSur = jdbc.queryForObject("SELECT MAX(id) FROM sede WHERE empresa_id = ?", Long.class, empresaA);
+        jdbc.update("INSERT INTO bodega (empresa_id, sede_id, nombre) VALUES (?, ?, 'Bodega sur')", empresaA, sedeSur);
+        Long bodegaSur = jdbc.queryForObject("SELECT MAX(id) FROM bodega WHERE sede_id = ?", Long.class, sedeSur);
+        Long stockPrincipal = jdbc.queryForObject("SELECT COALESCE(SUM(cantidad), 0) FROM stock_producto_bodega "
+                + "WHERE producto_id = ? AND bodega_id = ?", Long.class, productoA, bodegaA);
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        String comprasA = token(empresaA, usuarioA, "ADMIN_COMPRAS");
+        try {
+            // la sede sur tiene 500 y no vende; la principal vende 90 en el período y tiene poco
+            jdbc.update("INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad) VALUES (?, ?, ?, 500)",
+                    empresaA, productoA, bodegaSur);
+            jdbc.update("INSERT INTO movimiento_inventario (empresa_id, producto_id, bodega_origen_id, usuario_id, tipo, "
+                    + "cantidad, stock_resultante, creado_en) VALUES (?, ?, ?, ?, 'SALIDA_CONSUMO', 90, 0, NOW())",
+                    empresaA, productoA, bodegaA, usuarioA);
+
+            // límites propios de la sede principal
+            mvc.perform(put("/api/productos/" + productoA + "/sedes/" + sedeA).header(HttpHeaders.AUTHORIZATION, comprasA)
+                            .contentType(json).content("{\"stockMinimo\":40,\"stockMaximo\":200}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.configurado").value(true))
+                    .andExpect(jsonPath("$.stockMinimo").value(40.0));
+            mvc.perform(get("/api/productos/" + productoA + "/sedes").header(HttpHeaders.AUTHORIZATION, comprasA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.sedeId==" + sedeSur + ")].stock").value(500.0))
+                    .andExpect(jsonPath("$[?(@.sedeId==" + sedeB + ")]").isEmpty());
+
+            // el plan de la principal usa su mínimo propio y sugiere traer de la sur antes de comprar
+            mvc.perform(get("/api/reabastecimiento?sedeId=" + sedeA).header(HttpHeaders.AUTHORIZATION, comprasA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.items[0].stockMinimo").value(40.0))
+                    .andExpect(jsonPath("$.items[0].trasladoDesdeSedeId").value(sedeSur))
+                    .andExpect(jsonPath("$.items[0].cantidadComprar").value(0.0));
+            mvc.perform(get("/api/reabastecimiento/sedes").header(HttpHeaders.AUTHORIZATION, comprasA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.sedeId==" + sedeA + ")].traslados").value(1))
+                    .andExpect(jsonPath("$[?(@.sedeId==" + sedeB + ")]").isEmpty());
+
+            // nada de la otra empresa: ni su sede ni su producto
+            mvc.perform(put("/api/productos/" + productoA + "/sedes/" + sedeB).header(HttpHeaders.AUTHORIZATION, comprasA)
+                            .contentType(json).content("{\"stockMinimo\":1}"))
+                    .andExpect(status().isNotFound());
+            mvc.perform(get("/api/productos/" + productoB + "/sedes").header(HttpHeaders.AUTHORIZATION, comprasA))
+                    .andExpect(status().isNotFound());
+            mvc.perform(put("/api/productos/" + productoA + "/sedes/" + sedeA)
+                            .header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "COMPRADOR"))
+                            .contentType(json).content("{\"stockMinimo\":1}"))
+                    .andExpect(status().isForbidden());
+        } finally {
+            jdbc.update("DELETE FROM movimiento_inventario WHERE empresa_id = ? AND cantidad = 90 AND bodega_origen_id = ?",
+                    empresaA, bodegaA);
+            jdbc.update("DELETE FROM producto_sede WHERE empresa_id = ?", empresaA);
+            jdbc.update("DELETE FROM stock_producto_bodega WHERE bodega_id = ?", bodegaSur);
+            jdbc.update("DELETE FROM bodega WHERE id = ?", bodegaSur);
+            jdbc.update("DELETE FROM sede WHERE id = ?", sedeSur);
+            org.junit.jupiter.api.Assertions.assertEquals(stockPrincipal, jdbc.queryForObject(
+                    "SELECT COALESCE(SUM(cantidad), 0) FROM stock_producto_bodega WHERE producto_id = ? AND bodega_id = ?",
+                    Long.class, productoA, bodegaA));
+        }
+    }
+
+    @Test
+    void elPedidoInternoSoloLoVeCompraYNuncaCruzaDeEmpresa() throws Exception {
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        String almacenA = token(empresaA, usuarioA, "ALMACENISTA");
+        String compradorA = token(empresaA, usuarioA2, "COMPRADOR");
+        try {
+            // cualquiera de la empresa pide; compras recibe el aviso
+            String creado = mvc.perform(post("/api/pedidos-internos").header(HttpHeaders.AUTHORIZATION, almacenA)
+                            .contentType(json).content("{\"productoId\":" + productoA + ",\"cantidad\":12,\"nota\":\"para la obra\"}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.estado").value("PENDIENTE"))
+                    .andExpect(jsonPath("$.consecutivo").value(org.hamcrest.Matchers.startsWith("PED-")))
+                    .andReturn().getResponse().getContentAsString();
+            long id = new com.fasterxml.jackson.databind.ObjectMapper().readTree(creado).get("id").asLong();
+            mvc.perform(post("/api/pedidos-internos").header(HttpHeaders.AUTHORIZATION, almacenA)
+                            .contentType(json).content("{\"descripcion\":\"Guantes de carnaza talla L\"}"))
+                    .andExpect(status().isCreated());
+            // no se puede pedir sin decir qué, ni un producto de otra empresa
+            mvc.perform(post("/api/pedidos-internos").header(HttpHeaders.AUTHORIZATION, almacenA)
+                            .contentType(json).content("{\"cantidad\":3}"))
+                    .andExpect(status().isBadRequest());
+            mvc.perform(post("/api/pedidos-internos").header(HttpHeaders.AUTHORIZATION, almacenA)
+                            .contentType(json).content("{\"productoId\":" + productoB + "}"))
+                    .andExpect(status().isNotFound());
+
+            // compras ve todos; la otra empresa no ve ninguno ni puede responderlo
+            mvc.perform(get("/api/pedidos-internos").header(HttpHeaders.AUTHORIZATION, compradorA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.totalElementos").value(2));
+            mvc.perform(get("/api/pedidos-internos").header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "COMPRADOR")))
+                    .andExpect(jsonPath("$.totalElementos").value(0));
+            mvc.perform(patch("/api/pedidos-internos/" + id).header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "COMPRADOR"))
+                            .contentType(json).content("{\"estado\":\"ATENDIDO\"}"))
+                    .andExpect(status().isNotFound());
+            // quien no es de compras no responde
+            mvc.perform(patch("/api/pedidos-internos/" + id).header(HttpHeaders.AUTHORIZATION, almacenA)
+                            .contentType(json).content("{\"estado\":\"ATENDIDO\"}"))
+                    .andExpect(status().isForbidden());
+
+            // descartar exige explicar; atendido queda cerrado y le llega el aviso a quien pidió
+            mvc.perform(patch("/api/pedidos-internos/" + id).header(HttpHeaders.AUTHORIZATION, compradorA)
+                            .contentType(json).content("{\"estado\":\"DESCARTADO\"}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("RESPUESTA_REQUERIDA"));
+            mvc.perform(patch("/api/pedidos-internos/" + id).header(HttpHeaders.AUTHORIZATION, compradorA)
+                            .contentType(json).content("{\"estado\":\"ATENDIDO\",\"respuesta\":\"Se trasladaron 12 desde la sede sur\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("ATENDIDO"));
+            mvc.perform(patch("/api/pedidos-internos/" + id).header(HttpHeaders.AUTHORIZATION, compradorA)
+                            .contentType(json).content("{\"estado\":\"EN_GESTION\"}"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("PEDIDO_CERRADO"));
+            org.junit.jupiter.api.Assertions.assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM notificacion "
+                    + "WHERE usuario_id = ? AND evento = 'PEDIDO_INTERNO_RESPONDIDO'", Integer.class, usuarioA));
+        } finally {
+            jdbc.update("DELETE FROM notificacion WHERE evento IN ('PEDIDO_INTERNO', 'PEDIDO_INTERNO_RESPONDIDO')");
+            jdbc.update("DELETE FROM pedido_interno WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+        }
+    }
+
+    @Test
+    void losPreciosDeVentaSonDeCadaEmpresaYSoloLosFijaElDueno() throws Exception {
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        String duenoA = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+        Long costoAntes = null;
+        try {
+            jdbc.update("UPDATE producto SET costo_referencia = 7000 WHERE id = ?", productoA);
+            // cada empresa tiene su lista General (la crea la migración o el primer uso)
+            String listas = mvc.perform(get("/api/ventas/listas").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            long generalA = new com.fasterxml.jackson.databind.ObjectMapper().readTree(listas).get(0).get("id").asLong();
+            String listasB = mvc.perform(get("/api/ventas/listas").header(HttpHeaders.AUTHORIZATION,
+                    token(empresaB, usuarioB, "ADMIN_SISTEMA"))).andReturn().getResponse().getContentAsString();
+            long generalB = new com.fasterxml.jackson.databind.ObjectMapper().readTree(listasB).get(0).get("id").asLong();
+
+            // un producto sin impuesto se marca; al asignarle IVA 19 % el margen se mide sobre la base
+            mvc.perform(get("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$.filas[?(@.productoId==" + productoA + ")].alertas[*]",
+                            org.hamcrest.Matchers.hasItem("SIN_IMPUESTO")));
+            String impuestos = mvc.perform(get("/api/ventas/impuestos").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andReturn().getResponse().getContentAsString();
+            long iva19 = 0;
+            for (var t : new com.fasterxml.jackson.databind.ObjectMapper().readTree(impuestos)) {
+                if ("IVA19".equals(t.get("codigo").asText())) {
+                    iva19 = t.get("id").asLong();
+                }
+            }
+            mvc.perform(put("/api/ventas/productos/" + productoA).header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"tarifaImpuestoId\":" + iva19 + ",\"vendible\":true,\"precioIncluyeImpuesto\":true}"))
+                    .andExpect(status().isOk());
+
+            // IVA incluido 19 %: 11.900 => base 10.000, margen 3.000 sobre costo 7.000 = 30 %
+            mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"listaId\":" + generalA + ",\"productoId\":" + productoA + ",\"precio\":11900}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.base").value(10000.0))
+                    .andExpect(jsonPath("$.margenPct").value(30.0));
+            mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"listaId\":" + generalA + ",\"productoId\":" + productoA + ",\"precio\":12500,\"motivo\":\"alza\"}"))
+                    .andExpect(status().isOk());
+            // el historial conserva los dos: el anterior cerrado y el nuevo vigente
+            mvc.perform(get("/api/ventas/precios/historial?listaId=" + generalA + "&productoId=" + productoA)
+                            .header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$.length()").value(2))
+                    .andExpect(jsonPath("$[0].precio").value(12500.0))
+                    .andExpect(jsonPath("$[0].vigenteHasta").doesNotExist())
+                    .andExpect(jsonPath("$[1].vigenteHasta").exists());
+            mvc.perform(get("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$.conPrecio").value(1))
+                    .andExpect(jsonPath("$.filas[?(@.productoId==" + productoB + ")]").isEmpty());
+
+            // el jefe de compras solo fija precios si el dueño se lo delegó
+            String comprasA = token(empresaA, usuarioA, "ADMIN_COMPRAS");
+            String body = "{\"listaId\":" + generalA + ",\"productoId\":" + productoA + ",\"precio\":13000}";
+            mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, comprasA).contentType(json).content(body))
+                    .andExpect(status().isForbidden());
+            jdbc.update("UPDATE empresa SET precios_delegados_compras = 1 WHERE id = ?", empresaA);
+            mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, comprasA).contentType(json).content(body))
+                    .andExpect(status().isOk());
+            // el comprador no ve costos ni márgenes
+            mvc.perform(get("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "COMPRADOR")))
+                    .andExpect(status().isForbidden());
+
+            // nada cruza de empresa: ni la lista ni el producto de la otra
+            mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"listaId\":" + generalB + ",\"productoId\":" + productoA + ",\"precio\":1}"))
+                    .andExpect(status().isNotFound());
+            mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"listaId\":" + generalA + ",\"productoId\":" + productoB + ",\"precio\":1}"))
+                    .andExpect(status().isNotFound());
+            mvc.perform(get("/api/ventas/precios?listaId=" + generalB).header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isNotFound());
+        } finally {
+            jdbc.update("DELETE FROM precio_producto WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("UPDATE empresa SET precios_delegados_compras = 0 WHERE id = ?", empresaA);
+            jdbc.update("UPDATE producto SET costo_referencia = NULL, tarifa_impuesto_id = NULL WHERE id = ?", productoA);
+        }
+    }
+
+    @Test
+    void elCatalogoDelProveedorSeCruzaConElInventarioSinQueElProveedorVeaNadaNuestro() throws Exception {
+        String portalA = tokenProveedor(empresaA, usuarioA, proveedorA);
+        String comprasA = token(empresaA, usuarioA, "ADMIN_COMPRAS");
+        String[] cabecera = { "codigo", "descripcion", "marca", "unidad", "precio", "incluye_iva" };
+        String unidad = jdbc.queryForObject("SELECT u.codigo FROM producto p JOIN unidad_medida u ON u.id = p.unidad_medida_id "
+                + "WHERE p.id = ?", String.class, productoA);
+        try {
+            jdbc.update("UPDATE producto SET costo_referencia = 1000 WHERE id = ?", productoA);
+            // el proveedor sube su catálogo: uno se parece a nuestro producto, otro no lo manejamos
+            var archivo = excel(cabecera, new Object[] { "PR-77", "Cable de la empresa A calibre 12", "Centelsa", unidad, 900, "no" },
+                    new Object[] { "PR-78", "Guantes de carnaza talla L", null, "UND", 5000, "si" });
+            mvc.perform(multipart("/api/portal/catalogo").file(new org.springframework.mock.web.MockMultipartFile(
+                            "archivo", "catalogo.xlsx", archivo.getContentType(), archivo.getBytes()))
+                            .header(HttpHeaders.AUTHORIZATION, portalA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.aplicado").value(true))
+                    .andExpect(jsonPath("$.nuevos").value(2));
+            // el proveedor ve su catálogo sin ninguna equivalencia
+            mvc.perform(get("/api/portal/catalogo").header(HttpHeaders.AUTHORIZATION, portalA))
+                    .andExpect(jsonPath("$.length()").value(2))
+                    .andExpect(jsonPath("$[0].productoId").doesNotExist())
+                    .andExpect(jsonPath("$[0].estadoEquivalencia").doesNotExist());
+
+            // compras ve la sugerencia, la confirma y aparece la oportunidad (10 % más barato)
+            String sugeridos = mvc.perform(get("/api/catalogos?estado=SUGERIDA").header(HttpHeaders.AUTHORIZATION, comprasA))
+                    .andExpect(jsonPath("$.contenido[0].productoId").value(productoA))
+                    .andReturn().getResponse().getContentAsString();
+            long item = new com.fasterxml.jackson.databind.ObjectMapper().readTree(sugeridos).get("contenido").get(0).get("id").asLong();
+            mvc.perform(get("/api/catalogos/oportunidades").header(HttpHeaders.AUTHORIZATION, comprasA))
+                    .andExpect(jsonPath("$").isEmpty());    // sin confirmar no hay oportunidad
+            mvc.perform(patch("/api/catalogos/" + item).header(HttpHeaders.AUTHORIZATION, comprasA)
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"estado\":\"CONFIRMADA\",\"productoId\":" + productoA + "}"))
+                    .andExpect(status().isOk());
+            mvc.perform(get("/api/catalogos/oportunidades").header(HttpHeaders.AUTHORIZATION, comprasA))
+                    .andExpect(jsonPath("$[0].productoId").value(productoA))
+                    .andExpect(jsonPath("$[0].ahorroPct").value(10.0));
+
+            // la otra empresa no ve el catálogo ni puede decidir sobre él; su producto no sirve como equivalencia
+            mvc.perform(get("/api/catalogos").header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "ADMIN_COMPRAS")))
+                    .andExpect(jsonPath("$.totalElementos").value(0));
+            mvc.perform(patch("/api/catalogos/" + item).header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "ADMIN_COMPRAS"))
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"estado\":\"DESCARTADA\"}"))
+                    .andExpect(status().isNotFound());
+            mvc.perform(patch("/api/catalogos/" + item).header(HttpHeaders.AUTHORIZATION, comprasA)
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"estado\":\"CONFIRMADA\",\"productoId\":" + productoB + "}"))
+                    .andExpect(status().isNotFound());
+            // el proveedor no entra a la vista de compras
+            mvc.perform(get("/api/catalogos/oportunidades").header(HttpHeaders.AUTHORIZATION, portalA))
+                    .andExpect(status().isForbidden());
+
+            // al volver a subir sin el guante, queda inactivo y la equivalencia confirmada se conserva
+            var segundo = excel(cabecera, new Object[] { "PR-77", "Cable de la empresa A calibre 12", "Centelsa", unidad, 950, "no" });
+            mvc.perform(multipart("/api/portal/catalogo").file(new org.springframework.mock.web.MockMultipartFile(
+                            "archivo", "catalogo.xlsx", segundo.getContentType(), segundo.getBytes()))
+                            .header(HttpHeaders.AUTHORIZATION, portalA))
+                    .andExpect(jsonPath("$.actualizados").value(1))
+                    .andExpect(jsonPath("$.retirados").value(1));
+            org.junit.jupiter.api.Assertions.assertEquals("CONFIRMADA", jdbc.queryForObject(
+                    "SELECT estado_equivalencia FROM catalogo_item WHERE id = ?", String.class, item));
+        } finally {
+            jdbc.update("DELETE FROM catalogo_item WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM notificacion WHERE evento = 'CATALOGO_ACTUALIZADO'");
+            jdbc.update("UPDATE producto SET costo_referencia = NULL WHERE id = ?", productoA);
+        }
+    }
+
     // ------------------------------------------------------------------ consola de plataforma, planes y módulos (SaaS 2)
 
     private static final String CLAVE_PLATAFORMA = "ClavePlataforma2026";

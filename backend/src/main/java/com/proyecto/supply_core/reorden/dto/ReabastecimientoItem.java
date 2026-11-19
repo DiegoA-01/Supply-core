@@ -34,11 +34,34 @@ import com.proyecto.supply_core.reorden.enums.EstadoReabastecimiento;
  * @param cantidadSugerida    cantidad para cubrir plazo, seguridad y los días de cobertura de la empresa
  * @param estado              urgencia
  * @param motivo              explicación corta del estado
+ * @param sobrante            stock que la sede puede ceder sin quedarse corta (por encima de lo que necesita para
+ *                            plazo, seguridad y cobertura, y de su mínimo)
+ * @param cantidadTraslado    cuánto traer de otra sede antes de comprar (0 si no aplica; solo en la vista por sede)
+ * @param trasladoDesdeSedeId sede de la que conviene trasladar ({@code null} si no aplica)
+ * @param trasladoDesdeSede   nombre de esa sede ({@code null} si no aplica)
+ * @param cantidadComprar     lo que queda por comprar después del traslado
  */
 public record ReabastecimientoItem(Long productoId, String codigo, String nombre, String categoria, String unidad,
         BigDecimal stock, BigDecimal stockMinimo, BigDecimal stockMaximo, BigDecimal porRecibir,
         BigDecimal enSolicitudes, BigDecimal consumoDiario, BigDecimal diasCobertura, LocalDate fechaAgotamiento,
         int plazoEntregaDias, boolean plazoPropio, int diasSeguridad, BigDecimal plazoHistorico,
         int entregasHistoricas, LocalDate llegadaSiPidoHoy, BigDecimal puntoPedido, LocalDate pedirAntesDe,
-        BigDecimal cantidadSugerida, EstadoReabastecimiento estado, String motivo) {
+        BigDecimal cantidadSugerida, EstadoReabastecimiento estado, String motivo, BigDecimal sobrante,
+        BigDecimal cantidadTraslado, Long trasladoDesdeSedeId, String trasladoDesdeSede, BigDecimal cantidadComprar) {
+
+    /**
+     * Copia con un traslado sugerido: se trae de otra sede antes de comprar.
+     *
+     * @param cantidad cantidad a trasladar (no mayor que la sugerida)
+     * @param sedeId   sede de origen
+     * @param sede     nombre de la sede de origen
+     * @return copia con el traslado y lo que queda por comprar
+     */
+    public ReabastecimientoItem conTraslado(BigDecimal cantidad, Long sedeId, String sede) {
+        return new ReabastecimientoItem(productoId, codigo, nombre, categoria, unidad, stock, stockMinimo, stockMaximo,
+                porRecibir, enSolicitudes, consumoDiario, diasCobertura, fechaAgotamiento, plazoEntregaDias,
+                plazoPropio, diasSeguridad, plazoHistorico, entregasHistoricas, llegadaSiPidoHoy, puntoPedido,
+                pedirAntesDe, cantidadSugerida, estado, motivo, sobrante, cantidad, sedeId, sede,
+                cantidadSugerida.subtract(cantidad).max(BigDecimal.ZERO));
+    }
 }

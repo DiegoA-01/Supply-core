@@ -2,8 +2,10 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 
-import { EstadoReabastecimiento, ItemReabastecimiento, Reabastecimiento } from '../../core/api/modelos';
-import { FechaPipe, NumeroPipe } from '../../core/formato/formato';
+import { CatalogoItem, EstadoReabastecimiento, ItemReabastecimiento, ProductoEnSede, Reabastecimiento, ResumenSede } from '../../core/api/modelos';
+import { FechaPipe, NumeroPipe, PesosPipe } from '../../core/formato/formato';
+import { ROLES_CATALOGOS } from '../../core/navegacion/menu';
+import { CatalogosProveedorService } from '../../core/servicios/catalogos.proveedor.service';
 import { InventarioService } from '../../core/servicios/inventario.service';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
@@ -32,7 +34,7 @@ interface EdicionPlazo {
  */
 @Component({
   selector: 'sc-reabastecimiento',
-  imports: [FormsModule, RouterLink, NumeroPipe, FechaPipe, SelectorSede],
+  imports: [FormsModule, RouterLink, NumeroPipe, FechaPipe, PesosPipe, SelectorSede],
   templateUrl: './reabastecimiento.html',
   styleUrl: './reabastecimiento.scss',
 })
@@ -40,6 +42,7 @@ export class PlanReabastecimiento implements OnInit {
   private readonly inventario = inject(InventarioService);
   private readonly avisos = inject(Avisos);
   private readonly router = inject(Router);
+  private readonly catalogos = inject(CatalogosProveedorService);
   protected readonly sesion = inject(SesionService);
 
   protected readonly estados = Object.keys(ESTADOS) as EstadoReabastecimiento[];
@@ -51,6 +54,10 @@ export class PlanReabastecimiento implements OnInit {
   protected readonly creando = signal(false);
   protected readonly edicion = signal<EdicionPlazo | null>(null);
   protected readonly abierto = signal<number | null>(null);
+  /** Ofertas confirmadas en los catálogos de proveedores para el producto abierto. */
+  protected readonly ofertas = signal<CatalogoItem[]>([]);
+  /** Ven las ofertas de catálogos los roles de compras con el módulo de proveedores activo. */
+  protected readonly veOfertas = computed(() => this.sesion.tieneRol(ROLES_CATALOGOS) && this.sesion.tieneModulo('PROVEEDORES'));
   /** Sede del plan; {@code null} = toda la empresa. */
   protected readonly sede = signal<number | null>(null);
 
@@ -65,8 +72,23 @@ export class PlanReabastecimiento implements OnInit {
       (f === null || (f === 'PEDIR' ? ['URGENTE', 'PEDIR_YA', 'PRONTO'].includes(i.estado!) : i.estado === f))
       && (!t || `${i.codigo} ${i.nombre} ${i.categoria}`.toLowerCase().includes(t)));
   });
-  /** Productos que se pueden pasar a la solicitud (con cantidad sugerida). */
-  protected readonly pedibles = computed(() => this.items().filter(i => Number(i.cantidadSugerida) > 0));
+  /** Productos que se pueden pasar a la solicitud: lo que queda por comprar después de un posible traslado. */
+  protected readonly pedibles = computed(() => this.items().filter(i => Number(i.cantidadComprar) > 0));
+  /** Comparación de sedes (solo en la vista de toda la empresa con dos o más sedes). */
+  protected readonly comparacion = signal<ResumenSede[]>([]);
+  /** Límites del producto abierto en la sede elegida. */
+  protected readonly limiteSede = signal<{ productoId: number; minimo: number; maximo: number | null; actual?: ProductoEnSede } | null>(null);
+
+  /** @param i producto; abre o cierra su detalle y trae sus ofertas en los catálogos */
+  protected verDetalle(i: ItemReabastecimiento): void {
+    const id = this.abierto() === i.productoId ? null : i.productoId!;
+    this.abierto.set(id);
+    this.limiteSede.set(null);
+    this.ofertas.set([]);
+    if (id !== null && this.veOfertas()) {
+      this.catalogos.ofertasDe(id).subscribe({ next: l => this.ofertas.set(l), error: () => this.ofertas.set([]) });
+    }
+  }
 
   ngOnInit(): void {
     this.fechaRequerida.set(new Date().toISOString().slice(0, 10));
@@ -74,12 +96,17 @@ export class PlanReabastecimiento implements OnInit {
   }
 
   protected cargar(): void {
+    if (this.sede() === null) {
+      this.inventario.resumenSedes().subscribe({ next: l => this.comparacion.set(l.length > 1 ? l : []), error: () => this.comparacion.set([]) });
+    } else {
+      this.comparacion.set([]);
+    }
     this.inventario.reabastecimiento(this.sede()).subscribe({
       next: d => {
         this.datos.set(d);
         // por defecto quedan elegidos los urgentes y los de pedir hoy
         this.elegidos.set(new Set((d.items ?? []).filter(i => (i.estado === 'URGENTE' || i.estado === 'PEDIR_YA')
-          && Number(i.cantidadSugerida) > 0).map(i => i.productoId!)));
+          && Number(i.cantidadComprar) > 0).map(i => i.productoId!)));
         const primera = (d.items ?? []).find(i => i.estado === 'URGENTE' || i.estado === 'PEDIR_YA');
         if (primera?.llegadaSiPidoHoy) {
           this.fechaRequerida.set(primera.llegadaSiPidoHoy);
@@ -153,6 +180,48 @@ export class PlanReabastecimiento implements OnInit {
         this.creando.set(false);
         this.avisos.error(e);
       },
+    });
+  }
+
+  /** @param i producto abierto; carga su mínimo y máximo en la sede elegida para poder editarlos */
+  protected abrirLimites(i: ItemReabastecimiento): void {
+    const sede = this.sede();
+    if (sede === null) {
+      return;
+    }
+    this.inventario.productoEnSedes(i.productoId!).subscribe({
+      next: l => {
+        const actual = l.find(x => x.sedeId === sede);
+        this.limiteSede.set({ productoId: i.productoId!, minimo: Number(actual?.stockMinimo ?? 0),
+          maximo: actual?.stockMaximo == null ? null : Number(actual.stockMaximo), actual });
+      },
+      error: e => this.avisos.error(e),
+    });
+  }
+
+  /** @param campo límite; @param valor valor escrito */
+  protected cambiarLimite(campo: 'minimo' | 'maximo', valor: unknown): void {
+    const n = valor === '' || valor === null || valor === undefined ? null : Number(valor);
+    this.limiteSede.update(l => (l ? { ...l, [campo]: campo === 'minimo' ? (n ?? 0) : n } : l));
+  }
+
+  protected guardarLimites(): void {
+    const l = this.limiteSede();
+    const sede = this.sede();
+    if (!l || sede === null) {
+      return;
+    }
+    if (l.minimo < 0 || (l.maximo !== null && l.maximo < l.minimo)) {
+      this.avisos.ok('El mínimo no puede ser negativo y el máximo no puede ser menor que el mínimo.');
+      return;
+    }
+    this.inventario.guardarLimitesSede(l.productoId, sede, l.minimo, l.maximo).subscribe({
+      next: () => {
+        this.limiteSede.set(null);
+        this.avisos.ok('Límites de la sede guardados. El plan se recalculó.');
+        this.cargar();
+      },
+      error: e => this.avisos.error(e),
     });
   }
 

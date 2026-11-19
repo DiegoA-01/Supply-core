@@ -99,7 +99,7 @@ class ExportacionServiceTest {
                 new UsuarioAutenticado(3L, "ana@ferreteria.com", "Ana", Set.of("COMPRADOR"), null, 1L));
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
         when(empresas.obtener()).thenReturn(new EmpresaResponse(1L, "Ferretería El Tornillo", "900123456-7",
-                "Calle 10 # 5-20", "COP", null, null, null, 24, null, "tornillo", 5, 2, 30));
+                "Calle 10 # 5-20", "COP", null, null, null, 24, null, "tornillo", 5, 2, 30, false));
         when(usuarios.obtener(3L)).thenReturn(usuario(3L, "Ana Compras"));
         when(centros.listar(null)).thenReturn(List.of(new CentroCostoResponse(2L, "CC-02", "Obras", true)));
         when(proveedores.obtener(11L)).thenReturn(new ProveedorResponse(11L, "Eléctricos del Norte", "901555444-1",

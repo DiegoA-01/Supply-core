@@ -25,6 +25,7 @@ import jakarta.validation.constraints.Size;
  * @param plazoEntregaDiasDefecto días hábiles que suele tardar un pedido, de 0 a 120 (opcional)
  * @param diasSeguridadDefecto    días hábiles de colchón, de 0 a 60 (opcional)
  * @param diasCoberturaDefecto    días de calendario que debe cubrir un pedido al llegar, de 1 a 365 (opcional)
+ * @param preciosDelegadosCompras el jefe de compras también puede fijar precios de venta (opcional)
  */
 public record EmpresaRequest(
         @NotBlank(message = "es obligatoria")
@@ -64,5 +65,6 @@ public record EmpresaRequest(
         Integer diasSeguridadDefecto,
         @Min(value = 1, message = "debe ser al menos 1 día")
         @Max(value = 365, message = "no puede superar 365 días")
-        Integer diasCoberturaDefecto) {
+        Integer diasCoberturaDefecto,
+        Boolean preciosDelegadosCompras) {
 }

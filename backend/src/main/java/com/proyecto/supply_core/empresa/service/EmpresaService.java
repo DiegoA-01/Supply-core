@@ -84,6 +84,9 @@ public class EmpresaService {
         if (req.diasCoberturaDefecto() != null) {
             e.setDiasCoberturaDefecto(req.diasCoberturaDefecto());
         }
+        if (req.preciosDelegadosCompras() != null) {
+            e.setPreciosDelegadosCompras(req.preciosDelegadosCompras());
+        }
         auditoriaService.exito(AccionAuditoria.EMPRESA_EDITAR, EntidadAuditada.EMPRESA, e.getId(),
                 "antes: " + antes + " | después: " + describir(e));
         return EmpresaResponse.of(e);
@@ -112,6 +115,6 @@ public class EmpresaService {
                 + ", toleranciaFacturaMonto=" + e.getToleranciaFacturaMonto() + ", slaAprobacionHoras="
                 + e.getSlaAprobacionHoras() + ", plazoEntregaDiasDefecto=" + e.getPlazoEntregaDiasDefecto()
                 + ", diasSeguridadDefecto=" + e.getDiasSeguridadDefecto() + ", diasCoberturaDefecto="
-                + e.getDiasCoberturaDefecto();
+                + e.getDiasCoberturaDefecto() + ", preciosDelegadosCompras=" + e.isPreciosDelegadosCompras();
     }
 }

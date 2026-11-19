@@ -56,11 +56,16 @@ import { SesionService } from '../../core/sesion/sesion.service';
           <input id="cob" type="number" min="1" max="365" class="entrada num" [ngModel]="datos().diasCoberturaDefecto" (ngModelChange)="cambiar('diasCoberturaDefecto', $event)">
           <span class="ayuda">Días de calendario que cubre cada pedido después de llegar.</span></div>
       </div>
+      <h3 class="separa">Precios de venta</h3>
+      <label class="opcion-delegar"><input type="checkbox" [ngModel]="datos().preciosDelegadosCompras" (ngModelChange)="cambiar('preciosDelegadosCompras', $event)">
+        El jefe de compras también puede fijar precios de venta</label>
+      <p class="texto-chico texto-2">Si no lo marcas, solo el administrador de la empresa cambia precios. Cada cambio queda en el historial.</p>
       <button type="button" class="boton primario separa" [disabled]="trabajando() || sesion.soloLectura()" (click)="guardar()">Guardar cambios</button>
       </section>
     </div>
   `,
-  styles: `h3 { margin: 0 0 12px; } .separa { margin-top: 18px; }`,
+  styles: `h3 { margin: 0 0 12px; } .separa { margin-top: 18px; }
+    .opcion-delegar { display: flex; align-items: center; gap: 8px; input { accent-color: var(--sc-primario); } }`,
 })
 export class ConfigEmpresa implements OnInit {
   private readonly servicio = inject(ConfiguracionService);
@@ -78,6 +83,7 @@ export class ConfigEmpresa implements OnInit {
         topeAnticipoPct: e.topeAnticipoPct, toleranciaFacturaPct: e.toleranciaFacturaPct, toleranciaFacturaMonto: e.toleranciaFacturaMonto,
         slaAprobacionHoras: e.slaAprobacionHoras, plazoEntregaDiasDefecto: e.plazoEntregaDiasDefecto,
         diasSeguridadDefecto: e.diasSeguridadDefecto, diasCoberturaDefecto: e.diasCoberturaDefecto,
+        preciosDelegadosCompras: e.preciosDelegadosCompras,
       });
     }
   }

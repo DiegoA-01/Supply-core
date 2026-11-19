@@ -22,11 +22,13 @@ import com.proyecto.supply_core.empresa.entity.Empresa;
  * @param plazoEntregaDiasDefecto días hábiles que suele tardar un pedido en llegar
  * @param diasSeguridadDefecto    días hábiles de colchón por retrasos o picos de consumo
  * @param diasCoberturaDefecto    días de calendario que debe cubrir un pedido al llegar
+ * @param preciosDelegadosCompras el jefe de compras también puede fijar precios de venta
  */
 public record EmpresaResponse(Long id, String razonSocial, String nit, String direccionPrincipal,
         String monedaBase, BigDecimal topeAnticipoPct, BigDecimal toleranciaFacturaPct,
         BigDecimal toleranciaFacturaMonto, int slaAprobacionHoras, LocalDateTime creadoEn,
-        String codigoPublico, int plazoEntregaDiasDefecto, int diasSeguridadDefecto, int diasCoberturaDefecto) {
+        String codigoPublico, int plazoEntregaDiasDefecto, int diasSeguridadDefecto, int diasCoberturaDefecto,
+        boolean preciosDelegadosCompras) {
 
     /**
      * Convierte la entidad en DTO.
@@ -38,6 +40,6 @@ public record EmpresaResponse(Long id, String razonSocial, String nit, String di
         return new EmpresaResponse(e.getId(), e.getRazonSocial(), e.getNit(), e.getDireccionPrincipal(),
                 e.getMonedaBase(), e.getTopeAnticipoPct(), e.getToleranciaFacturaPct(), e.getToleranciaFacturaMonto(),
                 e.getSlaAprobacionHoras(), e.getCreadoEn(), e.getCodigoPublico(), e.getPlazoEntregaDiasDefecto(),
-                e.getDiasSeguridadDefecto(), e.getDiasCoberturaDefecto());
+                e.getDiasSeguridadDefecto(), e.getDiasCoberturaDefecto(), e.isPreciosDelegadosCompras());
     }
 }

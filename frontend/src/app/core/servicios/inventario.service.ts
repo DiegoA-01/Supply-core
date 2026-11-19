@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  Bodega, CargaMasiva, Categoria, CorreoExportacion, Movimiento, MovimientoNuevo, RegistroMovimiento, StockBodega, InventarioResumen, Pagina, Producto, ProductoNuevo, Reabastecimiento, Solicitud, SugerenciaReorden, UnidadMedida,
+  Bodega, CargaMasiva, Categoria, CorreoExportacion, Movimiento, MovimientoNuevo, RegistroMovimiento, StockBodega, InventarioResumen, Pagina, Producto, ProductoEnSede, ProductoNuevo, Reabastecimiento, ResumenSede, Solicitud, SugerenciaReorden, UnidadMedida,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
@@ -83,6 +83,28 @@ export class InventarioService {
    */
   reabastecimiento(sedeId: number | null = null): Observable<Reabastecimiento> {
     return this.http.get<Reabastecimiento>(api('/api/reabastecimiento'), { params: parametros({ sedeId }) });
+  }
+
+  /** Comparación de sedes: productos por pedir y traslados posibles en cada una (lo calcula el backend). */
+  resumenSedes(): Observable<ResumenSede[]> {
+    return this.http.get<ResumenSede[]>(api('/api/reabastecimiento/sedes'));
+  }
+
+  /** @param productoId producto; su stock y sus límites en cada sede */
+  productoEnSedes(productoId: number): Observable<ProductoEnSede[]> {
+    return this.http.get<ProductoEnSede[]>(api(`/api/productos/${productoId}/sedes`));
+  }
+
+  /**
+   * Fija el mínimo y el máximo de un producto en una sede.
+   *
+   * @param productoId  producto
+   * @param sedeId      sede
+   * @param stockMinimo mínimo en la sede (0 = sin mínimo propio)
+   * @param stockMaximo máximo en la sede (vacío = sin máximo)
+   */
+  guardarLimitesSede(productoId: number, sedeId: number, stockMinimo: number, stockMaximo: number | null): Observable<ProductoEnSede> {
+    return this.http.put<ProductoEnSede>(api(`/api/productos/${productoId}/sedes/${sedeId}`), { stockMinimo, stockMaximo });
   }
 
   /**

@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -37,6 +38,9 @@ import com.proyecto.supply_core.reorden.dto.EntregaHistorica;
 import com.proyecto.supply_core.reorden.dto.ReabastecimientoBorradorRequest;
 import com.proyecto.supply_core.reorden.dto.ReabastecimientoItem;
 import com.proyecto.supply_core.reorden.dto.ReabastecimientoResponse;
+import com.proyecto.supply_core.reorden.dto.ResumenSede;
+import com.proyecto.supply_core.inventario.entity.ProductoSede;
+import com.proyecto.supply_core.inventario.repository.ProductoSedeRepository;
 import com.proyecto.supply_core.reorden.enums.EstadoReabastecimiento;
 import com.proyecto.supply_core.reorden.repository.ReordenRepository;
 import com.proyecto.supply_core.reporte.dto.RotacionItem;
@@ -87,6 +91,7 @@ public class ReabastecimientoService {
     private final EmpresaService empresaService;
     private final SolicitudService solicitudService;
     private final AuditoriaService auditoriaService;
+    private final ProductoSedeRepository productoSedeRepository;
     private final Clock reloj;
 
     /**
@@ -97,13 +102,15 @@ public class ReabastecimientoService {
      * @param empresaService     valores por defecto de la empresa
      * @param solicitudService   creación del borrador
      * @param auditoriaService   registro de borradores generados
+     * @param productoSedeRepository mínimos y máximos propios de cada sede
      */
     @Autowired
     public ReabastecimientoService(RotacionService rotacionService, ProductoRepository productoRepository,
             ReordenService reordenService, ReordenRepository reordenRepository, EmpresaService empresaService,
-            SolicitudService solicitudService, AuditoriaService auditoriaService) {
+            SolicitudService solicitudService, AuditoriaService auditoriaService,
+            ProductoSedeRepository productoSedeRepository) {
         this(rotacionService, productoRepository, reordenService, reordenRepository, empresaService, solicitudService,
-                auditoriaService, Clock.systemDefaultZone());
+                auditoriaService, productoSedeRepository, Clock.systemDefaultZone());
     }
 
     /**
@@ -114,11 +121,14 @@ public class ReabastecimientoService {
      * @param empresaService     valores por defecto de la empresa
      * @param solicitudService   creación del borrador
      * @param auditoriaService   registro de borradores generados
+     * @param productoSedeRepository mínimos y máximos propios de cada sede
      * @param reloj              reloj para saber qué día es hoy (se cambia en las pruebas)
      */
     ReabastecimientoService(RotacionService rotacionService, ProductoRepository productoRepository,
             ReordenService reordenService, ReordenRepository reordenRepository, EmpresaService empresaService,
-            SolicitudService solicitudService, AuditoriaService auditoriaService, Clock reloj) {
+            SolicitudService solicitudService, AuditoriaService auditoriaService,
+            ProductoSedeRepository productoSedeRepository, Clock reloj) {
+        this.productoSedeRepository = productoSedeRepository;
         this.rotacionService = rotacionService;
         this.productoRepository = productoRepository;
         this.reordenService = reordenService;
@@ -140,9 +150,10 @@ public class ReabastecimientoService {
     }
 
     /**
-     * Plan de reabastecimiento de la empresa o de una sede. Por sede cuentan el stock y el consumo de sus bodegas y
-     * las órdenes que llegan a ellas; no se descuentan las solicitudes (no tienen sede) ni se aplican el mínimo y el
-     * máximo del producto, que son totales de la empresa.
+     * Plan de reabastecimiento de la empresa o de una sede. Por sede cuentan el stock y el consumo de sus bodegas, las
+     * órdenes que llegan a ellas y el mínimo y máximo propios de la sede (si no tiene, se guía solo por su consumo);
+     * no se descuentan las solicitudes, que no tienen sede. En la vista por sede, si otra sede tiene sobrante del
+     * producto, se sugiere trasladar antes de comprar.
      *
      * @param sedeId sede, o {@code null} para toda la empresa
      * @return plan con resumen, de más a menos urgente
@@ -150,6 +161,116 @@ public class ReabastecimientoService {
      */
     @Transactional(readOnly = true)
     public ReabastecimientoResponse plan(Long sedeId) {
+        if (sedeId == null) {
+            return planBase(null);
+        }
+        ReabastecimientoResponse propio = planBase(sedeId);   // valida la sede (404 si no es de la empresa)
+        Map<Long, ReabastecimientoResponse> planes = planesDeSedes();
+        planes.put(sedeId, propio);
+        return conTraslados(sedeId, propio, planes, nombresDeSedes());
+    }
+
+    /**
+     * Comparación de las sedes activas: cuántos productos tiene cada una en cada estado y cuántos podría cubrir
+     * trasladando desde otra sede.
+     *
+     * @return una fila por sede activa, por nombre
+     */
+    @Transactional(readOnly = true)
+    public List<ResumenSede> resumenSedes() {
+        Map<Long, ReabastecimientoResponse> planes = planesDeSedes();
+        Map<Long, String> nombres = nombresDeSedes();
+        List<ResumenSede> filas = new ArrayList<>();
+        nombres.forEach((id, nombre) -> {
+            ReabastecimientoResponse p = conTraslados(id, planes.get(id), planes, nombres);
+            filas.add(new ResumenSede(id, nombre, p.items().size(), p.urgentes(), p.pedirYa(), p.pronto(), p.ok(),
+                    p.sinConsumo(), p.items().stream().filter(i -> i.cantidadTraslado().signum() > 0).count()));
+        });
+        return filas;
+    }
+
+    /**
+     * Planes con traslados de cada sede activa (para el resumen diario por sede).
+     *
+     * @return plan por nombre de sede, en orden alfabético; vacío si la empresa tiene menos de dos sedes
+     */
+    @Transactional(readOnly = true)
+    public Map<String, ReabastecimientoResponse> planesPorSede() {
+        Map<Long, String> nombres = nombresDeSedes();
+        if (nombres.size() < 2) {
+            return Map.of();
+        }
+        Map<Long, ReabastecimientoResponse> planes = planesDeSedes();
+        Map<String, ReabastecimientoResponse> resultado = new LinkedHashMap<>();
+        nombres.forEach((id, nombre) -> resultado.put(nombre, conTraslados(id, planes.get(id), planes, nombres)));
+        return resultado;
+    }
+
+    /**
+     * @return id y nombre de las sedes activas, en orden alfabético
+     */
+    private Map<Long, String> nombresDeSedes() {
+        Map<Long, String> nombres = new LinkedHashMap<>();
+        productoSedeRepository.sedesActivas().forEach(s -> nombres.put(s.getId(), s.getNombre()));
+        return nombres;
+    }
+
+    /**
+     * @return plan sin traslados de cada sede activa
+     */
+    private Map<Long, ReabastecimientoResponse> planesDeSedes() {
+        Map<Long, ReabastecimientoResponse> planes = new HashMap<>();
+        nombresDeSedes().keySet().forEach(id -> planes.put(id, planBase(id)));
+        return planes;
+    }
+
+    /**
+     * Agrega al plan de una sede el traslado sugerido desde la sede con más sobrante de cada producto que necesita.
+     *
+     * @param sedeId  sede del plan
+     * @param plan    plan de la sede sin traslados
+     * @param planes  planes de todas las sedes
+     * @param nombres nombres de las sedes
+     * @return plan con traslados
+     */
+    static ReabastecimientoResponse conTraslados(Long sedeId, ReabastecimientoResponse plan,
+            Map<Long, ReabastecimientoResponse> planes, Map<Long, String> nombres) {
+        List<ReabastecimientoItem> items = plan.items().stream().map(i -> {
+            if (i.cantidadSugerida() == null || i.cantidadSugerida().signum() <= 0) {
+                return i;
+            }
+            Long mejorSede = null;
+            BigDecimal mejorSobrante = BigDecimal.ZERO;
+            for (Map.Entry<Long, ReabastecimientoResponse> otra : planes.entrySet()) {
+                if (otra.getKey().equals(sedeId)) {
+                    continue;
+                }
+                for (ReabastecimientoItem o : otra.getValue().items()) {
+                    if (o.productoId().equals(i.productoId()) && o.sobrante().compareTo(mejorSobrante) > 0) {
+                        mejorSobrante = o.sobrante();
+                        mejorSede = otra.getKey();
+                    }
+                }
+            }
+            if (mejorSede == null) {
+                return i;
+            }
+            BigDecimal traslado = i.cantidadSugerida().min(mejorSobrante).setScale(0, RoundingMode.FLOOR)
+                    .setScale(ESCALA);
+            return traslado.signum() > 0 ? i.conTraslado(traslado, mejorSede, nombres.get(mejorSede)) : i;
+        }).toList();
+        return new ReabastecimientoResponse(plan.hoy(), plan.diasConsumo(), plan.plazoEntregaDefecto(),
+                plan.seguridadDefecto(), plan.coberturaDefecto(), plan.urgentes(), plan.pedirYa(), plan.pronto(),
+                plan.ok(), plan.sinConsumo(), items);
+    }
+
+    /**
+     * Plan sin traslados de la empresa o de una sede.
+     *
+     * @param sedeId sede, o {@code null} para toda la empresa
+     * @return plan con resumen
+     */
+    private ReabastecimientoResponse planBase(Long sedeId) {
         LocalDate hoy = LocalDate.now(reloj);
         EmpresaResponse empresa = empresaService.obtener();
         RotacionResponse rotacion = rotacionService.rotacion(null, hoy, null, sedeId);
@@ -163,6 +284,9 @@ public class ReabastecimientoService {
         Map<Long, BigDecimal> porRecibir = reordenService.porRecibir(ids, sedeId);
         Map<Long, BigDecimal> enSolicitudes = sedeId == null ? reordenService.enSolicitudes(ids) : Map.of();
         Map<Long, Historial> historial = historial(ids, hoy);
+        Map<Long, ProductoSede> limitesSede = sedeId == null ? Map.of()
+                : productoSedeRepository.deSede(sedeId, ids).stream()
+                        .collect(Collectors.toMap(ps -> ps.getProducto().getId(), Function.identity()));
 
         List<ReabastecimientoItem> items = new ArrayList<>();
         for (RotacionItem r : rotacion.items()) {
@@ -175,7 +299,11 @@ public class ReabastecimientoService {
                     p.getPlazoEntregaDias() != null,
                     p.getDiasSeguridad() != null ? p.getDiasSeguridad() : empresa.diasSeguridadDefecto(),
                     empresa.diasCoberturaDefecto());
-            items.add(calcular(sedeId == null ? r : sinMinimo(r), sedeId == null ? p.getStockMaximo() : null,
+            ProductoSede limite = limitesSede.get(r.productoId());
+            RotacionItem base = sedeId == null ? r
+                    : conMinimo(r, limite == null ? BigDecimal.ZERO : limite.getStockMinimo());
+            BigDecimal maximo = sedeId == null ? p.getStockMaximo() : limite == null ? null : limite.getStockMaximo();
+            items.add(calcular(base, maximo,
                     porRecibir.getOrDefault(r.productoId(), BigDecimal.ZERO),
                     enSolicitudes.getOrDefault(r.productoId(), BigDecimal.ZERO), rotacion.dias(), parametros,
                     historial.get(r.productoId()), hoy));
@@ -204,9 +332,10 @@ public class ReabastecimientoService {
     @Transactional
     public SolicitudResponse crearBorrador(ReabastecimientoBorradorRequest req) {
         Set<Long> pedidos = new HashSet<>(req.productoIds());
+        // por sede se compra solo lo que no se cubre trasladando desde otra sede
         List<ReabastecimientoItem> elegidos = plan(req.sedeId()).items().stream()
                 .filter(i -> pedidos.contains(i.productoId()))
-                .filter(i -> i.cantidadSugerida() != null && i.cantidadSugerida().signum() > 0)
+                .filter(i -> i.cantidadComprar() != null && i.cantidadComprar().signum() > 0)
                 .toList();
         Set<Long> faltan = new HashSet<>(pedidos);
         elegidos.forEach(i -> faltan.remove(i.productoId()));
@@ -280,6 +409,9 @@ public class ReabastecimientoService {
                 .setScale(ESCALA, RoundingMode.CEILING);
         BigDecimal objetivo = consumoEn(r.salidas(), diasLlegada + diasSeguridad + prm.cobertura(), diasPeriodo)
                 .max(minimo);
+        // lo que la sede puede ceder: el stock físico por encima de lo que ella misma necesita (nunca su mínimo)
+        BigDecimal sobrante = stock.subtract(objetivo).max(BigDecimal.ZERO).setScale(0, RoundingMode.FLOOR)
+                .setScale(ESCALA);
         if (stockMaximo != null) {
             // sin consumo (solo bajo el mínimo) se repone hasta el máximo, como la reorden por mínimo
             objetivo = hayConsumo ? objetivo.min(stockMaximo.max(puntoPedido)) : stockMaximo;
@@ -327,7 +459,8 @@ public class ReabastecimientoService {
                 enSolicitudes.setScale(ESCALA, RoundingMode.HALF_UP), consumo.setScale(ESCALA, RoundingMode.HALF_UP),
                 cobertura, agotamiento, prm.plazo(), prm.plazoPropio(), prm.seguridad(),
                 historial == null ? null : historial.promedio(), historial == null ? 0 : historial.entregas(),
-                llegada, puntoPedido, pedirAntesDe, cantidad, estado, motivo);
+                llegada, puntoPedido, pedirAntesDe, cantidad, estado, motivo, sobrante,
+                BigDecimal.ZERO.setScale(ESCALA), null, null, cantidad);
     }
 
     /**
@@ -353,14 +486,16 @@ public class ReabastecimientoService {
     }
 
     /**
-     * La misma rotación sin stock mínimo: en la vista por sede el mínimo del producto (total de la empresa) no aplica.
+     * La misma rotación con el mínimo de la sede: en la vista por sede el mínimo del producto (total de la empresa)
+     * no aplica; aplica el de la sede, o ninguno.
      *
-     * @param r rotación del producto en la sede
-     * @return copia con mínimo 0
+     * @param r      rotación del producto en la sede
+     * @param minimo mínimo propio de la sede (0 si no tiene)
+     * @return copia con ese mínimo
      */
-    private static RotacionItem sinMinimo(RotacionItem r) {
+    private static RotacionItem conMinimo(RotacionItem r, BigDecimal minimo) {
         return new RotacionItem(r.productoId(), r.codigo(), r.nombre(), r.categoria(), r.unidad(), r.stock(),
-                BigDecimal.ZERO, r.salidas(), r.comprado(), r.consumoDiario(), r.diasCobertura(),
+                minimo, r.salidas(), r.comprado(), r.consumoDiario(), r.diasCobertura(),
                 r.fechaEstimadaAgotamiento(), r.ultimaSalida(), r.diasSinSalida(), r.valorStock(), r.clase(),
                 r.porAgotarse());
     }

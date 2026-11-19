@@ -32,6 +32,10 @@ tr.detalle td { background: #fafafa; padding: 14px 20px; white-space: normal; }
 .cuentas { margin: 8px 0 12px; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
 .plazo { align-items: flex-end; gap: 12px; flex-wrap: wrap; .campo { min-width: 180px; } }
 
+.cabecera-comparar { padding: 14px 20px; border-bottom: 1px solid var(--sc-borde); display: grid; gap: 4px; h2 { margin: 0; font-size: 18px; } }
+.chip.traslado { background: #e6f0fb; color: #1f5f9e; }
+.necesito { margin-top: 8px; }
+.acciones-detalle { gap: 8px; flex-wrap: wrap; }
 .pedir { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px; justify-content: space-between;
   position: sticky; bottom: 12px; box-shadow: 0 6px 24px rgba(0, 0, 0, .08); }
 

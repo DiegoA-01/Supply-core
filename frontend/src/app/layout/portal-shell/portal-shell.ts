@@ -19,6 +19,7 @@ import { SesionService } from '../../core/sesion/sesion.service';
       <nav aria-label="Secciones del portal">
         <a routerLink="/portal/cotizaciones" routerLinkActive="activa">Cotizaciones</a>
         <a routerLink="/portal/ordenes" routerLinkActive="activa">Órdenes y pagos</a>
+        <a routerLink="/portal/catalogo" routerLinkActive="activa">Mi catálogo</a>
         <a routerLink="/portal/perfil" routerLinkActive="activa">Mi perfil</a>
       </nav>
       <div class="quien">

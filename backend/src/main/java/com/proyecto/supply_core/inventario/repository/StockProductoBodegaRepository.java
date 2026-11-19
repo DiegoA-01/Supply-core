@@ -90,6 +90,34 @@ public interface StockProductoBodegaRepository extends JpaRepository<StockProduc
     BigDecimal totalDeProducto(@Param("productoId") Long productoId);
 
     /**
+     * Stock del producto en las bodegas de una sede.
+     *
+     * @param productoId producto
+     * @param sedeId     sede
+     * @return total en la sede (0 si no tiene filas)
+     */
+    @Query("""
+            select coalesce(sum(s.cantidad), 0) from StockProductoBodega s
+            where s.producto.id = :productoId and s.bodega.sede.id = :sedeId
+            """)
+    BigDecimal totalDeProductoEnSede(@Param("productoId") Long productoId, @Param("sedeId") Long sedeId);
+
+    /**
+     * Stock del producto en cada sede (las bodegas sin sede no cuentan).
+     *
+     * @param productoId producto
+     * @return una fila por sede con stock registrado
+     */
+    @Query("""
+            select new com.proyecto.supply_core.inventario.dto.StockSede(se.id, se.nombre, sum(s.cantidad))
+            from StockProductoBodega s join s.bodega b join b.sede se
+            where s.producto.id = :productoId
+            group by se.id, se.nombre
+            order by se.nombre
+            """)
+    List<com.proyecto.supply_core.inventario.dto.StockSede> stockPorSede(@Param("productoId") Long productoId);
+
+    /**
      * Totales de varios productos en una sola consulta.
      *
      * @param ids productos

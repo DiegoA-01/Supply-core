@@ -202,5 +202,17 @@ public enum AccionAuditoria {
     /** El administrador de la empresa pidió un informe de compras. */
     INFORME_PEDIR,
     /** El área de compras envió un informe de compras (foto fija del periodo). */
-    INFORME_ENVIAR
+    INFORME_ENVIAR,
+    /** Un usuario interno pidió un producto a compras. */
+    PEDIDO_INTERNO_CREAR,
+    /** Compras tomó, atendió o descartó un pedido interno. */
+    PEDIDO_INTERNO_GESTIONAR,
+    /** Se configuró un impuesto de venta o una lista de precios. */
+    PRECIO_CONFIGURAR,
+    /** Se fijó un nuevo precio de venta (el anterior queda en el historial). */
+    PRECIO_CAMBIAR,
+    /** Un proveedor subió o reemplazó su catálogo. */
+    CATALOGO_CARGAR,
+    /** Compras confirmó o descartó la equivalencia de un artículo de catálogo. */
+    CATALOGO_EQUIVALENCIA
 }

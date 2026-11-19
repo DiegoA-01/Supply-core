@@ -24,6 +24,9 @@
     }
     <div class="campo"><label for="desde">Desde</label><input id="desde" type="date" class="entrada" [ngModel]="desde()" (ngModelChange)="desde.set($event)"></div>
     <div class="campo"><label for="hasta">Hasta</label><input id="hasta" type="date" class="entrada" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)"></div>
+    @if (pestana() !== 'cuenta') {
+      <sc-selector-sede [sede]="sede()" (sedeChange)="sede.set($event); consultar()" />
+    }
     <button type="button" class="boton primario" [disabled]="cargando()" (click)="consultar()">Consultar</button>
   </section>
 
@@ -68,6 +71,22 @@
       }
     }
     @case ('gasto') {
+      @if (porSede().length) {
+        <section class="tarjeta">
+          <h2>Compras por sede</h2>
+          <p class="texto-chico texto-2">Según la bodega a la que llega cada orden. Elige una sede arriba para ver solo la suya.</p>
+          <div class="tabla-contenedor">
+            <table class="tabla">
+              <thead><tr><th>Sede</th><th class="num">Órdenes</th><th class="num">Subtotal</th><th class="num">Total con impuestos</th></tr></thead>
+              <tbody>
+                @for (s of porSede(); track s.nombre) {
+                  <tr><td><strong>{{ s.nombre }}</strong></td><td class="num">{{ s.ordenes }}</td><td class="num">{{ s.subtotal | pesos }}</td><td class="num">{{ s.total | pesos }}</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
       @if (gasto(); as g) {
         <div class="rejilla kpis">
           <div class="tarjeta kpi"><div class="etiqueta">Total con impuestos</div><div class="valor">{{ g.total | pesos }}</div><div class="nota">{{ g.ordenes }} órdenes vigentes</div></div>

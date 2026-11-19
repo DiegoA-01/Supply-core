@@ -73,6 +73,10 @@ public class Empresa {
     @Column(name = "dias_cobertura_defecto", nullable = false)
     private int diasCoberturaDefecto = 30;
 
+    /** El dueño delegó en el jefe de compras fijar los precios de venta. */
+    @Column(name = "precios_delegados_compras", nullable = false)
+    private boolean preciosDelegadosCompras;
+
     @Column(name = "creado_en", nullable = false, updatable = false, insertable = false)
     private LocalDateTime creadoEn;
 }

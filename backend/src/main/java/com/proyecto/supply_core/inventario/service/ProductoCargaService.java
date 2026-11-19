@@ -71,6 +71,8 @@ public class ProductoCargaService {
     private final UnidadMedidaRepository unidadRepository;
     private final MovimientoInventarioRepository movimientoRepository;
     private final AuditoriaService auditoriaService;
+    /** Impuesto de venta por defecto de los productos nuevos; {@code null} en pruebas que no lo usan. */
+    private final com.proyecto.supply_core.venta.repository.TarifaImpuestoRepository tarifaRepository;
 
     /**
      * @param productoRepository   productos existentes y nuevos
@@ -82,6 +84,23 @@ public class ProductoCargaService {
     public ProductoCargaService(ProductoRepository productoRepository, CategoriaProductoRepository categoriaRepository,
             UnidadMedidaRepository unidadRepository, MovimientoInventarioRepository movimientoRepository,
             AuditoriaService auditoriaService) {
+        this(productoRepository, categoriaRepository, unidadRepository, movimientoRepository, auditoriaService, null);
+    }
+
+    /**
+     * @param productoRepository   productos existentes y nuevos
+     * @param categoriaRepository  categorías por nombre
+     * @param unidadRepository     unidades por código
+     * @param movimientoRepository para no cambiar la unidad de un producto con movimientos
+     * @param auditoriaService     registro de la carga
+     * @param tarifaRepository     impuesto de venta por defecto (IVA 19 %) de los productos nuevos
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    public ProductoCargaService(ProductoRepository productoRepository, CategoriaProductoRepository categoriaRepository,
+            UnidadMedidaRepository unidadRepository, MovimientoInventarioRepository movimientoRepository,
+            AuditoriaService auditoriaService,
+            com.proyecto.supply_core.venta.repository.TarifaImpuestoRepository tarifaRepository) {
+        this.tarifaRepository = tarifaRepository;
         this.productoRepository = productoRepository;
         this.categoriaRepository = categoriaRepository;
         this.unidadRepository = unidadRepository;
@@ -275,6 +294,9 @@ public class ProductoCargaService {
                 }
             }
             Producto producto = p.existente() != null ? p.existente() : new Producto();
+            if (p.existente() == null && tarifaRepository != null) {
+                tarifaRepository.findByCodigo("IVA19").ifPresent(producto::setTarifaImpuesto);
+            }
             Fila f = p.fila();
             producto.setCodigo(p.codigo());
             if (f.nombre() != null) {

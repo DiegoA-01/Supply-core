@@ -9,6 +9,7 @@ import { ComprasService } from '../../core/servicios/compras.service';
 import { InventarioService } from '../../core/servicios/inventario.service';
 import { OrdenesService } from '../../core/servicios/ordenes.service';
 import { ReportesService, iso, rangoMes } from '../../core/servicios/reportes.service';
+import { SelectorSede } from '../../core/ui/selector-sede';
 import { Avisos } from '../../core/ui/avisos';
 import { SesionService } from '../../core/sesion/sesion.service';
 
@@ -32,7 +33,7 @@ const ESTADOS_EN_CURSO = ['EMITIDA', 'ACEPTADA_PROVEEDOR', 'EN_PREPARACION', 'DE
  */
 @Component({
   selector: 'sc-inicio',
-  imports: [RouterLink, PesosPipe, CompactoPipe, PuntajePipe],
+  imports: [RouterLink, PesosPipe, CompactoPipe, PuntajePipe, SelectorSede],
   templateUrl: './inicio.html',
   styleUrl: './inicio.scss',
 })
@@ -45,6 +46,8 @@ export class Inicio implements OnInit {
   private readonly avisos = inject(Avisos);
 
   protected readonly periodo = signal<Periodo>('mes');
+  /** Sede de las tarjetas de gasto y del ranking; {@code null} = toda la empresa. */
+  protected readonly sede = signal<number | null>(null);
   protected readonly gastoPeriodo = signal<Gasto | null>(null);
   protected readonly gastoMeses = signal<Gasto | null>(null);
   protected readonly ranking = signal<ProveedorRanking[]>([]);
@@ -124,11 +127,8 @@ export class Inicio implements OnInit {
 
   ngOnInit(): void {
     this.cargarPeriodo();
-    if (this.puedeReportes()) {
-      const hoy = new Date();
-      const desde = iso(new Date(hoy.getFullYear(), hoy.getMonth() - 5, 1));
-      this.reportes.gasto(desde, rangoMes().hasta).subscribe({ next: g => this.gastoMeses.set(g), error: () => undefined });
-    }
+    this.cargarMeses();
+
     if (this.puedeOrdenes()) {
       forkJoin(ESTADOS_EN_CURSO.map(e => this.ordenes.buscar({ estado: e, tamano: 1 }).pipe(
         map(p => ({ estado: e, total: p.totalElementos ?? 0 })), catchError(() => of({ estado: e, total: 0 })))))
@@ -152,6 +152,23 @@ export class Inicio implements OnInit {
     if (this.sesion.tieneRol(ROLES_PROVEEDORES) && this.sesion.tieneModulo('PROVEEDORES')) {
       this.reportes.proveedores('PENDIENTE').subscribe({ next: p => this.proveedoresNuevos.set(p.contenido ?? []), error: () => undefined });
     }
+  }
+
+  /** @param id sede elegida ({@code null} = toda la empresa); recarga las tarjetas de gasto */
+  protected cambiarSede(id: number | null): void {
+    this.sede.set(id);
+    this.cargarPeriodo();
+    this.cargarMeses();
+  }
+
+  /** Gasto de los últimos seis meses para el gráfico, de la empresa o de la sede elegida. */
+  private cargarMeses(): void {
+    if (!this.puedeReportes()) {
+      return;
+    }
+    const hoy = new Date();
+    const desde = iso(new Date(hoy.getFullYear(), hoy.getMonth() - 5, 1));
+    this.reportes.gasto(desde, rangoMes().hasta, this.sede()).subscribe({ next: g => this.gastoMeses.set(g), error: () => undefined });
   }
 
   /** @param p periodo de las tarjetas de gasto */
@@ -183,8 +200,8 @@ export class Inicio implements OnInit {
       : this.periodo() === 'trimestre' ? new Date(hoy.getFullYear(), Math.floor(hoy.getMonth() / 3) * 3, 1)
         : new Date(hoy.getFullYear(), 0, 1);
     const { desde: d, hasta } = { desde: iso(desde), hasta: rangoMes().hasta };
-    this.reportes.gasto(d, hasta).subscribe({ next: g => this.gastoPeriodo.set(g), error: () => undefined });
-    this.reportes.ranking(d, hasta).subscribe({ next: r => this.ranking.set(r.slice(0, 3)), error: () => undefined });
+    this.reportes.gasto(d, hasta, this.sede()).subscribe({ next: g => this.gastoPeriodo.set(g), error: () => undefined });
+    this.reportes.ranking(d, hasta, this.sede()).subscribe({ next: r => this.ranking.set(r.slice(0, 3)), error: () => undefined });
   }
 
   /** @param periodo "2026-10" */

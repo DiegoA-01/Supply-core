@@ -12,16 +12,16 @@ const item = (extra: Partial<ItemReabastecimiento>): ItemReabastecimiento => ({
   productoId: 1, codigo: 'X', nombre: 'X', categoria: 'Ferretería', unidad: 'UND', stock: 10, stockMinimo: 0, porRecibir: 0,
   enSolicitudes: 0, consumoDiario: 1, diasCobertura: 10, fechaAgotamiento: '2026-11-28', plazoEntregaDias: 6, plazoPropio: false,
   diasSeguridad: 2, entregasHistoricas: 0, llegadaSiPidoHoy: '2026-11-26', puntoPedido: 12, pedirAntesDe: '2026-11-18',
-  cantidadSugerida: 32, estado: 'PEDIR_YA', motivo: 'Hay que pedir hoy.', ...extra,
+  cantidadSugerida: 32, estado: 'PEDIR_YA', motivo: 'Hay que pedir hoy.', sobrante: 0, cantidadTraslado: 0, cantidadComprar: 32, ...extra,
 });
 
 const datos: Reabastecimiento = {
   hoy: '2026-11-18', diasConsumo: 90, plazoEntregaDefecto: 6, seguridadDefecto: 2, coberturaDefecto: 30,
   urgentes: 1, pedirYa: 1, pronto: 0, ok: 1, sinConsumo: 0,
   items: [
-    item({ productoId: 1, codigo: 'TOR-01', nombre: 'Tornillo', estado: 'URGENTE', stock: 5, cantidadSugerida: 37 }),
+    item({ productoId: 1, codigo: 'TOR-01', nombre: 'Tornillo', estado: 'URGENTE', stock: 5, cantidadSugerida: 37, cantidadComprar: 37 }),
     item({ productoId: 2, codigo: 'CAB-12', nombre: 'Cable', plazoHistorico: 9, entregasHistoricas: 3 }),
-    item({ productoId: 3, codigo: 'MAR-01', nombre: 'Martillo', estado: 'OK', stock: 100, cantidadSugerida: 0, pedirAntesDe: '2026-12-30' }),
+    item({ productoId: 3, codigo: 'MAR-01', nombre: 'Martillo', estado: 'OK', stock: 100, cantidadSugerida: 0, cantidadComprar: 0, pedirAntesDe: '2026-12-30' }),
   ],
 };
 
@@ -39,6 +39,7 @@ describe('Plan de reabastecimiento', () => {
     TestBed.inject(SesionService).usuario.set({ id: 3, nombre: 'Ana', correo: 'a@x.co', roles });
     fixture = TestBed.createComponent(PlanReabastecimiento);
     fixture.detectChanges();
+    backend.expectOne(r => r.url === '/api/reabastecimiento/sedes').flush([]);   // comparación (una sola sede)
     backend.expectOne(r => r.url === '/api/reabastecimiento').flush(datos);
     fixture.detectChanges();
     backend.expectOne(r => r.url === '/api/sedes').flush([]);   // selector de sede
@@ -74,6 +75,29 @@ describe('Plan de reabastecimiento', () => {
     expect(c()['puedeAjustar']()).toBe(true);
   });
 
+  it('en la vista de una sede muestra el traslado sugerido y pide solo lo que falta comprar', () => {
+    crear(['SOLICITANTE']);
+    c()['cambiarSede'](4);
+    backend.expectOne(r => r.url === '/api/reabastecimiento' && r.params.get('sedeId') === '4').flush({ ...datos, items: [
+      item({ productoId: 2, codigo: 'CAB-12', nombre: 'Cable', cantidadSugerida: 32, cantidadTraslado: 20,
+        trasladoDesdeSedeId: 5, trasladoDesdeSede: 'Sede Sur', cantidadComprar: 12 }),
+    ] });
+    fixture.detectChanges();
+    expect(texto()).toContain('Trasladar 20');
+    expect(texto()).toContain('desde Sede Sur');
+    expect(texto()).toContain('y comprar 12');
+    expect(c()['comparacion']()).toEqual([]);
+  });
+
+  it('con varias sedes, en toda la empresa muestra la comparación', () => {
+    crear(['COMPRADOR']);
+    c()['comparacion'].set([{ sedeId: 1, sede: 'Sede Centro', productos: 3, urgentes: 1, pedirYa: 0, pronto: 0, ok: 2, sinConsumo: 0, traslados: 1 },
+      { sedeId: 2, sede: 'Sede Norte', productos: 3, urgentes: 0, pedirYa: 0, pronto: 0, ok: 3, sinConsumo: 0, traslados: 0 }]);
+    fixture.detectChanges();
+    expect(texto()).toContain('Comparar sedes');
+    expect(texto()).toContain('Sede Norte');
+  });
+
   it('guarda el plazo propio de un producto y recalcula el plan', () => {
     crear(['ADMIN_COMPRAS']);
     c()['editarPlazo'](datos.items![1]);
@@ -84,6 +108,7 @@ describe('Plan de reabastecimiento', () => {
     expect(req.request.method).toBe('PATCH');
     expect(req.request.body).toEqual({ plazoEntregaDias: 7, diasSeguridad: null });
     req.flush({});
+    backend.expectOne(r => r.url === '/api/reabastecimiento/sedes').flush([]);
     backend.expectOne(r => r.url === '/api/reabastecimiento').flush(datos);
   });
 });

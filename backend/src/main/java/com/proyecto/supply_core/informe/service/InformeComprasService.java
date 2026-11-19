@@ -283,7 +283,7 @@ public class InformeComprasService {
                 primeras(adjudicaciones, a -> new AdjudicacionFila(a.getRfq().getConsecutivo(),
                         a.getCotizacion().getProveedor().getRazonSocial(), a.getMontoTotal(), a.isSigueRecomendacion(),
                         a.getJustificacion(), a.getEstado().name(), a.getDecididoEn())),
-                reportes.gasto(desde, hasta, null, null), recortado);
+                reportes.gasto(desde, hasta, null, null), recortado, reportes.gastoPorSede(desde, hasta));
     }
 
     /**

@@ -94,6 +94,10 @@ export class Shell implements OnInit {
       case 'ORDEN_EMITIDA': case 'ORDEN_ACTUALIZADA': case 'ORDEN_RESPUESTA_PROVEEDOR': case 'ORDEN_DESPACHADA': return '/app/ordenes';
       case 'STOCK_BAJO_MINIMO': return '/app/inventario';
       case 'REABASTECIMIENTO_DIARIO': return '/app/inventario/reabastecimiento';
+      case 'STOCK_BAJO_SEDE': return '/app/inventario/reabastecimiento';
+      case 'PEDIDO_INTERNO':
+      case 'PEDIDO_INTERNO_RESPONDIDO': return '/app/pedidos';
+      case 'CATALOGO_ACTUALIZADO': return '/app/catalogos';
       case 'INFORME_PEDIDO': case 'INFORME_RECIBIDO': return '/app/informes';
       default: return undefined;
     }
