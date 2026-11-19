@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  Bodega, CargaMasiva, Categoria, CorreoExportacion, Movimiento, MovimientoNuevo, RegistroMovimiento, StockBodega, InventarioResumen, Pagina, Producto, ProductoNuevo, Solicitud, SugerenciaReorden, UnidadMedida,
+  Bodega, CargaMasiva, Categoria, CorreoExportacion, Movimiento, MovimientoNuevo, RegistroMovimiento, StockBodega, InventarioResumen, Pagina, Producto, ProductoNuevo, Reabastecimiento, Solicitud, SugerenciaReorden, UnidadMedida,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
 
@@ -74,6 +74,32 @@ export class InventarioService {
   /** Cuánto pedir por producto (lo calcula el backend: máximo − stock − por recibir − ya solicitado). */
   sugerencias(): Observable<SugerenciaReorden[]> {
     return this.http.get<SugerenciaReorden[]>(api('/api/reorden/sugerencias'));
+  }
+
+  /** Plan de reabastecimiento: qué pedir, cuándo y cuánto según el consumo y el plazo de entrega (lo calcula el backend). */
+  reabastecimiento(): Observable<Reabastecimiento> {
+    return this.http.get<Reabastecimiento>(api('/api/reabastecimiento'));
+  }
+
+  /**
+   * Deja un borrador de solicitud con las cantidades del plan de reabastecimiento.
+   *
+   * @param fechaRequerida fecha requerida (ISO)
+   * @param productoIds    productos elegidos
+   */
+  borradorReabastecimiento(fechaRequerida: string, productoIds: number[]): Observable<Solicitud> {
+    return this.http.post<Solicitud>(api('/api/reabastecimiento/borrador'), { fechaRequerida, productoIds });
+  }
+
+  /**
+   * Cambia los días hábiles de entrega y de seguridad de un producto (vacío = el de la empresa).
+   *
+   * @param id               producto
+   * @param plazoEntregaDias días hábiles que tarda el proveedor
+   * @param diasSeguridad    días hábiles de colchón
+   */
+  cambiarPlazo(id: number, plazoEntregaDias: number | null, diasSeguridad: number | null): Observable<Producto> {
+    return this.http.patch<Producto>(api(`/api/productos/${id}/plazo`), { plazoEntregaDias, diasSeguridad });
   }
 
   /**

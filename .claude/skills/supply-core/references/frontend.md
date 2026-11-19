@@ -66,6 +66,11 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 - `features/auditoria/textos.ts` traduce las 96 acciones y las 28 entidades del backend (`AccionAuditoria` y `EntidadAuditada`); un código nuevo se muestra tal cual hasta que se agregue su texto. Hay que sumar el texto cuando el backend agregue una acción.
 - Se eliminó el marcador `features/pendiente` (ya no lo usaba ninguna ruta).
 
+## Reabastecimiento y tablero del dueño (2026-11-18)
+- `/app/inventario/reabastecimiento`: estados del plan como tarjetas que filtran, tabla con consumo, días que alcanza, plazo (de la empresa o del producto, y el real como pista), fecha límite para pedir y cantidad; detalle con la cuenta. ADMIN_COMPRAS ajusta el plazo del producto; el SOLICITANTE elige productos y crea la solicitud en borrador (abre su edición).
+- `/app/tablero` (ADMIN_SISTEMA, ADMIN_COMPRAS, AUDITOR): KPIs, compras por mes (barras), gasto por categoría y proveedor, distribución de rotación, más y menos movidos, qué pedir. Sin librería de gráficos: barras con CSS; todo número viene del backend.
+- Datos de la empresa suma los días de entrega, seguridad y cobertura por defecto.
+
 ## Decisiones (2026-11-05)
 - **Una sola app SaaS con tres zonas**: `/app` (empresa, `empresaGuard`), `/portal` (rol PROVEEDOR, `proveedorGuard`), `/plataforma` (dueño con MFA, `plataformaGuard`). Cada pantalla se carga perezosa.
 - **Librería**: Angular Material solo para comportamiento (menús, avisos, tooltips); el aspecto sale de tokens CSS en `styles.scss` tomados del mockup (primario `#d93a0b`). PrimeNG descartado: v22 exige licencia comercial con clave.

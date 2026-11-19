@@ -199,6 +199,26 @@ public class ReordenService {
      * @param filas filas por producto
      * @return cantidad por id de producto
      */
+    /**
+     * Lo que falta por recibir de órdenes vivas (pedido menos aceptado, nunca negativo), por producto. Lo usa también
+     * el plan de reabastecimiento.
+     *
+     * @param ids productos
+     * @return cantidad pendiente por producto (solo los que tienen algo pendiente)
+     */
+    public Map<Long, BigDecimal> porRecibir(List<Long> ids) {
+        Map<Long, BigDecimal> pedido = porProducto(reordenRepository.pedidoEnOrdenes(ids, ORDENES_POR_RECIBIR));
+        Map<Long, BigDecimal> aceptado = porProducto(reordenRepository.aceptadoEnOrdenes(ids, ORDENES_POR_RECIBIR));
+        Map<Long, BigDecimal> pendiente = new HashMap<>();
+        pedido.forEach((id, cantidad) -> {
+            BigDecimal falta = cantidad.subtract(aceptado.getOrDefault(id, BigDecimal.ZERO));
+            if (falta.signum() > 0) {
+                pendiente.put(id, falta);
+            }
+        });
+        return pendiente;
+    }
+
     private static Map<Long, BigDecimal> porProducto(List<CantidadPorProducto> filas) {
         Map<Long, BigDecimal> mapa = new HashMap<>();
         filas.forEach(f -> mapa.put(f.productoId(), f.cantidad()));
@@ -211,7 +231,7 @@ public class ReordenService {
      * @param ids productos
      * @return cantidad por id de producto
      */
-    private Map<Long, BigDecimal> enSolicitudes(List<Long> ids) {
+    public Map<Long, BigDecimal> enSolicitudes(List<Long> ids) {
         Map<Long, BigDecimal> mapa = new HashMap<>();
         for (SolicitudCompraLinea l : reordenRepository.lineasDeSolicitudes(ids, SOLICITUDES_EN_CURSO)) {
             BigDecimal cantidad = unidadMedidaService.convertir(l.getCantidad(), l.getUnidadMedida().getId(),

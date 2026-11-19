@@ -10,6 +10,9 @@ public enum EventoNotificacion {
     PROVEEDOR_PENDIENTE("Proveedor pendiente de aprobación"),
     /** Un producto quedó por debajo de su stock mínimo (destino: COMPRADOR). */
     STOCK_BAJO_MINIMO("Producto bajo stock mínimo"),
+    /** Resumen de la mañana con los productos que hay que pedir ya según su plazo de entrega (destino: COMPRADOR y
+     *  ADMIN_COMPRAS). */
+    REABASTECIMIENTO_DIARIO("Productos que hay que pedir hoy"),
     /** Una solicitud de compra espera aprobación (destino: el rol aprobador de la política). */
     SOLICITUD_PENDIENTE_APROBACION("Solicitud de compra pendiente de aprobación"),
     /** El aprobador decidió sobre una solicitud (destino: el solicitante). */

@@ -61,6 +61,18 @@ public class Empresa {
     @Column(name = "sla_aprobacion_horas", nullable = false)
     private int slaAprobacionHoras = 24;
 
+    /** Días hábiles que suele tardar un pedido en llegar; lo usan los productos sin plazo propio. */
+    @Column(name = "plazo_entrega_dias_defecto", nullable = false)
+    private int plazoEntregaDiasDefecto = 5;
+
+    /** Días hábiles de colchón por retrasos o picos de consumo; lo usan los productos sin valor propio. */
+    @Column(name = "dias_seguridad_defecto", nullable = false)
+    private int diasSeguridadDefecto = 2;
+
+    /** Días de calendario que debe cubrir lo que se pide, contados desde que llega. */
+    @Column(name = "dias_cobertura_defecto", nullable = false)
+    private int diasCoberturaDefecto = 30;
+
     @Column(name = "creado_en", nullable = false, updatable = false, insertable = false)
     private LocalDateTime creadoEn;
 }

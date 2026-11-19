@@ -628,6 +628,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reabastecimiento/borrador": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["crearBorrador_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/productos": {
         parameters: {
             query?: never;
@@ -1044,6 +1060,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/informes-compras": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listar_5"];
+        put?: never;
+        post: operations["enviar_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/informes-compras/{id}/leido": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["leido"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/informes-compras/pedir": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["pedir"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/facturas/{id}/recruzar": {
         parameters: {
             query?: never;
@@ -1179,7 +1243,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_5"];
+        get: operations["listar_6"];
         put?: never;
         post: operations["subir"];
         delete?: never;
@@ -1307,7 +1371,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_6"];
+        get: operations["listar_7"];
         put?: never;
         post: operations["crear_13"];
         delete?: never;
@@ -1323,7 +1387,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_7"];
+        get: operations["listar_8"];
         put?: never;
         post: operations["crear_14"];
         delete?: never;
@@ -1339,7 +1403,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_8"];
+        get: operations["listar_9"];
         put?: never;
         post: operations["crear_15"];
         delete?: never;
@@ -1666,6 +1730,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["habilitar"];
+        trace?: never;
+    };
+    "/api/productos/{id}/plazo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["cambiarPlazo"];
         trace?: never;
     };
     "/api/productos/{id}/desactivar": {
@@ -1995,7 +2075,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_9"];
+        get: operations["listar_10"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2011,7 +2091,23 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_10"];
+        get: operations["listar_11"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reportes/tablero": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["tablero"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2124,6 +2220,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["obtener_15"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reabastecimiento": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["plan"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2252,6 +2364,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["misEvaluaciones"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/portal/proveedor/categorias": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["categoriasDisponibles"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2516,6 +2644,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/informes-compras/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["obtener_21"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/informes-compras/vista-previa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["vistaPrevia"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/facturas": {
         parameters: {
             query?: never;
@@ -2539,7 +2699,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_21"];
+        get: operations["obtener_22"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2635,7 +2795,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_22"];
+        get: operations["obtener_23"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2715,7 +2875,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_23"];
+        get: operations["obtener_24"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2731,7 +2891,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_24"];
+        get: operations["obtener_25"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2763,7 +2923,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listar_11"];
+        get: operations["listar_12"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2811,7 +2971,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_25"];
+        get: operations["obtener_26"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2827,7 +2987,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_26"];
+        get: operations["obtener_27"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3096,6 +3256,10 @@ export interface components {
             activo?: boolean;
             stockTotal?: number;
             bajoStockMinimo?: boolean;
+            /** Format: int32 */
+            plazoEntregaDias?: number;
+            /** Format: int32 */
+            diasSeguridad?: number;
         };
         PresupuestoUpdateRequest: {
             monto: number;
@@ -3271,6 +3435,12 @@ export interface components {
             toleranciaFacturaMonto?: number;
             /** Format: int32 */
             slaAprobacionHoras?: number;
+            /** Format: int32 */
+            plazoEntregaDiasDefecto?: number;
+            /** Format: int32 */
+            diasSeguridadDefecto?: number;
+            /** Format: int32 */
+            diasCoberturaDefecto?: number;
         };
         EmpresaResponse: {
             /** Format: int64 */
@@ -3287,6 +3457,12 @@ export interface components {
             /** Format: date-time */
             creadoEn?: string;
             codigoPublico?: string;
+            /** Format: int32 */
+            plazoEntregaDiasDefecto?: number;
+            /** Format: int32 */
+            diasSeguridadDefecto?: number;
+            /** Format: int32 */
+            diasCoberturaDefecto?: number;
         };
         DespachoRequest: {
             /** Format: int64 */
@@ -3549,6 +3725,11 @@ export interface components {
             /** Format: date-time */
             resueltoEn?: string;
             motivoResolucion?: string;
+        };
+        ReabastecimientoBorradorRequest: {
+            /** Format: date */
+            fechaRequerida: string;
+            productoIds: number[];
         };
         ProductoRequest: {
             codigo: string;
@@ -3936,6 +4117,165 @@ export interface components {
             stockTotalProducto?: number;
             bajoStockMinimo?: boolean;
         };
+        EnviarInformeRequest: {
+            /** Format: date */
+            desde: string;
+            /** Format: date */
+            hasta: string;
+            analisis: string;
+            /** Format: int64 */
+            pedidoId?: number;
+            rangoValido?: boolean;
+        };
+        AdjudicacionFila: {
+            rfq?: string;
+            proveedor?: string;
+            montoTotal?: number;
+            sigueRecomendacion?: boolean;
+            justificacion?: string;
+            estado?: string;
+            /** Format: date-time */
+            decididoEn?: string;
+        };
+        CotizacionFila: {
+            rfq?: string;
+            proveedor?: string;
+            estado?: string;
+            total?: number;
+            /** Format: int32 */
+            plazoEntregaDias?: number;
+            /** Format: date-time */
+            enviadoEn?: string;
+        };
+        GastoItem: {
+            /** Format: int64 */
+            id?: number;
+            nombre?: string;
+            /** Format: int64 */
+            ordenes?: number;
+            subtotal?: number;
+            impuestos?: number;
+            total?: number;
+        };
+        GastoMes: {
+            periodo?: string;
+            /** Format: int64 */
+            ordenes?: number;
+            subtotal?: number;
+            impuestos?: number;
+            total?: number;
+        };
+        GastoResponse: {
+            /** Format: date */
+            desde?: string;
+            /** Format: date */
+            hasta?: string;
+            /** Format: int64 */
+            ordenes?: number;
+            subtotal?: number;
+            impuestos?: number;
+            total?: number;
+            pagado?: number;
+            porProveedor?: components["schemas"]["GastoItem"][];
+            porCategoria?: components["schemas"]["GastoItem"][];
+            porMes?: components["schemas"]["GastoMes"][];
+        };
+        InformeContenido: {
+            /** Format: date */
+            desde?: string;
+            /** Format: date */
+            hasta?: string;
+            /** Format: date-time */
+            generadoEn?: string;
+            resumen?: components["schemas"]["Resumen"];
+            solicitudes?: components["schemas"]["SolicitudFila"][];
+            rfqs?: components["schemas"]["RfqFila"][];
+            cotizaciones?: components["schemas"]["CotizacionFila"][];
+            adjudicaciones?: components["schemas"]["AdjudicacionFila"][];
+            gasto?: components["schemas"]["GastoResponse"];
+            recortado?: boolean;
+        };
+        InformeResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** @enum {string} */
+            estado?: "PEDIDO" | "ENVIADO";
+            /** Format: date */
+            desde?: string;
+            /** Format: date */
+            hasta?: string;
+            mensajePedido?: string;
+            pedidoPor?: string;
+            /** Format: date-time */
+            pedidoEn?: string;
+            enviadoPor?: string;
+            /** Format: date-time */
+            enviadoEn?: string;
+            /** Format: date-time */
+            leidoEn?: string;
+            analisis?: string;
+            contenido?: components["schemas"]["InformeContenido"];
+        };
+        LineaFila: {
+            codigo?: string;
+            producto?: string;
+            cantidad?: number;
+            unidad?: string;
+            cantidadEnUnidadProducto?: number;
+            unidadProducto?: string;
+            costoReferencia?: number;
+            subtotal?: number;
+        };
+        Resumen: {
+            /** Format: int64 */
+            solicitudes?: number;
+            montoSolicitado?: number;
+            solicitudesPorEstado?: {
+                [key: string]: number;
+            };
+            /** Format: int64 */
+            rfqs?: number;
+            /** Format: int64 */
+            cotizacionesRecibidas?: number;
+            /** Format: int64 */
+            adjudicaciones?: number;
+            /** Format: int64 */
+            adjudicacionesFueraDeRecomendacion?: number;
+            montoAdjudicado?: number;
+        };
+        RfqFila: {
+            consecutivo?: string;
+            solicitud?: string;
+            estado?: string;
+            /** Format: int32 */
+            invitados?: number;
+            /** Format: int64 */
+            cotizaciones?: number;
+            /** Format: date-time */
+            fechaLimite?: string;
+        };
+        SolicitudFila: {
+            consecutivo?: string;
+            solicitante?: string;
+            centroCosto?: string;
+            estado?: string;
+            montoEstimado?: number;
+            montoIncompleto?: boolean;
+            motivo?: string;
+            /** Format: date-time */
+            enviadoEn?: string;
+            lineas?: components["schemas"]["LineaFila"][];
+            montoCalculado?: number;
+            cuadra?: boolean;
+        };
+        PedirInformeRequest: {
+            /** Format: date */
+            desde: string;
+            /** Format: date */
+            hasta: string;
+            mensaje?: string;
+            rangoValido?: boolean;
+        };
         MotivoFacturaRequest: {
             motivo: string;
         };
@@ -4018,8 +4358,8 @@ export interface components {
             /** Format: date */
             vigenteHasta: string;
             precios: components["schemas"]["PrecioRequest"][];
-            vigenciaEnOrden?: boolean;
             productosSinRepetir?: boolean;
+            vigenciaEnOrden?: boolean;
         };
         PrecioRequest: {
             /** Format: int64 */
@@ -4150,6 +4490,12 @@ export interface components {
         MotivoRequest: {
             motivo: string;
         };
+        ProductoPlazoRequest: {
+            /** Format: int32 */
+            plazoEntregaDias?: number;
+            /** Format: int32 */
+            diasSeguridad?: number;
+        };
         CambiarEstado: {
             /** @enum {string} */
             estado: "PRUEBA" | "ACTIVA" | "MOROSA" | "SUSPENDIDA" | "CANCELADA";
@@ -4159,7 +4505,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             /** @enum {string} */
-            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "INFORME_RECIBIDO";
+            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "INFORME_RECIBIDO";
             mensaje?: string;
             leida?: boolean;
             /** Format: date-time */
@@ -4186,7 +4532,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             /** @enum {string} */
-            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "INFORME_RECIBIDO";
+            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "INFORME_RECIBIDO";
             /** @enum {string} */
             canal?: "EMAIL" | "INTERNA";
             activo?: boolean;
@@ -4276,6 +4622,40 @@ export interface components {
             /** Format: date-time */
             cerradaEn?: string;
         };
+        ReabastecimientoItem: {
+            /** Format: int64 */
+            productoId?: number;
+            codigo?: string;
+            nombre?: string;
+            categoria?: string;
+            unidad?: string;
+            stock?: number;
+            stockMinimo?: number;
+            stockMaximo?: number;
+            porRecibir?: number;
+            enSolicitudes?: number;
+            consumoDiario?: number;
+            diasCobertura?: number;
+            /** Format: date */
+            fechaAgotamiento?: string;
+            /** Format: int32 */
+            plazoEntregaDias?: number;
+            plazoPropio?: boolean;
+            /** Format: int32 */
+            diasSeguridad?: number;
+            plazoHistorico?: number;
+            /** Format: int32 */
+            entregasHistoricas?: number;
+            /** Format: date */
+            llegadaSiPidoHoy?: string;
+            puntoPedido?: number;
+            /** Format: date */
+            pedirAntesDe?: string;
+            cantidadSugerida?: number;
+            /** @enum {string} */
+            estado?: "URGENTE" | "PEDIR_YA" | "PRONTO" | "OK" | "SIN_CONSUMO";
+            motivo?: string;
+        };
         RotacionItem: {
             /** Format: int64 */
             productoId?: number;
@@ -4299,6 +4679,45 @@ export interface components {
             /** @enum {string} */
             clase?: "ALTA" | "MEDIA" | "BAJA" | "SIN_MOVIMIENTO" | "AGOTADO" | "SIN_ACTIVIDAD";
             porAgotarse?: boolean;
+        };
+        TableroResponse: {
+            /** Format: date */
+            hoy?: string;
+            /** Format: date */
+            desde?: string;
+            gastoDoceMeses?: number;
+            pagadoDoceMeses?: number;
+            porPagarDoceMeses?: number;
+            /** Format: int64 */
+            ordenesDoceMeses?: number;
+            gastoMesActual?: number;
+            gastoMesAnterior?: number;
+            variacionMesPct?: number;
+            gastoPorMes?: components["schemas"]["GastoMes"][];
+            gastoPorCategoria?: components["schemas"]["GastoItem"][];
+            gastoPorProveedor?: components["schemas"]["GastoItem"][];
+            valorInventario?: number;
+            valorSinMovimiento?: number;
+            /** Format: int32 */
+            productosActivos?: number;
+            /** Format: int64 */
+            agotados?: number;
+            /** Format: int64 */
+            bajoMinimo?: number;
+            /** Format: int32 */
+            diasRotacion?: number;
+            productosPorClase?: {
+                [key: string]: number;
+            };
+            masMovidos?: components["schemas"]["RotacionItem"][];
+            menosMovidos?: components["schemas"]["RotacionItem"][];
+            /** Format: int64 */
+            reabastecerUrgentes?: number;
+            /** Format: int64 */
+            reabastecerPedirYa?: number;
+            /** Format: int64 */
+            reabastecerPronto?: number;
+            porPedir?: components["schemas"]["ReabastecimientoItem"][];
         };
         RotacionResponse: {
             /** Format: date */
@@ -4391,39 +4810,6 @@ export interface components {
             valorTotal?: number;
             items?: components["schemas"]["InventarioItem"][];
         };
-        GastoItem: {
-            /** Format: int64 */
-            id?: number;
-            nombre?: string;
-            /** Format: int64 */
-            ordenes?: number;
-            subtotal?: number;
-            impuestos?: number;
-            total?: number;
-        };
-        GastoMes: {
-            periodo?: string;
-            /** Format: int64 */
-            ordenes?: number;
-            subtotal?: number;
-            impuestos?: number;
-            total?: number;
-        };
-        GastoResponse: {
-            /** Format: date */
-            desde?: string;
-            /** Format: date */
-            hasta?: string;
-            /** Format: int64 */
-            ordenes?: number;
-            subtotal?: number;
-            impuestos?: number;
-            total?: number;
-            pagado?: number;
-            porProveedor?: components["schemas"]["GastoItem"][];
-            porCategoria?: components["schemas"]["GastoItem"][];
-            porMes?: components["schemas"]["GastoMes"][];
-        };
         ContratoSugerido: {
             /** Format: int64 */
             contratoId?: number;
@@ -4448,6 +4834,29 @@ export interface components {
             sinMaximo?: boolean;
             yaCubierto?: boolean;
             contratoSugerido?: components["schemas"]["ContratoSugerido"];
+        };
+        ReabastecimientoResponse: {
+            /** Format: date */
+            hoy?: string;
+            /** Format: int32 */
+            diasConsumo?: number;
+            /** Format: int32 */
+            plazoEntregaDefecto?: number;
+            /** Format: int32 */
+            seguridadDefecto?: number;
+            /** Format: int32 */
+            coberturaDefecto?: number;
+            /** Format: int64 */
+            urgentes?: number;
+            /** Format: int64 */
+            pedirYa?: number;
+            /** Format: int64 */
+            pronto?: number;
+            /** Format: int64 */
+            ok?: number;
+            /** Format: int64 */
+            sinConsumo?: number;
+            items?: components["schemas"]["ReabastecimientoItem"][];
         };
         PageResponseProveedorResponse: {
             contenido?: components["schemas"]["ProveedorResponse"][];
@@ -4612,6 +5021,17 @@ export interface components {
         };
         PageResponseMovimientoResponse: {
             contenido?: components["schemas"]["MovimientoResponse"][];
+            /** Format: int32 */
+            pagina?: number;
+            /** Format: int32 */
+            tamano?: number;
+            /** Format: int64 */
+            totalElementos?: number;
+            /** Format: int32 */
+            totalPaginas?: number;
+        };
+        PageResponseInformeResponse: {
+            contenido?: components["schemas"]["InformeResponse"][];
             /** Format: int32 */
             pagina?: number;
             /** Format: int32 */
@@ -6269,6 +6689,30 @@ export interface operations {
             };
         };
     };
+    crearBorrador_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReabastecimientoBorradorRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["SolicitudResponse"];
+                };
+            };
+        };
+    };
     buscar_3: {
         parameters: {
             query: {
@@ -7144,6 +7588,98 @@ export interface operations {
             };
         };
     };
+    listar_5: {
+        parameters: {
+            query: {
+                pageable: components["schemas"]["Pageable"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseInformeResponse"];
+                };
+            };
+        };
+    };
+    enviar_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EnviarInformeRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["InformeResponse"];
+                };
+            };
+        };
+    };
+    leido: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["InformeResponse"];
+                };
+            };
+        };
+    };
+    pedir: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PedirInformeRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["InformeResponse"];
+                };
+            };
+        };
+    };
     recruzar: {
         parameters: {
             query?: never;
@@ -7344,7 +7880,7 @@ export interface operations {
             };
         };
     };
-    listar_5: {
+    listar_6: {
         parameters: {
             query: {
                 entidad: "PROVEEDOR" | "COTIZACION" | "ORDEN_COMPRA" | "PAGO" | "RECEPCION" | "FACTURA";
@@ -7633,7 +8169,7 @@ export interface operations {
             };
         };
     };
-    listar_6: {
+    listar_7: {
         parameters: {
             query?: {
                 activo?: boolean;
@@ -7679,7 +8215,7 @@ export interface operations {
             };
         };
     };
-    listar_7: {
+    listar_8: {
         parameters: {
             query?: {
                 activo?: boolean;
@@ -7725,7 +8261,7 @@ export interface operations {
             };
         };
     };
-    listar_8: {
+    listar_9: {
         parameters: {
             query?: {
                 activo?: boolean;
@@ -8225,6 +8761,32 @@ export interface operations {
             };
         };
     };
+    cambiarPlazo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductoPlazoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ProductoResponse"];
+                };
+            };
+        };
+    };
     desactivar_3: {
         parameters: {
             query?: never;
@@ -8686,7 +9248,7 @@ export interface operations {
             };
         };
     };
-    listar_9: {
+    listar_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -8706,7 +9268,7 @@ export interface operations {
             };
         };
     };
-    listar_10: {
+    listar_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -8724,6 +9286,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CotizacionResponse"][];
+                };
+            };
+        };
+    };
+    tablero: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TableroResponse"];
                 };
             };
         };
@@ -8887,6 +9469,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["RecepcionResponse"];
+                };
+            };
+        };
+    };
+    plan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ReabastecimientoResponse"];
                 };
             };
         };
@@ -9064,6 +9666,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PageResponseEvaluacionResponse"];
+                };
+            };
+        };
+    };
+    categoriasDisponibles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CategoriaResponse"][];
                 };
             };
         };
@@ -9424,6 +10046,51 @@ export interface operations {
             };
         };
     };
+    obtener_21: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["InformeResponse"];
+                };
+            };
+        };
+    };
+    vistaPrevia: {
+        parameters: {
+            query: {
+                desde: string;
+                hasta: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["InformeContenido"];
+                };
+            };
+        };
+    };
     buscar_10: {
         parameters: {
             query: {
@@ -9448,7 +10115,7 @@ export interface operations {
             };
         };
     };
-    obtener_21: {
+    obtener_22: {
         parameters: {
             query?: never;
             header?: never;
@@ -9587,7 +10254,7 @@ export interface operations {
             };
         };
     };
-    obtener_22: {
+    obtener_23: {
         parameters: {
             query?: never;
             header?: never;
@@ -9691,7 +10358,7 @@ export interface operations {
             };
         };
     };
-    obtener_23: {
+    obtener_24: {
         parameters: {
             query?: never;
             header?: never;
@@ -9713,7 +10380,7 @@ export interface operations {
             };
         };
     };
-    obtener_24: {
+    obtener_25: {
         parameters: {
             query?: never;
             header?: never;
@@ -9757,7 +10424,7 @@ export interface operations {
             };
         };
     };
-    listar_11: {
+    listar_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -9820,7 +10487,7 @@ export interface operations {
             };
         };
     };
-    obtener_25: {
+    obtener_26: {
         parameters: {
             query?: never;
             header?: never;
@@ -9842,7 +10509,7 @@ export interface operations {
             };
         };
     };
-    obtener_26: {
+    obtener_27: {
         parameters: {
             query?: never;
             header?: never;

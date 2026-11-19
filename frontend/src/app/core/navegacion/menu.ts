@@ -27,6 +27,11 @@ export const ROLES_DESPACHOS = ['ALMACENISTA', 'ADMIN_COMPRAS', 'COMPRADOR', 'AU
 /** Roles que ven la rotación de productos (mismos que {@code GET /api/reportes/rotacion}). */
 export const ROLES_ROTACION = ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO', 'AUDITOR', 'ALMACENISTA'];
 /** Roles que leen reportes de gasto y proveedores. */
+/** Roles que ven el plan de reabastecimiento (mismos que {@code GET /api/reabastecimiento}). */
+export const ROLES_REABASTECIMIENTO = ['ADMIN_COMPRAS', 'COMPRADOR', 'ALMACENISTA', 'SOLICITANTE', 'AUDITOR', 'ADMIN_SISTEMA'];
+/** Roles que ven el tablero del dueño (mismos que {@code GET /api/reportes/tablero}). */
+export const ROLES_TABLERO = ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR'];
+/** Roles que leen los reportes de gasto. */
 export const ROLES_REPORTES = ['AUDITOR', 'ADMIN_COMPRAS', 'COMPRADOR', 'APROBADOR', 'ADMINISTRATIVO'];
 /** Roles que leen proveedores. */
 export const ROLES_PROVEEDORES = ['ADMIN_COMPRAS', 'COMPRADOR', 'AUDITOR'];
@@ -51,6 +56,7 @@ export const MENU: SeccionMenu[] = [
     titulo: 'Inventario',
     opciones: [
       { texto: 'Productos y stock', icono: 'inventory_2', ruta: '/app/inventario', modulo: 'INVENTARIO', contador: 'bajoMinimo', exacta: true },
+      { texto: 'Plan de reabastecimiento', icono: 'event_repeat', ruta: '/app/inventario/reabastecimiento', roles: ROLES_REABASTECIMIENTO, modulo: 'COMPRAS' },
       { texto: 'Rotación de productos', icono: 'trending_up', ruta: '/app/inventario/rotacion', roles: ROLES_ROTACION, modulo: 'REPORTES' },
       { texto: 'Despachos', icono: 'outbox', ruta: '/app/despachos', roles: ROLES_DESPACHOS, modulo: 'DESPACHOS' },
       { texto: 'Movimientos de stock', icono: 'swap_horiz', ruta: '/app/inventario/movimientos', modulo: 'INVENTARIO' },
@@ -60,6 +66,7 @@ export const MENU: SeccionMenu[] = [
   {
     titulo: 'Gestión',
     opciones: [
+      { texto: 'Tablero del dueño', icono: 'monitoring', ruta: '/app/tablero', roles: ROLES_TABLERO, modulo: 'REPORTES' },
       { texto: 'Reportes', icono: 'bar_chart', ruta: '/app/reportes', roles: ROLES_REPORTES, modulo: 'REPORTES' },
       { texto: 'Informe de compras', icono: 'summarize', ruta: '/app/informes', roles: ['ADMIN_SISTEMA', 'ADMIN_COMPRAS'], modulo: 'COMPRAS' },
       { texto: 'Delegaciones', icono: 'group_add', ruta: '/app/delegaciones', roles: INTERNOS, modulo: 'COMPRAS' },

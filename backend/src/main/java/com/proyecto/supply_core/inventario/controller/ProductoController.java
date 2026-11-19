@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.common.dto.PageResponse;
+import com.proyecto.supply_core.inventario.dto.ProductoPlazoRequest;
 import com.proyecto.supply_core.inventario.dto.ProductoRequest;
 import com.proyecto.supply_core.inventario.dto.ProductoResponse;
 import com.proyecto.supply_core.inventario.dto.ProductoUpdateRequest;
@@ -135,5 +136,19 @@ public class ProductoController {
     @RequiereRol(Roles.ADMIN_COMPRAS)
     public ProductoResponse desactivar(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return productoService.cambiarEstado(id, false);
+    }
+
+    /**
+     * Cambia los días hábiles que tarda en llegar el producto y su colchón de seguridad. Vacío = el de la empresa.
+     *
+     * @param id      id positivo
+     * @param request plazo de entrega y días de seguridad
+     * @return producto actualizado
+     */
+    @PatchMapping("/{id}/plazo")
+    @RequiereRol(Roles.ADMIN_COMPRAS)
+    public ProductoResponse cambiarPlazo(@PathVariable @Positive(message = "debe ser un id válido") Long id,
+            @Valid @RequestBody ProductoPlazoRequest request) {
+        return productoService.cambiarPlazo(id, request);
     }
 }

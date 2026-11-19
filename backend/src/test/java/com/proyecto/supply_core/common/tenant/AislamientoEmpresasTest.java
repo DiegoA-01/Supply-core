@@ -1669,6 +1669,54 @@ class AislamientoEmpresasTest {
         }
     }
 
+    @Test
+    void elPlanDeReabastecimientoSoloUsaElConsumoYLosProductosDeLaEmpresa() throws Exception {
+        try {
+            // la empresa B consume mucho de su producto; la A no debe verlo ni recibir sus avisos
+            jdbc.update("INSERT INTO movimiento_inventario (empresa_id, producto_id, bodega_origen_id, usuario_id, tipo, "
+                    + "cantidad, stock_resultante, creado_en) VALUES (?, ?, ?, ?, 'SALIDA_CONSUMO', 900, 0, NOW())",
+                    empresaB, productoB, bodegaB, usuarioB);
+            mvc.perform(get("/api/reabastecimiento").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "COMPRADOR")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.items[?(@.productoId==" + productoB + ")]").isEmpty())
+                    .andExpect(jsonPath("$.items[?(@.productoId==" + productoA + ")].consumoDiario").value(0.0));
+            mvc.perform(get("/api/reabastecimiento").header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "COMPRADOR")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.items[?(@.productoId==" + productoA + ")]").isEmpty())
+                    // otras pruebas de esta clase también dejan salidas en B: basta con que tenga consumo
+                    .andExpect(jsonPath("$.items[?(@.productoId==" + productoB + " && @.consumoDiario >= 10)]").isNotEmpty());
+            // el tablero del dueño tampoco mezcla empresas
+            mvc.perform(get("/api/reportes/tablero").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "ADMIN_SISTEMA")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.masMovidos").isEmpty())
+                    .andExpect(jsonPath("$.gastoPorMes.length()").value(12));
+            mvc.perform(get("/api/reportes/tablero").header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "ADMIN_SISTEMA")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.masMovidos[0].productoId").value(productoB));
+            mvc.perform(get("/api/reportes/tablero").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "COMPRADOR")))
+                    .andExpect(status().isForbidden());
+
+            // el plazo propio del producto de B no se puede cambiar desde A
+            String adminComprasA = token(empresaA, usuarioA, "ADMIN_COMPRAS");
+            mvc.perform(patch("/api/productos/" + productoB + "/plazo").header(HttpHeaders.AUTHORIZATION, adminComprasA)
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"plazoEntregaDias\":7,\"diasSeguridad\":1}"))
+                    .andExpect(status().isNotFound());
+            mvc.perform(patch("/api/productos/" + productoA + "/plazo").header(HttpHeaders.AUTHORIZATION, adminComprasA)
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"plazoEntregaDias\":7,\"diasSeguridad\":1}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.plazoEntregaDias").value(7));
+            mvc.perform(get("/api/reabastecimiento").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "COMPRADOR")))
+                    .andExpect(jsonPath("$.items[?(@.productoId==" + productoA + ")].plazoEntregaDias").value(7))
+                    .andExpect(jsonPath("$.items[?(@.productoId==" + productoA + ")].plazoPropio").value(true));
+            assertEquals(null, jdbc.queryForObject("SELECT plazo_entrega_dias FROM producto WHERE id = ?", Integer.class,
+                    productoB));
+        } finally {
+            jdbc.update("DELETE FROM movimiento_inventario WHERE empresa_id = ? AND cantidad = 900", empresaB);
+            jdbc.update("UPDATE producto SET plazo_entrega_dias = NULL, dias_seguridad = NULL WHERE id IN (?, ?)",
+                    productoA, productoB);
+        }
+    }
+
     // ------------------------------------------------------------------ consola de plataforma, planes y módulos (SaaS 2)
 
     private static final String CLAVE_PLATAFORMA = "ClavePlataforma2026";

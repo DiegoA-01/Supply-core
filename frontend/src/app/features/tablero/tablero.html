@@ -1,0 +1,125 @@
+<div class="pagina">
+  <div>
+    <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Tablero del dueño</p>
+    <div class="encabezado">
+      <div><h1>Tablero del dueño</h1>
+        <p>Cómo va tu empresa en los últimos doce meses: cuánto compras, cuánto debes, cuánto dinero tienes en bodega y qué hay que pedir.</p></div>
+    </div>
+  </div>
+
+  @if (datos(); as d) {
+    <div class="rejilla kpis">
+      <div class="tarjeta kpi"><div class="etiqueta">Compras del mes</div><div class="valor">{{ d.gastoMesActual | pesos }}</div>
+        <div class="nota">
+          @if (d.variacionMesPct != null) {
+            <span class="variacion" [class.sube]="+d.variacionMesPct > 0" [class.baja]="+d.variacionMesPct < 0">
+              <span class="material-symbols-outlined">{{ +d.variacionMesPct > 0 ? 'arrow_upward' : +d.variacionMesPct < 0 ? 'arrow_downward' : 'remove' }}</span>{{ d.variacionMesPct | numero }} %</span>
+            frente a {{ d.gastoMesAnterior | pesos }} del mes pasado
+          } @else { el mes pasado no hubo compras }
+        </div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Compras de 12 meses</div><div class="valor">{{ d.gastoDoceMeses | compacto }}</div>
+        <div class="nota">{{ d.ordenesDoceMeses }} órdenes desde el {{ d.desde | fecha }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Por pagar a proveedores</div><div class="valor" [class.peligro]="+(d.porPagarDoceMeses ?? 0) > 0">{{ d.porPagarDoceMeses | compacto }}</div>
+        <div class="nota">ya pagaste {{ d.pagadoDoceMeses | pesos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Dinero en inventario</div><div class="valor">{{ d.valorInventario | compacto }}</div>
+        <div class="nota"><strong [class.rojo]="+(d.valorSinMovimiento ?? 0) > 0">{{ d.valorSinMovimiento | pesos }}</strong> parado sin salidas en {{ d.diasRotacion }} días</div></div>
+      <a class="tarjeta kpi enlace-kpi" routerLink="/app/inventario/reabastecimiento">
+        <div class="etiqueta">Hay que pedir</div>
+        <div class="valor" [class.peligro]="(d.reabastecerUrgentes ?? 0) + (d.reabastecerPedirYa ?? 0) > 0">{{ (d.reabastecerUrgentes ?? 0) + (d.reabastecerPedirYa ?? 0) }}</div>
+        <div class="nota">{{ d.reabastecerUrgentes }} urgentes · {{ d.reabastecerPronto }} pronto</div></a>
+    </div>
+
+    <section class="tarjeta">
+      <h2>Compras por mes <span class="texto-2 texto-chico">órdenes vigentes, con impuestos</span></h2>
+      <div class="grafico" role="img" aria-label="Compras de los últimos doce meses">
+        @for (b of barras(); track b.etiqueta) {
+          <div class="columna">
+            <span class="cifra">{{ b.total > 0 ? (b.total | compacto) : '' }}</span>
+            <div class="barra-vertical" [class.actual]="b.actual" [class.cero]="b.total === 0" [style.height.%]="b.alto" [title]="b.etiqueta + ': ' + (b.total | pesos)"></div>
+            <span class="mes">{{ b.etiqueta }}</span>
+          </div>
+        }
+      </div>
+    </section>
+
+    <div class="rejilla dos">
+      <section class="tarjeta">
+        <h2>En qué se va la plata</h2>
+        @for (c of d.gastoPorCategoria; track c.id) {
+          <div class="barra-fila">
+            <div class="barra-texto"><strong>{{ c.nombre }}</strong><span class="texto-chico texto-2">{{ c.ordenes }} órdenes</span></div>
+            <div class="barra-grafica"><span class="barra-relleno" [style.width.%]="ancho(c.total, totales(d.gastoPorCategoria))"></span></div>
+            <div class="barra-valor">{{ c.total | compacto }}</div>
+          </div>
+        } @empty { <p class="texto-2">Sin compras en el período.</p> }
+      </section>
+      <section class="tarjeta">
+        <h2>A quién le compras más</h2>
+        @for (p of d.gastoPorProveedor; track p.id) {
+          <div class="barra-fila">
+            <div class="barra-texto"><strong>{{ p.nombre }}</strong><span class="texto-chico texto-2">{{ p.ordenes }} órdenes</span></div>
+            <div class="barra-grafica"><span class="barra-relleno suave" [style.width.%]="ancho(p.total, totales(d.gastoPorProveedor))"></span></div>
+            <div class="barra-valor">{{ p.total | compacto }}</div>
+          </div>
+        } @empty { <p class="texto-2">Sin compras en el período.</p> }
+      </section>
+    </div>
+
+    <section class="tarjeta">
+      <h2>Cómo se mueve tu inventario <a class="texto-chico enlace" routerLink="/app/inventario/rotacion">Ver rotación completa</a></h2>
+      <div class="distribucion" role="img" aria-label="Productos por tipo de rotación">
+        @for (c of clases; track c) {
+          @if (parte(c) > 0) { <span class="tramo {{ tonoClase(c) }}" [style.width.%]="parte(c)" [title]="textoClase(c) + ': ' + cuenta(c)"></span> }
+        }
+      </div>
+      <ul class="leyenda">
+        @for (c of clases; track c) { <li><span class="punto {{ tonoClase(c) }}"></span>{{ textoClase(c) }} <strong>{{ cuenta(c) }}</strong></li> }
+      </ul>
+      <p class="texto-chico texto-2 sin-margen">{{ d.productosActivos }} productos activos · {{ d.bajoMinimo }} bajo el mínimo · {{ d.agotados }} agotados que se vendían.</p>
+    </section>
+
+    <div class="rejilla dos">
+      <section class="tarjeta">
+        <h2>Lo que más sale</h2>
+        @for (i of d.masMovidos; track i.productoId) {
+          <div class="barra-fila">
+            <div class="barra-texto"><strong>{{ i.nombre }}</strong><span class="texto-chico texto-2">{{ i.codigo }}@if (i.diasCobertura != null) { · alcanza {{ i.diasCobertura | numero }} días }</span></div>
+            <div class="barra-grafica"><span class="barra-relleno" [style.width.%]="ancho(i.salidas, salidas(d.masMovidos))"></span></div>
+            <div class="barra-valor">{{ i.salidas | numero }} <span class="texto-chico texto-2">{{ i.unidad }}</span></div>
+          </div>
+        } @empty { <p class="texto-2">No hubo salidas en {{ d.diasRotacion }} días.</p> }
+      </section>
+      <section class="tarjeta">
+        <h2>Lo que no se mueve <span class="texto-2 texto-chico">dinero parado</span></h2>
+        @for (i of d.menosMovidos; track i.productoId) {
+          <div class="barra-fila">
+            <div class="barra-texto"><strong>{{ i.nombre }}</strong>
+              <span class="texto-chico texto-2">{{ i.codigo }} · {{ i.stock | numero }} {{ i.unidad }}@if (i.diasSinSalida != null) { · {{ i.diasSinSalida }} días sin salir } @else { · nunca ha salido }</span></div>
+            <div class="barra-grafica"><span class="barra-relleno rojo" [style.width.%]="ancho(i.valorStock ?? 0, valores(d.menosMovidos))"></span></div>
+            <div class="barra-valor">{{ i.valorStock != null ? (i.valorStock | pesos) : 'sin costo' }}</div>
+          </div>
+        } @empty { <p class="texto-2">Todo lo que tienes en bodega tuvo salidas. </p> }
+      </section>
+    </div>
+
+    <section class="tarjeta">
+      <h2>Qué hay que pedir <a class="texto-chico enlace" routerLink="/app/inventario/reabastecimiento">Ver el plan completo</a></h2>
+      @for (i of d.porPedir; track i.productoId) {
+        <div class="pedido">
+          <span class="chip {{ estado(i.estado).tono }}">{{ estado(i.estado).texto }}</span>
+          <div class="barra-texto"><strong>{{ i.nombre }}</strong><span class="texto-chico texto-2">{{ i.motivo }}</span></div>
+          <div class="barra-valor">@if (+(i.cantidadSugerida ?? 0) > 0) { {{ i.cantidadSugerida | numero }} <span class="texto-chico texto-2">{{ i.unidad }}</span> }</div>
+        </div>
+      } @empty { <p class="texto-2">Nada por pedir: lo que tienes alcanza mientras llega un pedido.</p> }
+    </section>
+
+    <section class="tarjeta nota-ventas">
+      <span class="material-symbols-outlined">point_of_sale</span>
+      <p class="sin-margen texto-chico texto-2">Las <strong>ventas, ingresos y márgenes</strong> se sumarán a este tablero cuando se active el módulo de ventas y caja.</p>
+    </section>
+  } @else if (error()) {
+    <section class="tarjeta vacio-grande"><span class="material-symbols-outlined">error</span><h2>No se pudo cargar el tablero</h2></section>
+  } @else {
+    <p class="cargando">Armando el tablero…</p>
+  }
+</div>

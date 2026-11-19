@@ -72,4 +72,12 @@ public class Producto {
 
     @Column(nullable = false)
     private boolean activo = true;
+
+    /** Días hábiles que tarda en llegar un pedido de este producto; {@code null} = el valor de la empresa. */
+    @Column(name = "plazo_entrega_dias")
+    private Integer plazoEntregaDias;
+
+    /** Días hábiles de colchón para este producto; {@code null} = el valor de la empresa. */
+    @Column(name = "dias_seguridad")
+    private Integer diasSeguridad;
 }

@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS } from './core/navegacion/menu';
+import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REABASTECIMIENTO, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS, ROLES_TABLERO } from './core/navegacion/menu';
 import { empresaGuard, invitadoGuard, permisoGuard, plataformaGuard, proveedorGuard } from './core/sesion/guards';
 
 /**
@@ -138,6 +138,20 @@ export const routes: Routes = [
         canActivate: [permisoGuard],
         data: { roles: ROLES_DESPACHOS, modulo: 'DESPACHOS' },
         loadComponent: () => import('./features/despachos/despachos').then(m => m.Despachos),
+      },
+      {
+        path: 'inventario/reabastecimiento',
+        title: 'Plan de reabastecimiento · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_REABASTECIMIENTO, modulo: 'COMPRAS' },
+        loadComponent: () => import('./features/inventario/reabastecimiento').then(m => m.PlanReabastecimiento),
+      },
+      {
+        path: 'tablero',
+        title: 'Tablero del dueño · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_TABLERO, modulo: 'REPORTES' },
+        loadComponent: () => import('./features/tablero/tablero').then(m => m.TableroDueno),
       },
       {
         path: 'inventario/rotacion',

@@ -9,6 +9,7 @@ import { Avisos } from '../../core/ui/avisos';
 const EVENTOS: Record<string, string> = {
   PROVEEDOR_PENDIENTE: 'Un proveedor se registró y espera habilitación',
   STOCK_BAJO_MINIMO: 'Un producto quedó bajo su mínimo',
+  REABASTECIMIENTO_DIARIO: 'Resumen de la mañana: productos que hay que pedir hoy',
   SOLICITUD_PENDIENTE_APROBACION: 'Hay una solicitud esperando una decisión',
   SOLICITUD_DECIDIDA: 'Decidieron una solicitud',
   SOLICITUD_APROBADA: 'Una solicitud quedó aprobada y lista para cotizar',

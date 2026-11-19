@@ -24,6 +24,7 @@ import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
 import com.proyecto.supply_core.common.exception.ParametroInvalidoException;
 import com.proyecto.supply_core.common.util.Ordenamiento;
+import com.proyecto.supply_core.inventario.dto.ProductoPlazoRequest;
 import com.proyecto.supply_core.inventario.dto.ProductoRequest;
 import com.proyecto.supply_core.inventario.dto.ProductoResponse;
 import com.proyecto.supply_core.inventario.dto.ProductoUpdateRequest;
@@ -159,6 +160,26 @@ public class ProductoService {
                 req.stockMinimo(), req.stockMaximo(), req.costoReferencia());
         auditoriaService.exito(AccionAuditoria.PRODUCTO_EDITAR, EntidadAuditada.PRODUCTO, id,
                 "antes: " + antes + " | después: " + describir(p));
+        return ProductoResponse.of(p, stockRepository.totalDeProducto(id));
+    }
+
+    /**
+     * Cambia el plazo de reabastecimiento propio del producto. Un valor {@code null} vuelve al de la empresa.
+     *
+     * @param id  producto
+     * @param req días hábiles de entrega y de seguridad
+     * @return producto actualizado
+     * @throws NoEncontradoException si no existe
+     */
+    @Transactional
+    public ProductoResponse cambiarPlazo(Long id, ProductoPlazoRequest req) {
+        Producto p = buscarEntidad(id);
+        String antes = "plazoEntregaDias=" + p.getPlazoEntregaDias() + ", diasSeguridad=" + p.getDiasSeguridad();
+        p.setPlazoEntregaDias(req.plazoEntregaDias());
+        p.setDiasSeguridad(req.diasSeguridad());
+        auditoriaService.exito(AccionAuditoria.PRODUCTO_EDITAR, EntidadAuditada.PRODUCTO, id, "codigo=" + p.getCodigo()
+                + "; antes: " + antes + " | después: plazoEntregaDias=" + p.getPlazoEntregaDias() + ", diasSeguridad="
+                + p.getDiasSeguridad());
         return ProductoResponse.of(p, stockRepository.totalDeProducto(id));
     }
 
