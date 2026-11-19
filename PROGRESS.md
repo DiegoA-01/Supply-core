@@ -459,10 +459,9 @@ Solo lo que no estaba en las secciones anteriores. Todo quedó mezclado en `deve
 - **Rutas:** `/api/informes-compras` (listar, detalle, vista previa, pedir, enviar, leído). Avisos `INFORME_PEDIDO` e `INFORME_RECIBIDO`, auditoría `INFORME_PEDIR` e `INFORME_ENVIAR`, pantalla `/app/informes`, `InformeComprasServiceTest` y prueba de fuga.
 - **Aprobación por el dueño:** si quien pide una solicitud tiene el rol aprobador de su política (el jefe de compras), la decide el dueño. Se calcula al enviarla (`aprueba_dueno`); la bandeja, la decisión y el SLA lo respetan.
 
-**Spec del módulo de Ventas y Caja (PR #22 y #23).** `SPEC_VENTAS.md` (índice) y tres partes, sin código todavía:
-- **Parte 1:** base, CI, catálogo de venta y clientes.
-- **Parte 2:** caja y venta en mostrador.
-- **Parte 3:** cartera, costos y reportes.
+**Spec del módulo de Ventas y Caja (PR #22 y #23).** Se escribió en tres partes y después se pasó al formato de Spec Driven Development (2026-11-19, ver más abajo).
+
+**Specs con Spec Driven Development (2026-11-19).** `AGENTS.md` en la raíz y la carpeta `agents/` con el contexto fijo (`product.md`, `tech-stack.md`, `architecture.md`) y una carpeta por spec en `agents/specs/NNN-nombre/` con `spec.md`, `plan.md` y `tasks.md`. La spec de ventas quedó repartida en las specs 000 (CI) a 010 (endurecimiento), una por fase F0 a F10, sin perder contenido; los archivos `SPEC_VENTAS*.md` se borraron. Se alineó con la rama `feature/mejoras-negocio` (de Advilmar24, aún sin mezclar): esa rama usa V26 a V30 y ya construyó gran parte de la F1 (precios, impuestos y listas bajo `/api/ventas/`), así que ventas sigue en V31 y las decisiones D2 y D8 quedan tomadas. Las migraciones se reservan en `agents/specs/README.md`.
 
 **Herramientas y forma de trabajo.**
 - **Flujo de git:**
@@ -474,29 +473,24 @@ Solo lo que no estaba en las secciones anteriores. Todo quedó mezclado en `deve
 
 ### Estado del repositorio
 - `develop` = `origin/develop` (`c6c0c55`, merge del PR #23); `main` sigue en el commit inicial.
-- **Backend:** 743 pruebas en verde (1 omitida), 45 de fuga entre empresas, 25 migraciones (próxima V26).
+- **Backend:** 743 pruebas en verde (1 omitida), 45 de fuga entre empresas, 25 migraciones (V26 a V30 reservadas por `feature/mejoras-negocio`; ventas sigue en V31).
 - **Frontend:** 127 pruebas en verde.
 - **Docker:** `http://localhost:8088`, con la empresa `Ferreteria Demo` sembrada. Credenciales en `credenciales-docker.local.txt`, nunca en el repositorio.
 - **Local sin Docker:** backend en el puerto 8081, porque el 8080 lo ocupa un relé de WSL; `frontend/proxy.conf.json` apunta a 8081 y ese cambio no se sube.
 
 ### Qué falta y cómo lo pensamos hacer (en este orden)
-1. **Decisiones de la parte 1 de ventas** (D2, D5, D8 de `SPEC_VENTAS_1_BASE_Y_CATALOGO.md`). La recomendación:
-   - Precio de mostrador con IVA incluido.
-   - Roles nuevos `SUPERVISOR_VENTAS` y `VENDEDOR`.
-   - Los precios los fija el dueño, con opción de delegar al jefe de compras.
-
-   Con eso se actualiza `CLAUDE.md` (regla 7 y descripción) para que Ventas y Caja entren al alcance.
-2. **F0, CI con GitHub Actions** (rama `feature/ci-github-actions`):
+1. **Mezclar `feature/mejoras-negocio`** a `develop` (V26 a V30) después de confirmar que sus pruebas pasan, y aprobar las decisiones pendientes (D1, D3 a D7 y D9) en `agents/specs/README.md`. D2 y D8 ya quedaron tomadas y `CLAUDE.md` ya incluye Ventas y Caja en el alcance.
+2. **Spec 000, CI con GitHub Actions** (rama `feature/ci-github-actions`, detalle en `agents/specs/000-ci-github-actions/`):
    - `.github/workflows/ci.yml` con `backend` (Java 21, MySQL 8 de servicio, `./mvnw verify`, Javadoc con doclint, JaCoCo), `frontend` (`npm ci`, pruebas y build de producción) y `docker` (construir las imágenes y escanearlas con Trivy).
    - Dependency Review en cada PR y CodeQL semanal, sin secretos reales.
    - Después, el dueño del repositorio activa la protección de `develop` y `main` para exigir el CI antes de mezclar.
-3. **Ventas, parte 1** (F1 y F2): impuestos, código de barras, listas y precios de venta con historial, clientes con autorización de datos, módulos `VENTAS`, `CAJA` y `CARTERA` en los planes. Desde V26.
-4. **Ventas, parte 2** (F3 a F6), con las decisiones D1, D3, D6 y D7:
+3. **Specs 001 y 002** (F1 y F2): completar el catálogo de venta (módulos `CAJA` y `CARTERA`, roles nuevos, un solo precio vigente garantizado por la base, precio por unidad, carga de precios por Excel, búsqueda para vender) y clientes con autorización de datos. Desde V31.
+4. **Specs 003 a 006** (F3 a F6), con las decisiones D1, D3, D6 y D7:
    - Cajas y turnos con cierre ciego y PIN de supervisor.
    - La venta en una sola transacción (stock, caja e idempotencia).
    - POS con lector y tiquete de 80 mm.
    - Anulación y devolución.
-5. **Ventas, parte 3** (F7 a F10), con la decisión D4:
+5. **Specs 007 a 010** (F7 a F10), con la decisión D4:
    - Cartera.
    - Costo promedio y margen.
    - Reportes, tablero y cuadre diario automático.
