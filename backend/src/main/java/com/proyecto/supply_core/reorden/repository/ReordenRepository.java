@@ -38,6 +38,43 @@ public interface ReordenRepository extends Repository<OrdenCompra, Long> {
             @Param("estados") Collection<EstadoOrden> estados);
 
     /**
+     * Igual que {@link #pedidoEnOrdenes} pero solo de las órdenes que llegan a bodegas de una sede.
+     *
+     * @param productoIds productos
+     * @param estados     estados de orden que cuentan como "por recibir"
+     * @param sedeId      sede de la bodega destino
+     * @return una fila por producto que tenga órdenes hacia esa sede
+     */
+    @Query("""
+            select new com.proyecto.supply_core.reorden.dto.CantidadPorProducto(l.producto.id, sum(l.cantidad))
+            from OrdenCompraLinea l
+            where l.producto.id in :productoIds and l.orden.estado in :estados
+              and l.orden.bodegaDestino.sede.id = :sedeId
+            group by l.producto.id
+            """)
+    List<CantidadPorProducto> pedidoEnOrdenesDeSede(@Param("productoIds") Collection<Long> productoIds,
+            @Param("estados") Collection<EstadoOrden> estados, @Param("sedeId") Long sedeId);
+
+    /**
+     * Igual que {@link #aceptadoEnOrdenes} pero solo de las órdenes que llegan a bodegas de una sede.
+     *
+     * @param productoIds productos
+     * @param estados     estados de orden que cuentan como "por recibir"
+     * @param sedeId      sede de la bodega destino
+     * @return una fila por producto con recepciones de órdenes hacia esa sede
+     */
+    @Query("""
+            select new com.proyecto.supply_core.reorden.dto.CantidadPorProducto(r.ordenLinea.producto.id,
+                   sum(r.cantidadAceptada))
+            from RecepcionLinea r
+            where r.ordenLinea.producto.id in :productoIds and r.ordenLinea.orden.estado in :estados
+              and r.ordenLinea.orden.bodegaDestino.sede.id = :sedeId
+            group by r.ordenLinea.producto.id
+            """)
+    List<CantidadPorProducto> aceptadoEnOrdenesDeSede(@Param("productoIds") Collection<Long> productoIds,
+            @Param("estados") Collection<EstadoOrden> estados, @Param("sedeId") Long sedeId);
+
+    /**
      * Suma lo ya aceptado en recepciones de esas mismas órdenes, por producto.
      *
      * @param productoIds productos

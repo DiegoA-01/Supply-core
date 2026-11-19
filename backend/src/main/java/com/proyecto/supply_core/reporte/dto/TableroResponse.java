@@ -37,6 +37,8 @@ import com.proyecto.supply_core.reorden.dto.ReabastecimientoItem;
  * @param reabastecerPedirYa   productos que hay que pedir hoy
  * @param reabastecerPronto    productos que hay que pedir en los próximos días hábiles
  * @param porPedir             los más urgentes de pedir (máximo {@value #MAXIMO_LISTA})
+ * @param sedeId               sede del tablero ({@code null} = toda la empresa)
+ * @param gastoPorSede         compras de los doce meses repartidas por sede (solo en el tablero de toda la empresa)
  */
 public record TableroResponse(LocalDate hoy, LocalDate desde, BigDecimal gastoDoceMeses, BigDecimal pagadoDoceMeses,
         BigDecimal porPagarDoceMeses, long ordenesDoceMeses, BigDecimal gastoMesActual, BigDecimal gastoMesAnterior,
@@ -44,7 +46,8 @@ public record TableroResponse(LocalDate hoy, LocalDate desde, BigDecimal gastoDo
         List<GastoItem> gastoPorProveedor, BigDecimal valorInventario, BigDecimal valorSinMovimiento,
         int productosActivos, long agotados, long bajoMinimo, int diasRotacion, Map<ClaseRotacion, Long> productosPorClase,
         List<RotacionItem> masMovidos, List<RotacionItem> menosMovidos, long reabastecerUrgentes,
-        long reabastecerPedirYa, long reabastecerPronto, List<ReabastecimientoItem> porPedir) {
+        long reabastecerPedirYa, long reabastecerPronto, List<ReabastecimientoItem> porPedir, Long sedeId,
+        List<GastoItem> gastoPorSede) {
 
     /** Largo máximo de las listas del tablero. */
     public static final int MAXIMO_LISTA = 5;

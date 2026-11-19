@@ -70,6 +70,7 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 - `/app/inventario/reabastecimiento`: estados del plan como tarjetas que filtran, tabla con consumo, días que alcanza, plazo (de la empresa o del producto, y el real como pista), fecha límite para pedir y cantidad; detalle con la cuenta. ADMIN_COMPRAS ajusta el plazo del producto; el SOLICITANTE elige productos y crea la solicitud en borrador (abre su edición).
 - `/app/tablero` (ADMIN_SISTEMA, ADMIN_COMPRAS, AUDITOR): KPIs, compras por mes (barras), gasto por categoría y proveedor, distribución de rotación, más y menos movidos, qué pedir. Sin librería de gráficos: barras con CSS; todo número viene del backend.
 - Datos de la empresa suma los días de entrega, seguridad y cobertura por defecto.
+- Selector de sede (`core/ui/selector-sede.ts`) en tablero, plan de reabastecimiento y rotación; aparece solo con dos o más sedes. El tablero de toda la empresa compara las compras por sede.
 
 ## Decisiones (2026-11-05)
 - **Una sola app SaaS con tres zonas**: `/app` (empresa, `empresaGuard`), `/portal` (rol PROVEEDOR, `proveedorGuard`), `/plataforma` (dueño con MFA, `plataformaGuard`). Cada pantalla se carga perezosa.

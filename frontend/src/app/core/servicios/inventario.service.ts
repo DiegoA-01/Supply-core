@@ -76,9 +76,13 @@ export class InventarioService {
     return this.http.get<SugerenciaReorden[]>(api('/api/reorden/sugerencias'));
   }
 
-  /** Plan de reabastecimiento: qué pedir, cuándo y cuánto según el consumo y el plazo de entrega (lo calcula el backend). */
-  reabastecimiento(): Observable<Reabastecimiento> {
-    return this.http.get<Reabastecimiento>(api('/api/reabastecimiento'));
+  /**
+   * Plan de reabastecimiento: qué pedir, cuándo y cuánto según el consumo y el plazo de entrega (lo calcula el backend).
+   *
+   * @param sedeId sede (vacío = toda la empresa)
+   */
+  reabastecimiento(sedeId: number | null = null): Observable<Reabastecimiento> {
+    return this.http.get<Reabastecimiento>(api('/api/reabastecimiento'), { params: parametros({ sedeId }) });
   }
 
   /**
@@ -86,9 +90,10 @@ export class InventarioService {
    *
    * @param fechaRequerida fecha requerida (ISO)
    * @param productoIds    productos elegidos
+   * @param sedeId         sede del plan (vacío = toda la empresa)
    */
-  borradorReabastecimiento(fechaRequerida: string, productoIds: number[]): Observable<Solicitud> {
-    return this.http.post<Solicitud>(api('/api/reabastecimiento/borrador'), { fechaRequerida, productoIds });
+  borradorReabastecimiento(fechaRequerida: string, productoIds: number[], sedeId: number | null = null): Observable<Solicitud> {
+    return this.http.post<Solicitud>(api('/api/reabastecimiento/borrador'), { fechaRequerida, productoIds, sedeId });
   }
 
   /**

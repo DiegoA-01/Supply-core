@@ -7,6 +7,7 @@ import { FechaPipe, NumeroPipe } from '../../core/formato/formato';
 import { InventarioService } from '../../core/servicios/inventario.service';
 import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
+import { SelectorSede } from '../../core/ui/selector-sede';
 
 /** Texto, color y explicación de cada estado del plan. */
 export const ESTADOS: Record<EstadoReabastecimiento, { texto: string; tono: string; ayuda: string }> = {
@@ -31,7 +32,7 @@ interface EdicionPlazo {
  */
 @Component({
   selector: 'sc-reabastecimiento',
-  imports: [FormsModule, RouterLink, NumeroPipe, FechaPipe],
+  imports: [FormsModule, RouterLink, NumeroPipe, FechaPipe, SelectorSede],
   templateUrl: './reabastecimiento.html',
   styleUrl: './reabastecimiento.scss',
 })
@@ -50,6 +51,8 @@ export class PlanReabastecimiento implements OnInit {
   protected readonly creando = signal(false);
   protected readonly edicion = signal<EdicionPlazo | null>(null);
   protected readonly abierto = signal<number | null>(null);
+  /** Sede del plan; {@code null} = toda la empresa. */
+  protected readonly sede = signal<number | null>(null);
 
   /** El SOLICITANTE convierte el plan en una solicitud; el ADMIN_COMPRAS ajusta los plazos. */
   protected readonly puedePedir = computed(() => this.sesion.tieneRol(['SOLICITANTE']) && !this.sesion.soloLectura());
@@ -71,7 +74,7 @@ export class PlanReabastecimiento implements OnInit {
   }
 
   protected cargar(): void {
-    this.inventario.reabastecimiento().subscribe({
+    this.inventario.reabastecimiento(this.sede()).subscribe({
       next: d => {
         this.datos.set(d);
         // por defecto quedan elegidos los urgentes y los de pedir hoy
@@ -87,6 +90,13 @@ export class PlanReabastecimiento implements OnInit {
         this.avisos.error(e);
       },
     });
+  }
+
+  /** @param id sede elegida ({@code null} = toda la empresa); recalcula el plan */
+  protected cambiarSede(id: number | null): void {
+    this.sede.set(id);
+    this.datos.set(null);
+    this.cargar();
   }
 
   /** @param e estado; texto visible */
@@ -133,7 +143,7 @@ export class PlanReabastecimiento implements OnInit {
       return;
     }
     this.creando.set(true);
-    this.inventario.borradorReabastecimiento(this.fechaRequerida(), ids).subscribe({
+    this.inventario.borradorReabastecimiento(this.fechaRequerida(), ids, this.sede()).subscribe({
       next: s => {
         this.creando.set(false);
         this.avisos.ok(`${s.consecutivo} quedó en borrador. Revísala y envíala a aprobación.`);

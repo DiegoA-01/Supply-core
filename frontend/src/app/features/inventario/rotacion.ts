@@ -7,6 +7,7 @@ import { FechaPipe, NumeroPipe, PesosPipe } from '../../core/formato/formato';
 import { InventarioService } from '../../core/servicios/inventario.service';
 import { ReportesService, iso } from '../../core/servicios/reportes.service';
 import { Avisos } from '../../core/ui/avisos';
+import { SelectorSede } from '../../core/ui/selector-sede';
 
 /** Períodos rápidos; "otro" deja escribir las fechas. */
 type Periodo = 30 | 60 | 90 | 180 | 365 | 'otro';
@@ -29,7 +30,7 @@ const CLASES: Record<ClaseRotacion, { texto: string; tono: string; ayuda: string
  */
 @Component({
   selector: 'sc-rotacion',
-  imports: [FormsModule, RouterLink, NumeroPipe, PesosPipe, FechaPipe],
+  imports: [FormsModule, RouterLink, NumeroPipe, PesosPipe, FechaPipe, SelectorSede],
   templateUrl: './rotacion.html',
   styleUrl: './rotacion.scss',
 })
@@ -51,6 +52,8 @@ export class RotacionProductos implements OnInit {
   protected readonly desde = signal('');
   protected readonly hasta = signal('');
   protected readonly categoriaId = signal<number | null>(null);
+  /** Sede del análisis; {@code null} = toda la empresa. */
+  protected readonly sede = signal<number | null>(null);
 
   // Tabla completa
   protected readonly texto = signal('');
@@ -113,7 +116,7 @@ export class RotacionProductos implements OnInit {
       return;
     }
     this.cargando.set(true);
-    this.reportes.rotacion(desde, hasta, this.categoriaId()).subscribe({
+    this.reportes.rotacion(desde, hasta, this.categoriaId(), this.sede()).subscribe({
       next: r => {
         this.datos.set(r);
         this.cargando.set(false);

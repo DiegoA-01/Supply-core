@@ -36,6 +36,7 @@ public interface ReporteRepository extends Repository<OrdenCompra, Long> {
      * @param hasta       emisión hasta (excluida)
      * @param categoriaId categoría de las líneas
      * @param proveedorId proveedor de la orden
+     * @param sedeId      sede de la bodega destino de la orden (opcional)
      * @return filas, de mayor a menor subtotal
      */
     @Query("""
@@ -47,12 +48,14 @@ public interface ReporteRepository extends Repository<OrdenCompra, Long> {
               and (:hasta is null or o.creadoEn < :hasta)
               and (:categoriaId is null or p.categoria.id = :categoriaId)
               and (:proveedorId is null or pr.id = :proveedorId)
+              and (:sedeId is null or o.bodegaDestino.sede.id = :sedeId)
             group by pr.id, pr.razonSocial
             order by sum(l.subtotal) desc
             """)
     List<GastoFila> gastoPorProveedor(@Param("excluidos") Collection<EstadoOrden> excluidos,
             @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta,
-            @Param("categoriaId") Long categoriaId, @Param("proveedorId") Long proveedorId);
+            @Param("categoriaId") Long categoriaId, @Param("proveedorId") Long proveedorId,
+            @Param("sedeId") Long sedeId);
 
     /**
      * Gasto de las órdenes vigentes agrupado por categoría del producto.
@@ -62,6 +65,7 @@ public interface ReporteRepository extends Repository<OrdenCompra, Long> {
      * @param hasta       emisión hasta (excluida)
      * @param categoriaId categoría de las líneas
      * @param proveedorId proveedor de la orden
+     * @param sedeId      sede de la bodega destino de la orden (opcional)
      * @return filas, de mayor a menor subtotal
      */
     @Query("""
@@ -73,12 +77,14 @@ public interface ReporteRepository extends Repository<OrdenCompra, Long> {
               and (:hasta is null or o.creadoEn < :hasta)
               and (:categoriaId is null or c.id = :categoriaId)
               and (:proveedorId is null or o.proveedor.id = :proveedorId)
+              and (:sedeId is null or o.bodegaDestino.sede.id = :sedeId)
             group by c.id, c.nombre
             order by sum(l.subtotal) desc
             """)
     List<GastoFila> gastoPorCategoria(@Param("excluidos") Collection<EstadoOrden> excluidos,
             @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta,
-            @Param("categoriaId") Long categoriaId, @Param("proveedorId") Long proveedorId);
+            @Param("categoriaId") Long categoriaId, @Param("proveedorId") Long proveedorId,
+            @Param("sedeId") Long sedeId);
 
     /**
      * Gasto de las órdenes vigentes agrupado por mes de emisión.
@@ -88,6 +94,7 @@ public interface ReporteRepository extends Repository<OrdenCompra, Long> {
      * @param hasta       emisión hasta (excluida)
      * @param categoriaId categoría de las líneas
      * @param proveedorId proveedor de la orden
+     * @param sedeId      sede de la bodega destino de la orden (opcional)
      * @return filas en orden cronológico
      */
     @Query("""
@@ -99,12 +106,14 @@ public interface ReporteRepository extends Repository<OrdenCompra, Long> {
               and (:hasta is null or o.creadoEn < :hasta)
               and (:categoriaId is null or p.categoria.id = :categoriaId)
               and (:proveedorId is null or o.proveedor.id = :proveedorId)
+              and (:sedeId is null or o.bodegaDestino.sede.id = :sedeId)
             group by year(o.creadoEn), month(o.creadoEn)
             order by year(o.creadoEn), month(o.creadoEn)
             """)
     List<GastoMesFila> gastoPorMes(@Param("excluidos") Collection<EstadoOrden> excluidos,
             @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta,
-            @Param("categoriaId") Long categoriaId, @Param("proveedorId") Long proveedorId);
+            @Param("categoriaId") Long categoriaId, @Param("proveedorId") Long proveedorId,
+            @Param("sedeId") Long sedeId);
 
     /**
      * Suma de pagos REGISTRADOS con fecha de pago en el rango.
@@ -112,6 +121,7 @@ public interface ReporteRepository extends Repository<OrdenCompra, Long> {
      * @param desde       fecha de pago desde (incluida)
      * @param hasta       fecha de pago hasta (incluida)
      * @param proveedorId proveedor de la orden
+     * @param sedeId      sede de la bodega destino de la orden (opcional)
      * @return pagado (0 si no hay pagos)
      */
     @Query("""
@@ -120,27 +130,31 @@ public interface ReporteRepository extends Repository<OrdenCompra, Long> {
               and (:desde is null or pg.fechaPago >= :desde)
               and (:hasta is null or pg.fechaPago <= :hasta)
               and (:proveedorId is null or pg.orden.proveedor.id = :proveedorId)
+              and (:sedeId is null or pg.orden.bodegaDestino.sede.id = :sedeId)
             """)
     BigDecimal pagado(@Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta,
-            @Param("proveedorId") Long proveedorId);
+            @Param("proveedorId") Long proveedorId, @Param("sedeId") Long sedeId);
 
     /**
      * Productos activos con su stock sumado de todas las bodegas.
      *
      * @param categoriaId categoría del producto
+     * @param sedeId      solo el stock de las bodegas de esta sede (opcional)
      * @return filas por nombre de producto
      */
     @Query("""
             select new com.proyecto.supply_core.reporte.dto.InventarioFila(p.id, p.codigo, p.nombre, c.nombre,
-                   u.codigo, coalesce(sum(s.cantidad), 0), p.stockMinimo, p.stockMaximo, p.costoReferencia)
+                   u.codigo, coalesce(sum(case when :sedeId is null or se.id = :sedeId then s.cantidad else 0 end), 0),
+                   p.stockMinimo, p.stockMaximo, p.costoReferencia)
             from Producto p join p.categoria c join p.unidadMedida u
                  left join StockProductoBodega s on s.producto = p
+                 left join s.bodega b left join b.sede se
             where p.activo = true
               and (:categoriaId is null or c.id = :categoriaId)
             group by p.id, p.codigo, p.nombre, c.nombre, u.codigo, p.stockMinimo, p.stockMaximo, p.costoReferencia
             order by p.nombre
             """)
-    List<InventarioFila> inventario(@Param("categoriaId") Long categoriaId);
+    List<InventarioFila> inventario(@Param("categoriaId") Long categoriaId, @Param("sedeId") Long sedeId);
 
     /**
      * Lo movido por producto y tipo de movimiento en un período (base de la rotación).
@@ -148,32 +162,70 @@ public interface ReporteRepository extends Repository<OrdenCompra, Long> {
      * @param tipos tipos que interesan (salidas, anulaciones de despacho, compras y devoluciones)
      * @param desde fecha y hora desde (incluida)
      * @param hasta fecha y hora hasta (excluida)
+     * @param sedeId sede de la bodega de origen o destino (opcional)
      * @return una fila por producto y tipo con movimientos
      */
     @Query("""
             select new com.proyecto.supply_core.reporte.dto.RotacionMovimiento(m.producto.id, m.tipo, sum(m.cantidad))
             from MovimientoInventario m
+                 left join m.bodegaOrigen bo left join bo.sede so
+                 left join m.bodegaDestino bd left join bd.sede sd
             where m.tipo in :tipos
               and m.creadoEn >= :desde
               and m.creadoEn < :hasta
+              and (:sedeId is null or so.id = :sedeId or sd.id = :sedeId)
             group by m.producto.id, m.tipo
             """)
     List<RotacionMovimiento> movimientosPorProducto(@Param("tipos") Collection<TipoMovimiento> tipos,
-            @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+            @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta, @Param("sedeId") Long sedeId);
 
     /**
      * Última salida de cada producto, en cualquier fecha.
      *
      * @param tipos tipos que cuentan como salida
+     * @param sedeId sede de la bodega de origen (opcional)
      * @return una fila por producto que alguna vez salió
      */
     @Query("""
             select new com.proyecto.supply_core.reporte.dto.RotacionUltima(m.producto.id, max(m.creadoEn))
             from MovimientoInventario m
+                 left join m.bodegaOrigen bo left join bo.sede so
             where m.tipo in :tipos
+              and (:sedeId is null or so.id = :sedeId)
             group by m.producto.id
             """)
-    List<RotacionUltima> ultimaSalida(@Param("tipos") Collection<TipoMovimiento> tipos);
+    List<RotacionUltima> ultimaSalida(@Param("tipos") Collection<TipoMovimiento> tipos, @Param("sedeId") Long sedeId);
+
+    /**
+     * Gasto en órdenes vigentes por sede de la bodega destino. Las bodegas sin sede salen juntas con id vacío.
+     *
+     * @param excluidos estados que no cuentan como gasto
+     * @param desde     emisión desde (incluida), opcional
+     * @param hasta     emisión hasta (excluida), opcional
+     * @return una fila por sede con compras, de mayor a menor
+     */
+    @Query("""
+            select new com.proyecto.supply_core.reporte.dto.GastoFila(s.id, coalesce(s.nombre, 'Sin sede'),
+                   count(distinct o.id), sum(l.subtotal), sum(l.subtotal * l.impuestoPct / 100))
+            from OrdenCompra o join o.lineas l left join o.bodegaDestino b left join b.sede s
+            where o.estado not in :excluidos
+              and (:desde is null or o.creadoEn >= :desde)
+              and (:hasta is null or o.creadoEn < :hasta)
+            group by s.id, s.nombre
+            order by sum(l.subtotal) desc
+            """)
+    List<GastoFila> gastoPorSede(@Param("excluidos") Collection<EstadoOrden> excluidos,
+            @Param("desde") LocalDateTime desde, @Param("hasta") LocalDateTime hasta);
+
+    /**
+     * Cuenta la sede en la empresa de la sesión (la entidad filtra por empresa): sirve para responder 404 si el
+     * filtro pide una sede ajena o inexistente.
+     *
+     * @param sedeId sede pedida
+     * @return 1 si es de la empresa, 0 si no
+     */
+    @Query("select count(s) from Sede s where s.id = :sedeId")
+    long contarSede(@Param("sedeId") Long sedeId);
 
     /**
      * Órdenes vigentes de un proveedor.

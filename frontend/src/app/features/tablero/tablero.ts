@@ -5,6 +5,7 @@ import { ClaseRotacion, Tablero } from '../../core/api/modelos';
 import { CompactoPipe, FechaPipe, NumeroPipe, PesosPipe } from '../../core/formato/formato';
 import { ReportesService } from '../../core/servicios/reportes.service';
 import { Avisos } from '../../core/ui/avisos';
+import { SelectorSede } from '../../core/ui/selector-sede';
 import { ESTADOS } from '../inventario/reabastecimiento';
 
 /** Texto y color de cada clase de rotación (los mismos de la pantalla de rotación). */
@@ -26,7 +27,7 @@ const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'o
  */
 @Component({
   selector: 'sc-tablero',
-  imports: [RouterLink, PesosPipe, CompactoPipe, NumeroPipe, FechaPipe],
+  imports: [RouterLink, PesosPipe, CompactoPipe, NumeroPipe, FechaPipe, SelectorSede],
   templateUrl: './tablero.html',
   styleUrl: './tablero.scss',
 })
@@ -36,6 +37,8 @@ export class TableroDueno implements OnInit {
 
   protected readonly datos = signal<Tablero | null>(null);
   protected readonly error = signal(false);
+  /** Sede del tablero; {@code null} = toda la empresa. */
+  protected readonly sede = signal<number | null>(null);
   protected readonly clases = Object.keys(CLASES) as ClaseRotacion[];
 
   /** Barras del gasto por mes: el alto es proporcional al mes más alto (solo dibujo). */
@@ -55,7 +58,19 @@ export class TableroDueno implements OnInit {
     this.clases.reduce((s, c) => s + Number(this.datos()?.productosPorClase?.[c] ?? 0), 0));
 
   ngOnInit(): void {
-    this.reportes.tablero().subscribe({
+    this.cargar();
+  }
+
+  /** @param id sede elegida ({@code null} = toda la empresa); vuelve a pedir el tablero */
+  protected cambiarSede(id: number | null): void {
+    this.sede.set(id);
+    this.datos.set(null);
+    this.cargar();
+  }
+
+  private cargar(): void {
+    this.error.set(false);
+    this.reportes.tablero(this.sede()).subscribe({
       next: d => this.datos.set(d),
       error: e => {
         this.error.set(true);

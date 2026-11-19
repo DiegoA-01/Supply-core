@@ -81,7 +81,7 @@ public class RotacionService {
     }
 
     /**
-     * Rotación de los productos activos en un período.
+     * Rotación de los productos activos de toda la empresa en un período.
      *
      * @param desde       primer día; por defecto, {@value #DIAS_POR_DEFECTO} días antes de {@code hasta}
      * @param hasta       último día (incluido); por defecto, hoy
@@ -90,6 +90,23 @@ public class RotacionService {
      * @throws ParametroInvalidoException si el rango está invertido o pasa de {@value #DIAS_MAXIMOS} días
      */
     public RotacionResponse rotacion(LocalDate desde, LocalDate hasta, Long categoriaId) {
+        return rotacion(desde, hasta, categoriaId, null);
+    }
+
+    /**
+     * Rotación de los productos activos en un período; con sede, el stock y las salidas son solo los de las bodegas
+     * de esa sede.
+     *
+     * @param desde       primer día; por defecto, {@value #DIAS_POR_DEFECTO} días antes de {@code hasta}
+     * @param hasta       último día (incluido); por defecto, hoy
+     * @param categoriaId solo productos de esta categoría, opcional
+     * @param sedeId      solo las bodegas de esta sede, opcional
+     * @return productos de más a menos salidas, con resumen
+     * @throws ParametroInvalidoException si el rango está invertido o pasa de {@value #DIAS_MAXIMOS} días
+     * @throws com.proyecto.supply_core.common.exception.NoEncontradoException si la sede no es de la empresa
+     */
+    public RotacionResponse rotacion(LocalDate desde, LocalDate hasta, Long categoriaId, Long sedeId) {
+        ReporteService.validarSede(reporteRepository, sedeId);
         LocalDate hoy = LocalDate.now(reloj);
         LocalDate fin = hasta != null ? hasta : hoy;
         LocalDate inicio = desde != null ? desde : fin.minusDays(DIAS_POR_DEFECTO - 1L);
@@ -103,13 +120,13 @@ public class RotacionService {
 
         Map<Long, Map<TipoMovimiento, BigDecimal>> movido = new HashMap<>();
         for (RotacionMovimiento m : reporteRepository.movimientosPorProducto(TIPOS_DEL_PERIODO,
-                inicio.atStartOfDay(), fin.plusDays(1).atStartOfDay())) {
+                inicio.atStartOfDay(), fin.plusDays(1).atStartOfDay(), sedeId)) {
             movido.computeIfAbsent(m.productoId(), k -> new EnumMap<>(TipoMovimiento.class)).put(m.tipo(), m.cantidad());
         }
-        Map<Long, LocalDateTime> ultimas = reporteRepository.ultimaSalida(TIPOS_DE_SALIDA).stream()
+        Map<Long, LocalDateTime> ultimas = reporteRepository.ultimaSalida(TIPOS_DE_SALIDA, sedeId).stream()
                 .collect(Collectors.toMap(RotacionUltima::productoId, RotacionUltima::ultima));
 
-        List<RotacionItem> items = reporteRepository.inventario(categoriaId).stream()
+        List<RotacionItem> items = reporteRepository.inventario(categoriaId, sedeId).stream()
                 .map(f -> item(f, movido.getOrDefault(f.productoId(), Map.of()), ultimas.get(f.productoId()), dias, hoy))
                 .sorted(Comparator.comparing(RotacionItem::salidas).reversed().thenComparing(RotacionItem::nombre))
                 .toList();

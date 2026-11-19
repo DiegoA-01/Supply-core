@@ -2,6 +2,7 @@ package com.proyecto.supply_core.reporte.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.proyecto.supply_core.reporte.dto.TableroResponse;
@@ -11,6 +12,8 @@ import com.proyecto.supply_core.security.annotation.RequiereRol;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.security.context.Roles;
+
+import jakarta.validation.constraints.Positive;
 
 /**
  * Tablero del dueño de la empresa: gasto, dinero en inventario, rotación y qué hay que pedir, en una sola vista.
@@ -32,13 +35,15 @@ public class TableroController {
     }
 
     /**
-     * Tablero de los últimos doce meses.
+     * Tablero de los últimos doce meses, de la empresa o de una sede.
      *
+     * @param sedeId solo lo de las bodegas de esta sede, opcional
      * @return cifras ya calculadas
      */
     @GetMapping
     @RequiereRol({ Roles.ADMIN_SISTEMA, Roles.ADMIN_COMPRAS, Roles.AUDITOR })
-    public TableroResponse tablero() {
-        return tableroService.tablero();
+    public TableroResponse tablero(
+            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long sedeId) {
+        return tableroService.tablero(sedeId);
     }
 }

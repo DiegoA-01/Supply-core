@@ -26,14 +26,19 @@ export class ReportesService {
    * @param desde       fecha ISO
    * @param hasta       fecha ISO
    * @param categoriaId categoría (vacío = todas)
+   * @param sedeId      sede (vacío = toda la empresa)
    */
-  rotacion(desde: string, hasta: string, categoriaId: number | null): Observable<Rotacion> {
-    return this.http.get<Rotacion>(api('/api/reportes/rotacion'), { params: parametros({ desde, hasta, categoriaId }) });
+  rotacion(desde: string, hasta: string, categoriaId: number | null, sedeId: number | null = null): Observable<Rotacion> {
+    return this.http.get<Rotacion>(api('/api/reportes/rotacion'), { params: parametros({ desde, hasta, categoriaId, sedeId }) });
   }
 
-  /** Tablero del dueño: últimos doce meses de gasto, inventario y qué hay que pedir (todo calculado en el backend). */
-  tablero(): Observable<Tablero> {
-    return this.http.get<Tablero>(api('/api/reportes/tablero'));
+  /**
+   * Tablero del dueño: últimos doce meses de gasto, inventario y qué hay que pedir (todo calculado en el backend).
+   *
+   * @param sedeId sede (vacío = toda la empresa)
+   */
+  tablero(sedeId: number | null = null): Observable<Tablero> {
+    return this.http.get<Tablero>(api('/api/reportes/tablero'), { params: parametros({ sedeId }) });
   }
 
   /** Ranking de proveedores por score en el periodo. */

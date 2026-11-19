@@ -43,13 +43,15 @@ public class RotacionController {
      * @param desde       primer día (yyyy-MM-dd); por defecto 90 días antes de {@code hasta}
      * @param hasta       último día incluido (yyyy-MM-dd); por defecto hoy
      * @param categoriaId categoría, opcional
+     * @param sedeId      solo el stock y las salidas de las bodegas de esta sede, opcional
      * @return productos de más a menos salidas, con resumen
      */
     @GetMapping
     public RotacionResponse rotacion(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
-            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long categoriaId) {
-        return rotacionService.rotacion(desde, hasta, categoriaId);
+            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long categoriaId,
+            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long sedeId) {
+        return rotacionService.rotacion(desde, hasta, categoriaId, sedeId);
     }
 }

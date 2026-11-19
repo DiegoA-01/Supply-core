@@ -1728,6 +1728,65 @@ class AislamientoEmpresasTest {
         }
     }
 
+    @Test
+    void losReportesPorSedeSoloUsanLasBodegasDeEsaSedeYNoAceptanSedesAjenas() throws Exception {
+        Long sedeA = jdbc.queryForObject("SELECT sede_id FROM bodega WHERE id = ?", Long.class, bodegaA);
+        Long sedeB = jdbc.queryForObject("SELECT sede_id FROM bodega WHERE id = ?", Long.class, bodegaB);
+        jdbc.update("INSERT INTO sede (empresa_id, nombre) VALUES (?, 'Sede norte')", empresaA);
+        Long sedeNorte = jdbc.queryForObject("SELECT MAX(id) FROM sede WHERE empresa_id = ?", Long.class, empresaA);
+        jdbc.update("INSERT INTO bodega (empresa_id, sede_id, nombre) VALUES (?, ?, 'Bodega norte')", empresaA, sedeNorte);
+        Long bodegaNorte = jdbc.queryForObject("SELECT MAX(id) FROM bodega WHERE sede_id = ?", Long.class, sedeNorte);
+        String compradorA = token(empresaA, usuarioA, "COMPRADOR");
+        String adminA = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+        try {
+            // en la sede norte hay 20 en stock y salieron 45
+            jdbc.update("INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad) VALUES (?, ?, ?, 20)",
+                    empresaA, productoA, bodegaNorte);
+            jdbc.update("INSERT INTO movimiento_inventario (empresa_id, producto_id, bodega_origen_id, usuario_id, tipo, "
+                    + "cantidad, stock_resultante, creado_en) VALUES (?, ?, ?, ?, 'SALIDA_CONSUMO', 45, 20, NOW())",
+                    empresaA, productoA, bodegaNorte, usuarioA);
+
+            mvc.perform(get("/api/reportes/rotacion?sedeId=" + sedeNorte).header(HttpHeaders.AUTHORIZATION, adminA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.items[0].productoId").value(productoA))
+                    .andExpect(jsonPath("$.items[0].salidas").value(45.0))
+                    .andExpect(jsonPath("$.items[0].stock").value(20.0));
+            // la sede principal no ve lo de la norte
+            mvc.perform(get("/api/reportes/rotacion?sedeId=" + sedeA).header(HttpHeaders.AUTHORIZATION, adminA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.items[0].salidas").value(0.0));
+            mvc.perform(get("/api/reabastecimiento?sedeId=" + sedeNorte).header(HttpHeaders.AUTHORIZATION, compradorA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.items[0].consumoDiario").value(0.5))
+                    .andExpect(jsonPath("$.items[0].stockMinimo").value(0.0));
+            mvc.perform(get("/api/reportes/gasto?sedeId=" + sedeNorte).header(HttpHeaders.AUTHORIZATION, compradorA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.ordenes").value(0));
+            mvc.perform(get("/api/reportes/tablero?sedeId=" + sedeNorte).header(HttpHeaders.AUTHORIZATION, adminA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.sedeId").value(sedeNorte))
+                    .andExpect(jsonPath("$.masMovidos[0].salidas").value(45.0));
+            mvc.perform(get("/api/reportes/tablero").header(HttpHeaders.AUTHORIZATION, adminA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.gastoPorSede").isArray());
+
+            // la sede de la otra empresa no existe para A
+            mvc.perform(get("/api/reportes/rotacion?sedeId=" + sedeB).header(HttpHeaders.AUTHORIZATION, adminA))
+                    .andExpect(status().isNotFound());
+            mvc.perform(get("/api/reabastecimiento?sedeId=" + sedeB).header(HttpHeaders.AUTHORIZATION, compradorA))
+                    .andExpect(status().isNotFound());
+            mvc.perform(get("/api/reportes/gasto?sedeId=" + sedeB).header(HttpHeaders.AUTHORIZATION, compradorA))
+                    .andExpect(status().isNotFound());
+            mvc.perform(get("/api/reportes/tablero?sedeId=" + sedeB).header(HttpHeaders.AUTHORIZATION, adminA))
+                    .andExpect(status().isNotFound());
+        } finally {
+            jdbc.update("DELETE FROM movimiento_inventario WHERE bodega_origen_id = ?", bodegaNorte);
+            jdbc.update("DELETE FROM stock_producto_bodega WHERE bodega_id = ?", bodegaNorte);
+            jdbc.update("DELETE FROM bodega WHERE id = ?", bodegaNorte);
+            jdbc.update("DELETE FROM sede WHERE id = ?", sedeNorte);
+        }
+    }
+
     // ------------------------------------------------------------------ consola de plataforma, planes y módulos (SaaS 2)
 
     private static final String CLAVE_PLATAFORMA = "ClavePlataforma2026";

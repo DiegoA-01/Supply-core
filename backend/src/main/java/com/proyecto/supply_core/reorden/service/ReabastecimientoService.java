@@ -136,9 +136,23 @@ public class ReabastecimientoService {
      */
     @Transactional(readOnly = true)
     public ReabastecimientoResponse plan() {
+        return plan(null);
+    }
+
+    /**
+     * Plan de reabastecimiento de la empresa o de una sede. Por sede cuentan el stock y el consumo de sus bodegas y
+     * las órdenes que llegan a ellas; no se descuentan las solicitudes (no tienen sede) ni se aplican el mínimo y el
+     * máximo del producto, que son totales de la empresa.
+     *
+     * @param sedeId sede, o {@code null} para toda la empresa
+     * @return plan con resumen, de más a menos urgente
+     * @throws com.proyecto.supply_core.common.exception.NoEncontradoException si la sede no es de la empresa
+     */
+    @Transactional(readOnly = true)
+    public ReabastecimientoResponse plan(Long sedeId) {
         LocalDate hoy = LocalDate.now(reloj);
         EmpresaResponse empresa = empresaService.obtener();
-        RotacionResponse rotacion = rotacionService.rotacion(null, hoy, null);
+        RotacionResponse rotacion = rotacionService.rotacion(null, hoy, null, sedeId);
         List<Long> ids = rotacion.items().stream().map(RotacionItem::productoId).toList();
         if (ids.isEmpty()) {
             return new ReabastecimientoResponse(hoy, rotacion.dias(), empresa.plazoEntregaDiasDefecto(),
@@ -146,8 +160,8 @@ public class ReabastecimientoService {
         }
         Map<Long, Producto> productos = productoRepository.findAllById(ids).stream()
                 .collect(Collectors.toMap(Producto::getId, Function.identity()));
-        Map<Long, BigDecimal> porRecibir = reordenService.porRecibir(ids);
-        Map<Long, BigDecimal> enSolicitudes = reordenService.enSolicitudes(ids);
+        Map<Long, BigDecimal> porRecibir = reordenService.porRecibir(ids, sedeId);
+        Map<Long, BigDecimal> enSolicitudes = sedeId == null ? reordenService.enSolicitudes(ids) : Map.of();
         Map<Long, Historial> historial = historial(ids, hoy);
 
         List<ReabastecimientoItem> items = new ArrayList<>();
@@ -161,7 +175,8 @@ public class ReabastecimientoService {
                     p.getPlazoEntregaDias() != null,
                     p.getDiasSeguridad() != null ? p.getDiasSeguridad() : empresa.diasSeguridadDefecto(),
                     empresa.diasCoberturaDefecto());
-            items.add(calcular(r, p.getStockMaximo(), porRecibir.getOrDefault(r.productoId(), BigDecimal.ZERO),
+            items.add(calcular(sedeId == null ? r : sinMinimo(r), sedeId == null ? p.getStockMaximo() : null,
+                    porRecibir.getOrDefault(r.productoId(), BigDecimal.ZERO),
                     enSolicitudes.getOrDefault(r.productoId(), BigDecimal.ZERO), rotacion.dias(), parametros,
                     historial.get(r.productoId()), hoy));
         }
@@ -189,7 +204,7 @@ public class ReabastecimientoService {
     @Transactional
     public SolicitudResponse crearBorrador(ReabastecimientoBorradorRequest req) {
         Set<Long> pedidos = new HashSet<>(req.productoIds());
-        List<ReabastecimientoItem> elegidos = plan().items().stream()
+        List<ReabastecimientoItem> elegidos = plan(req.sedeId()).items().stream()
                 .filter(i -> pedidos.contains(i.productoId()))
                 .filter(i -> i.cantidadSugerida() != null && i.cantidadSugerida().signum() > 0)
                 .toList();
@@ -208,7 +223,7 @@ public class ReabastecimientoService {
         SolicitudResponse borrador = solicitudService.crear(new SolicitudRequest(MOTIVO_BORRADOR,
                 req.fechaRequerida(), lineas));
         auditoriaService.exito(AccionAuditoria.REORDEN_GENERAR, EntidadAuditada.SOLICITUD_COMPRA, borrador.id(),
-                borrador.consecutivo() + "; reabastecimiento; productos="
+                borrador.consecutivo() + "; reabastecimiento" + (req.sedeId() == null ? "" : "; sede=" + req.sedeId()) + "; productos="
                         + elegidos.stream().map(ReabastecimientoItem::codigo).collect(Collectors.joining(",")));
         return borrador;
     }
@@ -335,6 +350,19 @@ public class ReabastecimientoService {
     private static BigDecimal consumoEn(BigDecimal salidas, long dias, int diasPeriodo) {
         return salidas.multiply(BigDecimal.valueOf(dias)).divide(BigDecimal.valueOf(diasPeriodo), ESCALA,
                 RoundingMode.HALF_UP);
+    }
+
+    /**
+     * La misma rotación sin stock mínimo: en la vista por sede el mínimo del producto (total de la empresa) no aplica.
+     *
+     * @param r rotación del producto en la sede
+     * @return copia con mínimo 0
+     */
+    private static RotacionItem sinMinimo(RotacionItem r) {
+        return new RotacionItem(r.productoId(), r.codigo(), r.nombre(), r.categoria(), r.unidad(), r.stock(),
+                BigDecimal.ZERO, r.salidas(), r.comprado(), r.consumoDiario(), r.diasCobertura(),
+                r.fechaEstimadaAgotamiento(), r.ultimaSalida(), r.diasSinSalida(), r.valorStock(), r.clase(),
+                r.porAgotarse());
     }
 
     /**

@@ -4,6 +4,7 @@
     <div class="encabezado">
       <div><h1>Plan de reabastecimiento</h1>
         <p>Qué pedir, hasta cuándo y cuánto, para que el stock alcance mientras llega el pedido. Se calcula con lo que salió en los últimos días y con lo que tarda el proveedor en días hábiles (sin fines de semana ni festivos).</p></div>
+      <div class="acciones"><sc-selector-sede [sede]="sede()" (sedeChange)="cambiarSede($event)" /></div>
     </div>
   </div>
 
@@ -25,6 +26,7 @@
         y lo que se pide debe alcanzar <strong>{{ d.coberturaDefecto }} días</strong> después de llegar. El consumo es el promedio de los últimos {{ d.diasConsumo }} días.
         @if (sesion.tieneRol(['ADMIN_SISTEMA'])) { <a routerLink="/app/configuracion/empresa">Cambiar los valores de la empresa</a>. }
         @if (puedeAjustar()) { Cada producto puede tener su propio plazo. }
+        @if (sede() !== null) { <br><strong>Vista de una sede:</strong> cuentan el stock y las salidas de sus bodegas y las órdenes que llegan a ellas. No se descuentan las solicitudes (no tienen sede) ni se aplica el mínimo del producto, que es de toda la empresa. }
       </p>
     </section>
 

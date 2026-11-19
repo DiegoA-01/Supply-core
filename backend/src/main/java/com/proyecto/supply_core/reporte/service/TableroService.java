@@ -76,13 +76,27 @@ public class TableroService {
      */
     @Transactional(readOnly = true)
     public TableroResponse tablero() {
+        return tablero(null);
+    }
+
+    /**
+     * Tablero de la empresa o de una sede. Por sede: compras que llegan a sus bodegas, stock y salidas de esas
+     * bodegas y su plan de reabastecimiento. "Bajo el mínimo" sigue siendo de toda la empresa (el mínimo es total).
+     *
+     * @param sedeId sede, o {@code null} para toda la empresa
+     * @return tablero calculado
+     * @throws com.proyecto.supply_core.common.exception.NoEncontradoException si la sede no es de la empresa
+     */
+    @Transactional(readOnly = true)
+    public TableroResponse tablero(Long sedeId) {
         LocalDate hoy = LocalDate.now(reloj);
         YearMonth mesActual = YearMonth.from(hoy);
         LocalDate desde = mesActual.minusMonths(11).atDay(1);
-        GastoResponse gasto = reporteService.gasto(desde, hoy, null, null);
+        GastoResponse gasto = reporteService.gasto(desde, hoy, null, null, sedeId);
         InventarioResumen inventario = reporteService.inventario(null, false);
-        RotacionResponse rotacion = rotacionService.rotacion(null, hoy, null);
-        ReabastecimientoResponse plan = reabastecimientoService.plan();
+        RotacionResponse rotacion = rotacionService.rotacion(null, hoy, null, sedeId);
+        ReabastecimientoResponse plan = reabastecimientoService.plan(sedeId);
+        List<GastoItem> porSede = sedeId == null ? reporteService.gastoPorSede(desde, hoy) : List.of();
 
         List<GastoMes> meses = doceMeses(gasto.porMes(), mesActual);
         BigDecimal actual = meses.get(meses.size() - 1).total();
@@ -114,7 +128,8 @@ public class TableroService {
                 variacion, meses, primeros(gasto.porCategoria()), primeros(gasto.porProveedor()),
                 rotacion.resumen().valorInventario(), rotacion.resumen().valorSinMovimiento(),
                 rotacion.resumen().productos(), rotacion.resumen().agotados(), inventario.bajoMinimo(), rotacion.dias(),
-                porClase, masMovidos, menosMovidos, plan.urgentes(), plan.pedirYa(), plan.pronto(), porPedir);
+                porClase, masMovidos, menosMovidos, plan.urgentes(), plan.pedirYa(), plan.pronto(), porPedir, sedeId,
+                porSede);
     }
 
     /**

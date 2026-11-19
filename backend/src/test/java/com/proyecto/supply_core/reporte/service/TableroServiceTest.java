@@ -57,15 +57,15 @@ class TableroServiceTest {
         ReporteService reportes = mock(ReporteService.class);
         RotacionService rotacion = mock(RotacionService.class);
         ReabastecimientoService plan = mock(ReabastecimientoService.class);
-        when(reportes.gasto(any(), any(), isNull(), isNull())).thenReturn(new GastoResponse(HOY.minusMonths(11), HOY, 4,
+        when(reportes.gasto(any(), any(), isNull(), isNull(), isNull())).thenReturn(new GastoResponse(HOY.minusMonths(11), HOY, 4,
                 new BigDecimal("1000"), BigDecimal.ZERO, new BigDecimal("1000"), new BigDecimal("400"), List.of(),
                 List.of(), List.of(mes("2026-10", "200"), mes("2026-11", "300"))));
         when(reportes.inventario(null, false)).thenReturn(new InventarioResumen(3, 1, new BigDecimal("900"), List.of()));
-        when(rotacion.rotacion(null, HOY, null)).thenReturn(new RotacionResponse(HOY.minusDays(89), HOY, 90,
+        when(rotacion.rotacion(null, HOY, null, null)).thenReturn(new RotacionResponse(HOY.minusDays(89), HOY, 90,
                 new RotacionResumen(3, 2, 1, 0, 0, new BigDecimal("900"), new BigDecimal("500"), 30, 90, 15),
                 List.of(item(1, "5", ClaseRotacion.MEDIA, "100"), item(2, "50", ClaseRotacion.ALTA, "300"),
                         item(3, "0", ClaseRotacion.SIN_MOVIMIENTO, "500"))));
-        when(plan.plan()).thenReturn(new ReabastecimientoResponse(HOY, 90, 5, 2, 30, 0, 0, 0, 3, 0, List.of()));
+        when(plan.plan(null)).thenReturn(new ReabastecimientoResponse(HOY, 90, 5, 2, 30, 0, 0, 0, 3, 0, List.of()));
 
         TableroResponse t = new TableroService(reportes, rotacion, plan,
                 Clock.fixed(HOY.atStartOfDay(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault())).tablero();
@@ -78,5 +78,26 @@ class TableroServiceTest {
         assertEquals(1L, t.productosPorClase().get(ClaseRotacion.SIN_MOVIMIENTO));
         assertEquals(0L, t.productosPorClase().get(ClaseRotacion.AGOTADO));
         assertEquals(1, t.bajoMinimo());
+    }
+
+    @Test
+    void porSedePideTodoFiltradoYNoArmaLaComparacionEntreSedes() {
+        ReporteService reportes = mock(ReporteService.class);
+        RotacionService rotacion = mock(RotacionService.class);
+        ReabastecimientoService plan = mock(ReabastecimientoService.class);
+        when(reportes.gasto(any(), any(), isNull(), isNull(), org.mockito.ArgumentMatchers.eq(4L))).thenReturn(
+                new GastoResponse(HOY.minusMonths(11), HOY, 0, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                        BigDecimal.ZERO, List.of(), List.of(), List.of()));
+        when(reportes.inventario(null, false)).thenReturn(new InventarioResumen(0, 0, BigDecimal.ZERO, List.of()));
+        when(rotacion.rotacion(null, HOY, null, 4L)).thenReturn(new RotacionResponse(HOY.minusDays(89), HOY, 90,
+                new RotacionResumen(0, 0, 0, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO, 30, 90, 15), List.of()));
+        when(plan.plan(4L)).thenReturn(new ReabastecimientoResponse(HOY, 90, 5, 2, 30, 0, 0, 0, 0, 0, List.of()));
+
+        TableroResponse t = new TableroService(reportes, rotacion, plan,
+                Clock.fixed(HOY.atStartOfDay(ZoneId.systemDefault()).toInstant(), ZoneId.systemDefault())).tablero(4L);
+
+        assertEquals(4L, t.sedeId());
+        assertEquals(List.of(), t.gastoPorSede());
+        org.mockito.Mockito.verify(reportes, org.mockito.Mockito.never()).gastoPorSede(any(), any());
     }
 }

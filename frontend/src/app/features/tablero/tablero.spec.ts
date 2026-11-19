@@ -43,8 +43,9 @@ describe('Tablero del dueño', () => {
     backend = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(TableroDueno);
     fixture.detectChanges();
-    backend.expectOne('/api/reportes/tablero').flush(datos);
+    backend.expectOne(r => r.url === '/api/reportes/tablero').flush(datos);
     fixture.detectChanges();
+    backend.expectOne(r => r.url === '/api/sedes').flush([]);   // selector de sede
   });
 
   afterEach(() => backend.verify());
@@ -64,6 +65,26 @@ describe('Tablero del dueño', () => {
     expect(barras[11].alto).toBe(100);
     expect(barras[0].etiqueta).toBe('dic');
     expect(barras[1].etiqueta).toBe('ene 26');
+  });
+
+  it('al elegir una sede vuelve a pedir el tablero solo de esa sede', () => {
+    c()['cambiarSede'](4);
+    const req = backend.expectOne(r => r.url === '/api/reportes/tablero');
+    expect(req.request.params.get('sedeId')).toBe('4');
+    req.flush({ ...datos, sedeId: 4, gastoPorSede: [] });
+    fixture.detectChanges();
+    expect(texto()).toContain('Vista de una sede');
+    expect(texto()).not.toContain('bajo el mínimo');
+  });
+
+  it('en toda la empresa compara las compras por sede cuando hay más de una', () => {
+    c()['datos'].set({ ...datos, sedeId: undefined, gastoPorSede: [
+      { id: 1, nombre: 'Principal', ordenes: 2, subtotal: 0, impuestos: 0, total: 400000 },
+      { id: 2, nombre: 'Norte', ordenes: 1, subtotal: 0, impuestos: 0, total: 100000 },
+    ] });
+    fixture.detectChanges();
+    expect(texto()).toContain('Compras por sede');
+    expect(texto()).toContain('Norte');
   });
 
   it('reparte la barra de rotación por cantidad de productos', () => {

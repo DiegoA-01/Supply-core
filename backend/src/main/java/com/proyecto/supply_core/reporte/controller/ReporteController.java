@@ -48,14 +48,16 @@ public class ReporteController {
      * @param hasta       emisión hasta (yyyy-MM-dd), opcional
      * @param categoriaId categoría, opcional
      * @param proveedorId proveedor, opcional
+     * @param sedeId      solo órdenes que llegan a bodegas de esta sede, opcional
      * @return gasto del período (ceros y listas vacías si no hay datos)
      */
     @GetMapping("/gasto")
     public GastoResponse gasto(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
             @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long categoriaId,
-            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long proveedorId) {
-        return reporteService.gasto(desde, hasta, categoriaId, proveedorId);
+            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long proveedorId,
+            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long sedeId) {
+        return reporteService.gasto(desde, hasta, categoriaId, proveedorId, sedeId);
     }
 
     /**

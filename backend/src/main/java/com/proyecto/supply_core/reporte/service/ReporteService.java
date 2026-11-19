@@ -62,7 +62,7 @@ public class ReporteService {
     }
 
     /**
-     * Gasto comprometido en órdenes vigentes, con desglose por proveedor, categoría y mes.
+     * Gasto comprometido en órdenes vigentes de toda la empresa, con desglose por proveedor, categoría y mes.
      *
      * @param desde       emisión desde (incluida), opcional
      * @param hasta       emisión hasta (incluida), opcional
@@ -72,27 +72,72 @@ public class ReporteService {
      * @throws ParametroInvalidoException si {@code desde} es posterior a {@code hasta}
      */
     public GastoResponse gasto(LocalDate desde, LocalDate hasta, Long categoriaId, Long proveedorId) {
+        return gasto(desde, hasta, categoriaId, proveedorId, null);
+    }
+
+    /**
+     * Gasto comprometido en órdenes vigentes, con desglose por proveedor, categoría y mes; opcionalmente solo de las
+     * órdenes que llegan a bodegas de una sede.
+     *
+     * @param desde       emisión desde (incluida), opcional
+     * @param hasta       emisión hasta (incluida), opcional
+     * @param categoriaId solo líneas de esta categoría, opcional
+     * @param proveedorId solo órdenes de este proveedor, opcional
+     * @param sedeId      solo órdenes con bodega destino en esta sede, opcional
+     * @return gasto del período
+     * @throws ParametroInvalidoException si {@code desde} es posterior a {@code hasta}
+     * @throws NoEncontradoException      si la sede no es de la empresa
+     */
+    public GastoResponse gasto(LocalDate desde, LocalDate hasta, Long categoriaId, Long proveedorId, Long sedeId) {
         validarRango(desde, hasta);
+        validarSede(reporteRepository, sedeId);
         LocalDateTime inicio = inicio(desde);
         LocalDateTime fin = fin(hasta);
 
         List<GastoItem> porProveedor = reporteRepository
-                .gastoPorProveedor(NO_VIGENTES, inicio, fin, categoriaId, proveedorId).stream()
+                .gastoPorProveedor(NO_VIGENTES, inicio, fin, categoriaId, proveedorId, sedeId).stream()
                 .map(ReporteService::item).toList();
         List<GastoItem> porCategoria = reporteRepository
-                .gastoPorCategoria(NO_VIGENTES, inicio, fin, categoriaId, proveedorId).stream()
+                .gastoPorCategoria(NO_VIGENTES, inicio, fin, categoriaId, proveedorId, sedeId).stream()
                 .map(ReporteService::item).toList();
-        List<GastoMes> porMes = reporteRepository.gastoPorMes(NO_VIGENTES, inicio, fin, categoriaId, proveedorId)
+        List<GastoMes> porMes = reporteRepository.gastoPorMes(NO_VIGENTES, inicio, fin, categoriaId, proveedorId, sedeId)
                 .stream().map(ReporteService::mes).toList();
 
         BigDecimal subtotal = suma(porProveedor.stream().map(GastoItem::subtotal));
         BigDecimal impuestos = suma(porProveedor.stream().map(GastoItem::impuestos));
         long ordenes = porProveedor.stream().mapToLong(GastoItem::ordenes).sum();
         BigDecimal pagado = categoriaId == null
-                ? dos(reporteRepository.pagado(desde, hasta, proveedorId))
+                ? dos(reporteRepository.pagado(desde, hasta, proveedorId, sedeId))
                 : null;
         return new GastoResponse(desde, hasta, ordenes, subtotal, impuestos, subtotal.add(impuestos), pagado,
                 porProveedor, porCategoria, porMes);
+    }
+
+    /**
+     * Gasto en órdenes vigentes repartido por la sede a la que llegan (bodega destino).
+     *
+     * @param desde emisión desde (incluida), opcional
+     * @param hasta emisión hasta (incluida), opcional
+     * @return una fila por sede, de mayor a menor gasto
+     * @throws ParametroInvalidoException si {@code desde} es posterior a {@code hasta}
+     */
+    public List<GastoItem> gastoPorSede(LocalDate desde, LocalDate hasta) {
+        validarRango(desde, hasta);
+        return reporteRepository.gastoPorSede(NO_VIGENTES, inicio(desde), fin(hasta)).stream()
+                .map(ReporteService::item).toList();
+    }
+
+    /**
+     * Responde 404 si el filtro pide una sede que no es de la empresa de la sesión (o no existe).
+     *
+     * @param repo   consultas de reporte (la sede se cuenta filtrada por empresa)
+     * @param sedeId sede pedida, o {@code null} para toda la empresa
+     * @throws NoEncontradoException si la sede no es de la empresa
+     */
+    static void validarSede(ReporteRepository repo, Long sedeId) {
+        if (sedeId != null && repo.contarSede(sedeId) == 0) {
+            throw new NoEncontradoException("Sede no encontrada");
+        }
     }
 
     /**
@@ -103,7 +148,7 @@ public class ReporteService {
      * @return inventario de la empresa
      */
     public InventarioResumen inventario(Long categoriaId, boolean soloBajoMinimo) {
-        List<InventarioItem> items = reporteRepository.inventario(categoriaId).stream()
+        List<InventarioItem> items = reporteRepository.inventario(categoriaId, null).stream()
                 .map(ReporteService::item)
                 .filter(i -> !soloBajoMinimo || i.bajoMinimo())
                 .toList();
@@ -125,7 +170,7 @@ public class ReporteService {
     public List<ProveedorRanking> proveedores(LocalDate desde, LocalDate hasta, Long categoriaId) {
         validarRango(desde, hasta);
         List<GastoItem> gasto = reporteRepository
-                .gastoPorProveedor(NO_VIGENTES, inicio(desde), fin(hasta), categoriaId, null).stream()
+                .gastoPorProveedor(NO_VIGENTES, inicio(desde), fin(hasta), categoriaId, null, null).stream()
                 .map(ReporteService::item).toList();
         Map<Long, BigDecimal> scores = new HashMap<>();
         for (Proveedor p : proveedorRepository.findAllById(gasto.stream().map(GastoItem::id).toList())) {

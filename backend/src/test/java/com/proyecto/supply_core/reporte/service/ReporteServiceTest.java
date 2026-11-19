@@ -56,7 +56,7 @@ class ReporteServiceTest {
 
     @Test
     void sinDatosDevuelveCerosYListasVaciasNoError() {
-        when(reporteRepository.pagado(any(), any(), any())).thenReturn(null);
+        when(reporteRepository.pagado(any(), any(), any(), any())).thenReturn(null);
         GastoResponse g = service.gasto(null, null, null, null);
 
         assertEquals(0, g.ordenes());
@@ -69,12 +69,12 @@ class ReporteServiceTest {
 
     @Test
     void gastoRedondeaYSumaLosTotalesEnJava() {
-        when(reporteRepository.gastoPorProveedor(any(), any(), any(), any(), any())).thenReturn(List.of(
+        when(reporteRepository.gastoPorProveedor(any(), any(), any(), any(), any(), any())).thenReturn(List.of(
                 new GastoFila(1L, "Tech", 2L, d("1000.00"), d("190.0000")),
                 new GastoFila(2L, "Cables", 1L, d("500.005"), d("0"))));
-        when(reporteRepository.gastoPorMes(any(), any(), any(), any(), any()))
+        when(reporteRepository.gastoPorMes(any(), any(), any(), any(), any(), any()))
                 .thenReturn(List.of(new GastoMesFila(2026, 3, 3L, d("1500.005"), d("190"))));
-        when(reporteRepository.pagado(any(), any(), any())).thenReturn(d("400"));
+        when(reporteRepository.pagado(any(), any(), any(), any())).thenReturn(d("400"));
 
         GastoResponse g = service.gasto(null, null, null, null);
 
@@ -95,7 +95,7 @@ class ReporteServiceTest {
         service.gasto(desde, hasta, 5L, 7L);
 
         verify(reporteRepository).gastoPorProveedor(eq(ReporteService.NO_VIGENTES), eq(LocalDateTime.of(2026, 10, 1, 0, 0)),
-                eq(LocalDateTime.of(2026, 11, 1, 0, 0)), eq(5L), eq(7L));
+                eq(LocalDateTime.of(2026, 11, 1, 0, 0)), eq(5L), eq(7L), isNull());
         assertTrue(ReporteService.NO_VIGENTES.containsAll(
                 List.of(EstadoOrden.REEMPLAZADA, EstadoOrden.CANCELADA, EstadoOrden.RECHAZADA_PROVEEDOR)));
     }
@@ -105,7 +105,7 @@ class ReporteServiceTest {
         GastoResponse g = service.gasto(null, null, 5L, null);
 
         assertNull(g.pagado());
-        verify(reporteRepository, org.mockito.Mockito.never()).pagado(any(), any(), any());
+        verify(reporteRepository, org.mockito.Mockito.never()).pagado(any(), any(), any(), any());
     }
 
     @Test
@@ -118,7 +118,7 @@ class ReporteServiceTest {
 
     @Test
     void inventarioCalculaValorYAlertaBajoMinimo() {
-        when(reporteRepository.inventario(isNull())).thenReturn(List.of(
+        when(reporteRepository.inventario(isNull(), isNull())).thenReturn(List.of(
                 new InventarioFila(1L, "P-1", "Cable", "Eléctricos", "UND", d("5"), d("10"), null, d("100")),
                 new InventarioFila(2L, "P-2", "Tubo", "Eléctricos", "UND", d("20"), d("10"), d("50"), null),
                 new InventarioFila(3L, "P-3", "Nuevo", "Eléctricos", "UND", d("0"), d("0"), null, d("7"))));
@@ -137,7 +137,7 @@ class ReporteServiceTest {
 
     @Test
     void rankingPorScoreConLosSinScoreAlFinal() {
-        when(reporteRepository.gastoPorProveedor(any(), any(), any(), any(), any())).thenReturn(List.of(
+        when(reporteRepository.gastoPorProveedor(any(), any(), any(), any(), any(), any())).thenReturn(List.of(
                 new GastoFila(1L, "Sin score", 1L, d("9000"), d("0")),
                 new GastoFila(2L, "Regular", 1L, d("100"), d("0")),
                 new GastoFila(3L, "Mejor", 4L, d("50"), d("0"))));

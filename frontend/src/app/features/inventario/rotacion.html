@@ -18,6 +18,7 @@
         <div class="campo"><label for="rd">Desde</label><input id="rd" type="date" class="entrada" [ngModel]="desde()" (ngModelChange)="desde.set($event)"></div>
         <div class="campo"><label for="rh">Hasta</label><input id="rh" type="date" class="entrada" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)"></div>
       }
+      <sc-selector-sede [sede]="sede()" (sedeChange)="sede.set($event); cargar()" />
       <div class="campo"><label for="rc">Categoría</label>
         <select id="rc" class="entrada" [ngModel]="categoriaId()" (ngModelChange)="categoriaId.set($event); cargar()">
           <option [ngValue]="null">Todas</option>

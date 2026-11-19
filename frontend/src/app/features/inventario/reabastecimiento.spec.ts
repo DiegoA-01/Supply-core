@@ -39,8 +39,9 @@ describe('Plan de reabastecimiento', () => {
     TestBed.inject(SesionService).usuario.set({ id: 3, nombre: 'Ana', correo: 'a@x.co', roles });
     fixture = TestBed.createComponent(PlanReabastecimiento);
     fixture.detectChanges();
-    backend.expectOne('/api/reabastecimiento').flush(datos);
+    backend.expectOne(r => r.url === '/api/reabastecimiento').flush(datos);
     fixture.detectChanges();
+    backend.expectOne(r => r.url === '/api/sedes').flush([]);   // selector de sede
   };
 
   afterEach(() => backend.verify());
@@ -60,7 +61,7 @@ describe('Plan de reabastecimiento', () => {
     expect(c()['fechaRequerida']()).toBe('2026-11-26');
     c()['crearSolicitud']();
     const req = backend.expectOne('/api/reabastecimiento/borrador');
-    expect(req.request.body).toEqual({ fechaRequerida: '2026-11-26', productoIds: [1, 2] });
+    expect(req.request.body).toEqual({ fechaRequerida: '2026-11-26', productoIds: [1, 2], sedeId: null });
     req.flush({ id: 9, consecutivo: 'SOL-000009' });
     expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(['/app/solicitudes', 9, 'editar']);
   });
@@ -83,6 +84,6 @@ describe('Plan de reabastecimiento', () => {
     expect(req.request.method).toBe('PATCH');
     expect(req.request.body).toEqual({ plazoEntregaDias: 7, diasSeguridad: null });
     req.flush({});
-    backend.expectOne('/api/reabastecimiento').flush(datos);
+    backend.expectOne(r => r.url === '/api/reabastecimiento').flush(datos);
   });
 });

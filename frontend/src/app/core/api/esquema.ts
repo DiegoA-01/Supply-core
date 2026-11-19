@@ -3746,6 +3746,8 @@ export interface components {
             /** Format: date */
             fechaRequerida: string;
             productoIds: number[];
+            /** Format: int64 */
+            sedeId?: number;
         };
         ProductoRequest: {
             codigo: string;
@@ -4725,6 +4727,9 @@ export interface components {
             /** Format: int64 */
             reabastecerPronto?: number;
             porPedir?: components["schemas"]["ReabastecimientoItem"][];
+            /** Format: int64 */
+            sedeId?: number;
+            gastoPorSede?: components["schemas"]["GastoItem"][];
         };
         RotacionResponse: {
             /** Format: date */
@@ -9343,7 +9348,9 @@ export interface operations {
     };
     tablero: {
         parameters: {
-            query?: never;
+            query?: {
+                sedeId?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -9367,6 +9374,7 @@ export interface operations {
                 desde?: string;
                 hasta?: string;
                 categoriaId?: number;
+                sedeId?: number;
             };
             header?: never;
             path?: never;
@@ -9464,6 +9472,7 @@ export interface operations {
                 hasta?: string;
                 categoriaId?: number;
                 proveedorId?: number;
+                sedeId?: number;
             };
             header?: never;
             path?: never;
@@ -9526,7 +9535,9 @@ export interface operations {
     };
     plan: {
         parameters: {
-            query?: never;
+            query?: {
+                sedeId?: number;
+            };
             header?: never;
             path?: never;
             cookie?: never;

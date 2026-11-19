@@ -4,6 +4,7 @@
     <div class="encabezado">
       <div><h1>Tablero del dueño</h1>
         <p>Cómo va tu empresa en los últimos doce meses: cuánto compras, cuánto debes, cuánto dinero tienes en bodega y qué hay que pedir.</p></div>
+      <div class="acciones"><sc-selector-sede [sede]="sede()" (sedeChange)="cambiarSede($event)" /></div>
     </div>
   </div>
 
@@ -42,6 +43,23 @@
       </div>
     </section>
 
+    @if (d.sedeId == null && (d.gastoPorSede?.length ?? 0) > 1) {
+      <section class="tarjeta">
+        <h2>Compras por sede <span class="texto-2 texto-chico">según la bodega a la que llega cada orden</span></h2>
+        @for (s of d.gastoPorSede; track s.nombre) {
+          <div class="barra-fila">
+            <div class="barra-texto"><strong>{{ s.nombre }}</strong><span class="texto-chico texto-2">{{ s.ordenes }} órdenes</span></div>
+            <div class="barra-grafica"><span class="barra-relleno" [style.width.%]="ancho(s.total, totales(d.gastoPorSede))"></span></div>
+            <div class="barra-valor">{{ s.total | compacto }}</div>
+          </div>
+        }
+      </section>
+    }
+
+    @if (d.sedeId != null) {
+      <p class="texto-chico texto-2 sin-margen nota-sede">Vista de una sede: compras que llegan a sus bodegas, stock y salidas de esas bodegas y su plan de reabastecimiento. Los pagos se cuentan por la orden de esa sede.</p>
+    }
+
     <div class="rejilla dos">
       <section class="tarjeta">
         <h2>En qué se va la plata</h2>
@@ -75,7 +93,7 @@
       <ul class="leyenda">
         @for (c of clases; track c) { <li><span class="punto {{ tonoClase(c) }}"></span>{{ textoClase(c) }} <strong>{{ cuenta(c) }}</strong></li> }
       </ul>
-      <p class="texto-chico texto-2 sin-margen">{{ d.productosActivos }} productos activos · {{ d.bajoMinimo }} bajo el mínimo · {{ d.agotados }} agotados que se vendían.</p>
+      <p class="texto-chico texto-2 sin-margen">{{ d.productosActivos }} productos activos@if (d.sedeId == null) { · {{ d.bajoMinimo }} bajo el mínimo } · {{ d.agotados }} agotados que se vendían.</p>
     </section>
 
     <div class="rejilla dos">

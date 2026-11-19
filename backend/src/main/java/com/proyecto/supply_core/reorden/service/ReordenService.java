@@ -203,12 +203,17 @@ public class ReordenService {
      * Lo que falta por recibir de órdenes vivas (pedido menos aceptado, nunca negativo), por producto. Lo usa también
      * el plan de reabastecimiento.
      *
-     * @param ids productos
+     * @param ids    productos
+     * @param sedeId solo órdenes que llegan a bodegas de esta sede, o {@code null} para toda la empresa
      * @return cantidad pendiente por producto (solo los que tienen algo pendiente)
      */
-    public Map<Long, BigDecimal> porRecibir(List<Long> ids) {
-        Map<Long, BigDecimal> pedido = porProducto(reordenRepository.pedidoEnOrdenes(ids, ORDENES_POR_RECIBIR));
-        Map<Long, BigDecimal> aceptado = porProducto(reordenRepository.aceptadoEnOrdenes(ids, ORDENES_POR_RECIBIR));
+    public Map<Long, BigDecimal> porRecibir(List<Long> ids, Long sedeId) {
+        Map<Long, BigDecimal> pedido = porProducto(sedeId == null
+                ? reordenRepository.pedidoEnOrdenes(ids, ORDENES_POR_RECIBIR)
+                : reordenRepository.pedidoEnOrdenesDeSede(ids, ORDENES_POR_RECIBIR, sedeId));
+        Map<Long, BigDecimal> aceptado = porProducto(sedeId == null
+                ? reordenRepository.aceptadoEnOrdenes(ids, ORDENES_POR_RECIBIR)
+                : reordenRepository.aceptadoEnOrdenesDeSede(ids, ORDENES_POR_RECIBIR, sedeId));
         Map<Long, BigDecimal> pendiente = new HashMap<>();
         pedido.forEach((id, cantidad) -> {
             BigDecimal falta = cantidad.subtract(aceptado.getOrDefault(id, BigDecimal.ZERO));

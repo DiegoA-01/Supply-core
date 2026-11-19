@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,6 +20,7 @@ import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.security.context.Roles;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 
 /**
  * Plan de reabastecimiento: qué pedir, cuándo y cuánto según el consumo real y lo que tarda el proveedor en
@@ -41,15 +43,17 @@ public class ReabastecimientoController {
     }
 
     /**
-     * Plan de todos los productos activos, de más a menos urgente.
+     * Plan de todos los productos activos, de más a menos urgente, de la empresa o de una sede.
      *
+     * @param sedeId solo el stock, el consumo y las órdenes de las bodegas de esta sede, opcional
      * @return plan con resumen
      */
     @GetMapping
     @RequiereRol({ Roles.ADMIN_COMPRAS, Roles.COMPRADOR, Roles.ALMACENISTA, Roles.SOLICITANTE, Roles.AUDITOR,
             Roles.ADMIN_SISTEMA })
-    public ReabastecimientoResponse plan() {
-        return reabastecimientoService.plan();
+    public ReabastecimientoResponse plan(
+            @RequestParam(required = false) @Positive(message = "debe ser un id válido") Long sedeId) {
+        return reabastecimientoService.plan(sedeId);
     }
 
     /**
