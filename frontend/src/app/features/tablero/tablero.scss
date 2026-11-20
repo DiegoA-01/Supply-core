@@ -48,3 +48,7 @@ h2 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top:
   .cifra { display: none; }
   .barra-fila { grid-template-columns: 1fr auto; .barra-grafica { grid-column: 1 / -1; order: 3; } }
 }
+
+.ventas { h2 a { margin-left: 8px; } h3 { margin: 12px 0 6px; font-size: 14px; }
+  .dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .fila-barra { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--sc-borde); font-size: 13px; } }

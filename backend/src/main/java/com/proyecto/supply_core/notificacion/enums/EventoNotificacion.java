@@ -81,7 +81,9 @@ public enum EventoNotificacion {
     /** El área de compras envió un informe de compras al administrador de la empresa. */
     INFORME_RECIBIDO("Informe de compras recibido"),
     /** Un turno cerró con una diferencia de caja que pasa la tolerancia y espera la aprobación de un supervisor. */
-    TURNO_DIFERENCIA("Diferencia de caja por aprobar");
+    TURNO_DIFERENCIA("Diferencia de caja por aprobar"),
+    /** El cuadre diario encontró ventas, inventario o caja que no cuadran (destino: ADMIN_SISTEMA, spec 009). */
+    CUADRE_DESCUADRE("El cuadre diario encontró un descuadre");
 
     /** Asunto del correo. */
     private final String asunto;

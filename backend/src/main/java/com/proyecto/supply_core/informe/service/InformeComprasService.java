@@ -79,6 +79,8 @@ public class InformeComprasService {
     private final NotificacionService notificaciones;
     private final AuditoriaService auditoria;
     private final UnidadMedidaService unidades;
+    private final com.proyecto.supply_core.reporte.service.VentaReporteService ventaReporte;
+    private final com.proyecto.supply_core.plataforma.service.AccesoEmpresaService accesoEmpresa;
     /** Convierte la foto fija a JSON y de vuelta. */
     private final JsonMapper json = JsonMapper.builder().build();
 
@@ -90,10 +92,16 @@ public class InformeComprasService {
      * @param notificaciones avisos de pedido y de envío
      * @param auditoria      registro de pedir y enviar
      * @param unidades       conversión de la cantidad pedida a la unidad del producto
+     * @param ventaReporte   resumen de ventas del periodo (spec 009)
+     * @param accesoEmpresa  si la empresa tiene el módulo de ventas
      */
     public InformeComprasService(InformeComprasRepository informes, UsuarioRepository usuarios,
             CentroCostoRepository centros, ReporteService reportes, NotificacionService notificaciones,
-            AuditoriaService auditoria, UnidadMedidaService unidades) {
+            AuditoriaService auditoria, UnidadMedidaService unidades,
+            com.proyecto.supply_core.reporte.service.VentaReporteService ventaReporte,
+            com.proyecto.supply_core.plataforma.service.AccesoEmpresaService accesoEmpresa) {
+        this.ventaReporte = ventaReporte;
+        this.accesoEmpresa = accesoEmpresa;
         this.informes = informes;
         this.usuarios = usuarios;
         this.centros = centros;
@@ -283,7 +291,29 @@ public class InformeComprasService {
                 primeras(adjudicaciones, a -> new AdjudicacionFila(a.getRfq().getConsecutivo(),
                         a.getCotizacion().getProveedor().getRazonSocial(), a.getMontoTotal(), a.isSigueRecomendacion(),
                         a.getJustificacion(), a.getEstado().name(), a.getDecididoEn())),
-                reportes.gasto(desde, hasta, null, null), recortado, reportes.gastoPorSede(desde, hasta));
+                reportes.gasto(desde, hasta, null, null), recortado, reportes.gastoPorSede(desde, hasta),
+                ventas(desde, hasta));
+    }
+
+    /**
+     * Resumen de ventas del periodo con el mismo cálculo del reporte de ventas (spec 009).
+     *
+     * @param desde primer día
+     * @param hasta último día
+     * @return resumen, o {@code null} si la empresa no tiene el módulo de ventas
+     */
+    private InformeContenido.VentasResumen ventas(LocalDate desde, LocalDate hasta) {
+        Long empresa = com.proyecto.supply_core.common.tenant.EmpresaContexto.opcional();
+        com.proyecto.supply_core.plataforma.service.AccesoEmpresaService.Resumen acceso =
+                empresa == null ? null : accesoEmpresa.resumen(empresa);
+        if (acceso == null || !acceso.modulos().contains(com.proyecto.supply_core.security.context.Modulos.VENTAS)) {
+            return null;
+        }
+        com.proyecto.supply_core.reporte.dto.VentaReporte r = ventaReporte.deEmpresa(desde, hasta,
+                com.proyecto.supply_core.reporte.enums.AgrupacionVenta.PRODUCTO);
+        return new InformeContenido.VentasResumen(r.totales().ventas(), r.totales().neto(),
+                r.totales().ticketPromedio(), r.totales().margen(), r.totales().margenPct(),
+                r.filas().stream().limit(5).toList());
     }
 
     /**

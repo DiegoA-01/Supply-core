@@ -38,7 +38,9 @@ class InformeComprasServiceTest {
     private final UnidadMedidaService unidades = mock(UnidadMedidaService.class);
     private final InformeComprasService service = new InformeComprasService(informes, mock(UsuarioRepository.class),
             mock(CentroCostoRepository.class), mock(ReporteService.class), mock(NotificacionService.class),
-            mock(AuditoriaService.class), unidades);
+            mock(AuditoriaService.class), unidades,
+            mock(com.proyecto.supply_core.reporte.service.VentaReporteService.class),
+            mock(com.proyecto.supply_core.plataforma.service.AccesoEmpresaService.class));
 
     private final UnidadMedida und = unidad(1L, "UND");
     private final UnidadMedida caja = unidad(2L, "CAJA24");

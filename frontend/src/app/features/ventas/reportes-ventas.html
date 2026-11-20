@@ -1,0 +1,149 @@
+<div class="pagina">
+  <div class="encabezado"><div><h1>Reportes de ventas</h1>
+    <p>Ventas netas (lo vendido menos lo devuelto; las anuladas no cuentan), margen con el costo de cada venta, caja y
+      el cuadre diario automático.</p></div></div>
+
+  <div class="pestanas" role="tablist">
+    <button type="button" role="tab" [class.activa]="pestana() === 'ventas'" (click)="elegir('ventas')">Ventas</button>
+    @if (veCaja()) {
+      <button type="button" role="tab" [class.activa]="pestana() === 'caja'" (click)="elegir('caja')">Caja</button>
+    }
+    @if (veCuadre()) {
+      <button type="button" role="tab" [class.activa]="pestana() === 'cuadre'" (click)="elegir('cuadre')">Cuadre diario</button>
+    }
+  </div>
+
+  @if (pestana() !== 'cuadre') {
+    <section class="tarjeta filtros">
+      <label>Desde <input class="entrada" type="date" [ngModel]="desde()" (ngModelChange)="desde.set($event)"></label>
+      <label>Hasta <input class="entrada" type="date" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)"></label>
+      @if (pestana() === 'ventas') {
+        <label>Agrupar por
+          <select class="entrada" [ngModel]="agrupar()" (ngModelChange)="agrupar.set($event)">
+            @for (a of ordenAgrupaciones; track a) { <option [ngValue]="a">{{ agrupaciones[a] }}</option> }
+          </select></label>
+      }
+      <button type="button" class="boton primario" (click)="consultar()">Consultar</button>
+      <span class="espacio"></span>
+      <button type="button" class="boton" (click)="exportar('xlsx')">Excel</button>
+      <button type="button" class="boton" (click)="exportar('pdf')">PDF</button>
+    </section>
+  }
+
+  @if (pestana() === 'ventas') {
+    @if (ventas(); as r) {
+      @if (r.soloPropio) { <p class="sub">Solo se muestran tus ventas.</p> }
+      <div class="kpis">
+        <div class="tarjeta kpi"><div class="etiqueta">Ventas netas</div><div class="valor">{{ r.totales?.neto | pesos }}</div></div>
+        <div class="tarjeta kpi"><div class="etiqueta">Ventas</div><div class="valor">{{ r.totales?.ventas }}</div></div>
+        <div class="tarjeta kpi"><div class="etiqueta">Ticket promedio</div><div class="valor">{{ r.totales?.ticketPromedio | pesos }}</div></div>
+        <div class="tarjeta kpi"><div class="etiqueta">Devoluciones</div><div class="valor">{{ r.totales?.devoluciones | pesos }}</div></div>
+        <div class="tarjeta kpi"><div class="etiqueta">Margen</div>
+          <div class="valor">{{ r.totales?.margen | pesos }}</div>
+          @if (r.totales?.margenPct != null) { <div class="sub">{{ r.totales?.margenPct | numero }} % sobre la base</div> }</div>
+      </div>
+      @if ((r.totales?.baseSinCosto ?? 0) > 0) {
+        <p class="aviso ambar">{{ r.totales?.baseSinCosto | pesos }} se vendieron sin costo conocido y no entran al margen.</p>
+      }
+      <section class="tarjeta sin-relleno"><div class="tabla-contenedor"><table class="tabla">
+        <thead><tr>
+          <th>{{ agrupaciones[r.agrupar!] }}</th><th class="num">Ventas</th>
+          @if (!porMedio()) { <th class="num">Unidades</th> }
+          <th class="num">{{ porMedio() ? 'Cobrado' : 'Bruto' }}</th><th class="num">Devuelto</th><th class="num">Neto</th>
+          @if (!porMedio()) { <th class="num">Costo</th><th class="num">Margen</th><th class="num">Margen %</th> }
+        </tr></thead>
+        <tbody>
+          @for (f of r.filas; track f.clave) {
+            <tr><td>{{ f.nombre }}</td><td class="num">{{ f.ventas }}</td>
+              @if (!porMedio()) { <td class="num">{{ f.unidades | numero }}</td> }
+              <td class="num">{{ f.bruto | pesos }}</td><td class="num">{{ f.devoluciones | pesos }}</td>
+              <td class="num"><strong>{{ f.neto | pesos }}</strong></td>
+              @if (!porMedio()) {
+                <td class="num">{{ f.costo | pesos }}</td><td class="num">{{ f.margen | pesos }}</td>
+                <td class="num">{{ f.margenPct == null ? '—' : (f.margenPct | numero) + ' %' }}</td>
+              }
+            </tr>
+          } @empty { <tr><td colspan="9" class="vacio">Sin ventas en el periodo.</td></tr> }
+          @if ((r.totales?.redondeo ?? 0) !== 0) {
+            <tr class="total"><td colspan="3">Redondeo del efectivo</td><td class="num" colspan="6">{{ r.totales?.redondeo | pesos }}</td></tr>
+          }
+        </tbody>
+      </table></div></section>
+    } @else if (cargando()) { <p class="sub">Calculando…</p> }
+  }
+
+  @if (pestana() === 'caja' && caja(); as c) {
+    <div class="kpis">
+      <div class="tarjeta kpi"><div class="etiqueta">Turnos</div><div class="valor">{{ c.totales?.turnos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Diferencia</div><div class="valor" [class]="tono(c.totales?.diferencia)">{{ c.totales?.diferencia | pesos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Por aprobar</div><div class="valor">{{ c.totales?.porAprobar }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Retiros</div><div class="valor">{{ c.totales?.retiros | pesos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Gastos</div><div class="valor">{{ c.totales?.gastos | pesos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Anulado</div><div class="valor">{{ c.totales?.anulaciones | pesos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Descuentos autorizados</div><div class="valor">{{ c.totales?.descuentos | pesos }}</div></div>
+    </div>
+    <h2>Diferencias por cajero</h2>
+    <section class="tarjeta sin-relleno"><div class="tabla-contenedor"><table class="tabla">
+      <thead><tr><th>Cajero</th><th class="num">Turnos</th><th class="num">Faltantes</th><th class="num">Sobrantes</th><th class="num">Por aprobar</th></tr></thead>
+      <tbody>@for (x of c.porCajero; track x.cajeroId) {
+        <tr><td>{{ x.cajero }}</td><td class="num">{{ x.turnos }}</td><td class="num rojo">{{ x.faltantes | pesos }}</td>
+          <td class="num">{{ x.sobrantes | pesos }}</td><td class="num">{{ x.porAprobar }}</td></tr>
+      } @empty { <tr><td colspan="5" class="vacio">Sin turnos en el periodo.</td></tr> }</tbody>
+    </table></div></section>
+    <h2>Cierres por turno</h2>
+    <section class="tarjeta sin-relleno"><div class="tabla-contenedor"><table class="tabla">
+      <thead><tr><th>Caja</th><th>Cajero</th><th>Abierto</th><th>Estado</th><th class="num">Esperado</th><th class="num">Contado</th><th class="num">Diferencia</th></tr></thead>
+      <tbody>@for (t of c.turnos; track t.id) {
+        <tr><td>{{ t.caja }}</td><td>{{ t.cajero }}</td><td>{{ t.abiertoEn | fecha:'corta' }}</td>
+          <td>{{ t.estado }} @if (t.porAprobar) { <span class="chip ambar mini">Por aprobar</span> }</td>
+          <td class="num">{{ t.esperadoEfectivo | pesos }}</td><td class="num">{{ t.contadoEfectivo | pesos }}</td>
+          <td class="num" [class]="tono(t.diferencia)">{{ t.diferencia | pesos }}</td></tr>
+      }</tbody>
+    </table></div></section>
+    <h2>Retiros, gastos, anulaciones y descuentos</h2>
+    <section class="tarjeta sin-relleno"><div class="tabla-contenedor"><table class="tabla">
+      <thead><tr><th>Qué</th><th>Detalle</th><th class="num">Valor</th><th>Quién</th><th>Autorizó</th><th>Cuándo</th></tr></thead>
+      <tbody>
+        @for (m of c.movimientos; track $index) {
+          <tr><td>{{ m.tipo === 'RETIRO' ? 'Retiro' : 'Gasto' }}</td><td>{{ m.motivo }} · {{ m.caja }}</td><td class="num">{{ m.monto | pesos }}</td>
+            <td>{{ m.registradoPor }}</td><td>{{ m.autorizadoPor }}</td><td>{{ m.creadoEn | fecha:'corta' }}</td></tr>
+        }
+        @for (a of c.anulaciones; track a.ventaId) {
+          <tr><td>Anulación</td><td>{{ a.consecutivo }} · {{ a.motivo }}</td><td class="num">{{ a.total | pesos }}</td>
+            <td>{{ a.cajero }}</td><td>{{ a.autorizadoPor }}</td><td>{{ a.anuladaEn | fecha:'corta' }}</td></tr>
+        }
+        @for (d of c.autorizados; track $index) {
+          <tr><td>{{ d.tipo }}</td><td>{{ d.consecutivo }} · {{ d.producto }}</td><td class="num">{{ d.descuentoValor | pesos }}</td>
+            <td>{{ d.cajero }}</td><td>{{ d.autorizadoPor }}</td><td>{{ d.confirmadaEn | fecha:'corta' }}</td></tr>
+        }
+      </tbody>
+    </table></div></section>
+  }
+
+  @if (pestana() === 'cuadre') {
+    <section class="tarjeta filtros">
+      <label class="opcion"><input type="checkbox" [ngModel]="soloDescuadres()" (ngModelChange)="soloDescuadres.set($event); cargarCuadres()">
+        Solo los días que no cuadran</label>
+      <p class="sub">Cada noche a la 01:00 se revisa el día anterior: lo cobrado contra la caja, lo vendido contra el
+        inventario y los turnos olvidados abiertos.</p>
+    </section>
+    @for (q of cuadres()?.contenido; track q.fecha) {
+      <section class="tarjeta cuadre">
+        <div class="fila entre">
+          <h2>{{ q.fecha | fecha }}</h2>
+          @if (q.cuadra) { <span class="chip verde">Cuadra</span> } @else { <span class="chip rojo">No cuadra</span> }
+        </div>
+        <p class="sub">Cobrado {{ q.ventasConfirmadas | pesos }} · en caja {{ q.ventasEnCaja | pesos }} · vendidas
+          {{ q.unidadesVendidas | numero }} · salidas {{ q.unidadesSalida | numero }} · turnos olvidados {{ q.turnosAbiertos24h }}</p>
+        @for (v of q.ventas; track v.ventaId) {
+          <p>Venta {{ v.consecutivo }}: cobrado {{ v.cobrado | pesos }}, en caja {{ v.enCaja | pesos }}; vendidas
+            {{ v.vendidas | numero }}, salidas {{ v.salidas | numero }}.</p>
+        }
+        @for (t of q.turnos; track t.turnoId) {
+          <p>Turno de {{ t.cajero }} en {{ t.caja }} abierto desde {{ t.abiertoEn | fecha:'corta' }}.</p>
+        }
+        @if (puedeRevisar()) { <button type="button" class="boton chico" (click)="revisar(q.fecha)">Revisar otra vez</button> }
+      </section>
+    } @empty { <p class="vacio">{{ soloDescuadres() ? 'Ningún día sin cuadrar.' : 'Todavía no se ha revisado ningún día.' }}</p> }
+  }
+</div>

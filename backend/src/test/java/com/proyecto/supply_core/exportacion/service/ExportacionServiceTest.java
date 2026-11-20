@@ -89,8 +89,13 @@ class ExportacionServiceTest {
     private final ProveedorService proveedores = mock(ProveedorService.class);
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
     private final EmailClient email = mock(EmailClient.class);
+    private final com.proyecto.supply_core.reporte.service.VentaReporteService ventaReporte =
+            mock(com.proyecto.supply_core.reporte.service.VentaReporteService.class);
+    private final com.proyecto.supply_core.reporte.service.CajaReporteService cajaReporte =
+            mock(com.proyecto.supply_core.reporte.service.CajaReporteService.class);
     private final ExportacionService service = new ExportacionService(movimientos, solicitudes, ordenes, empresas,
-            usuarios, centros, proveedores, new ExcelGenerador(), new OrdenPdfGenerador(), auditoria, email, null);
+            usuarios, centros, proveedores, new ExcelGenerador(), new OrdenPdfGenerador(), auditoria, email, null,
+            ventaReporte, cajaReporte, new com.proyecto.supply_core.exportacion.generador.TablaPdfGenerador());
 
     @BeforeEach
     void sesion() {

@@ -4519,7 +4519,7 @@ export interface components {
         };
         ConfigNotificacionCambioRequest: {
             /** @enum {string} */
-            evento: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA";
+            evento: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA" | "CUADRE_DESCUADRE";
             /** @enum {string} */
             canal: "EMAIL" | "INTERNA";
             activo: boolean;
@@ -4528,7 +4528,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             /** @enum {string} */
-            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA";
+            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA" | "CUADRE_DESCUADRE";
             /** @enum {string} */
             canal?: "EMAIL" | "INTERNA";
             activo?: boolean;
@@ -5553,6 +5553,16 @@ export interface components {
             gasto?: components["schemas"]["GastoResponse"];
             recortado?: boolean;
             gastoPorSede?: components["schemas"]["GastoItem"][];
+            ventas?: components["schemas"]["VentasResumen"];
+        };
+        VentasResumen: {
+            /** Format: int64 */
+            ventas?: number;
+            neto?: number;
+            ticketPromedio?: number;
+            margen?: number;
+            margenPct?: number;
+            masVendidos?: components["schemas"]["FilaVentaReporte"][];
         };
         InformeResponse: {
             /** Format: int64 */
@@ -5967,7 +5977,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             /** @enum {string} */
-            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA";
+            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA" | "CUADRE_DESCUADRE";
             mensaje?: string;
             leida?: boolean;
             /** Format: date-time */
@@ -6272,6 +6282,202 @@ export interface components {
             /** @enum {string} */
             clase?: "ALTA" | "MEDIA" | "BAJA" | "SIN_MOVIMIENTO" | "AGOTADO" | "SIN_ACTIVIDAD";
             porAgotarse?: boolean;
+        };
+        FilaVentaReporte: {
+            clave?: string;
+            nombre?: string;
+            /** Format: int64 */
+            ventas?: number;
+            unidades?: number;
+            bruto?: number;
+            devoluciones?: number;
+            neto?: number;
+            baseNeta?: number;
+            costo?: number;
+            margen?: number;
+            margenPct?: number;
+            baseSinCosto?: number;
+        };
+        TotalesVentaReporte: {
+            /** Format: int64 */
+            ventas?: number;
+            bruto?: number;
+            devoluciones?: number;
+            redondeo?: number;
+            neto?: number;
+            baseNeta?: number;
+            costo?: number;
+            margen?: number;
+            margenPct?: number;
+            baseSinCosto?: number;
+            ticketPromedio?: number;
+        };
+        VentaReporte: {
+            /** Format: date */
+            desde?: string;
+            /** Format: date */
+            hasta?: string;
+            /** @enum {string} */
+            agrupar?: "DIA" | "SEMANA" | "MES" | "PRODUCTO" | "CATEGORIA" | "CLIENTE" | "VENDEDOR" | "CAJERO" | "CAJA" | "MEDIO_PAGO";
+            filas?: components["schemas"]["FilaVentaReporte"][];
+            totales?: components["schemas"]["TotalesVentaReporte"];
+            soloPropio?: boolean;
+        };
+        TurnoCajaReporte: {
+            /** Format: int64 */
+            id?: number;
+            caja?: string;
+            cajero?: string;
+            estado?: string;
+            /** Format: date-time */
+            abiertoEn?: string;
+            /** Format: date-time */
+            cerradoEn?: string;
+            esperadoEfectivo?: number;
+            contadoEfectivo?: number;
+            diferencia?: number;
+            porAprobar?: boolean;
+            aprobadoPor?: string;
+            explicacion?: string;
+        };
+        CajeroCajaReporte: {
+            /** Format: int64 */
+            cajeroId?: number;
+            cajero?: string;
+            /** Format: int64 */
+            turnos?: number;
+            /** Format: int64 */
+            cerrados?: number;
+            diferencia?: number;
+            faltantes?: number;
+            sobrantes?: number;
+            /** Format: int64 */
+            porAprobar?: number;
+        };
+        MovimientoCajaReporte: {
+            tipo?: string;
+            caja?: string;
+            medio?: string;
+            monto?: number;
+            motivo?: string;
+            registradoPor?: string;
+            autorizadoPor?: string;
+            /** Format: date-time */
+            creadoEn?: string;
+        };
+        AnulacionCajaReporte: {
+            /** Format: int64 */
+            ventaId?: number;
+            consecutivo?: string;
+            total?: number;
+            motivo?: string;
+            cajero?: string;
+            autorizadoPor?: string;
+            /** Format: date-time */
+            anuladaEn?: string;
+        };
+        AutorizadoCajaReporte: {
+            /** Format: int64 */
+            ventaId?: number;
+            consecutivo?: string;
+            producto?: string;
+            tipo?: string;
+            descuentoPct?: number;
+            descuentoValor?: number;
+            cajero?: string;
+            autorizadoPor?: string;
+            /** Format: date-time */
+            confirmadaEn?: string;
+        };
+        TotalesCajaReporte: {
+            /** Format: int64 */
+            turnos?: number;
+            diferencia?: number;
+            faltantes?: number;
+            sobrantes?: number;
+            /** Format: int64 */
+            porAprobar?: number;
+            retiros?: number;
+            gastos?: number;
+            anulaciones?: number;
+            descuentos?: number;
+        };
+        CajaReporte: {
+            /** Format: date */
+            desde?: string;
+            /** Format: date */
+            hasta?: string;
+            turnos?: components["schemas"]["TurnoCajaReporte"][];
+            porCajero?: components["schemas"]["CajeroCajaReporte"][];
+            movimientos?: components["schemas"]["MovimientoCajaReporte"][];
+            anulaciones?: components["schemas"]["AnulacionCajaReporte"][];
+            autorizados?: components["schemas"]["AutorizadoCajaReporte"][];
+            totales?: components["schemas"]["TotalesCajaReporte"];
+        };
+        VentaDescuadrada: {
+            /** Format: int64 */
+            ventaId?: number;
+            consecutivo?: string;
+            cobrado?: number;
+            enCaja?: number;
+            vendidas?: number;
+            salidas?: number;
+        };
+        TurnoOlvidado: {
+            /** Format: int64 */
+            turnoId?: number;
+            caja?: string;
+            cajero?: string;
+            /** Format: date-time */
+            abiertoEn?: string;
+        };
+        CuadreResponse: {
+            /** Format: date */
+            fecha?: string;
+            cuadra?: boolean;
+            ventasConfirmadas?: number;
+            ventasEnCaja?: number;
+            unidadesVendidas?: number;
+            unidadesSalida?: number;
+            /** Format: int32 */
+            turnosAbiertos24h?: number;
+            ventas?: components["schemas"]["VentaDescuadrada"][];
+            turnos?: components["schemas"]["TurnoOlvidado"][];
+            /** Format: date-time */
+            revisadoEn?: string;
+        };
+        PageResponseCuadreResponse: {
+            contenido?: components["schemas"]["CuadreResponse"][];
+            /** Format: int32 */
+            pagina?: number;
+            /** Format: int32 */
+            tamano?: number;
+            /** Format: int64 */
+            totalElementos?: number;
+            /** Format: int32 */
+            totalPaginas?: number;
+        };
+        TableroVentas: {
+            /** Format: date */
+            hoy?: string;
+            /** Format: date */
+            desdeMes?: string;
+            ventasHoy?: number;
+            /** Format: int64 */
+            numeroVentasHoy?: number;
+            ventasMes?: number;
+            /** Format: int64 */
+            numeroVentasMes?: number;
+            ticketPromedioMes?: number;
+            margenMes?: number;
+            margenMesPct?: number;
+            masVendidos?: components["schemas"]["FilaVentaReporte"][];
+            porMedio?: components["schemas"]["FilaVentaReporte"][];
+            porCajero?: components["schemas"]["FilaVentaReporte"][];
+            diferenciaCajaMes?: number;
+            faltantesMes?: number;
+            /** Format: int64 */
+            turnosPorAprobar?: number;
         };
         TableroResponse: {
             /** Format: date */

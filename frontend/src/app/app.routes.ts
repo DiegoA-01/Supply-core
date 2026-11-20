@@ -189,6 +189,13 @@ export const routes: Routes = [
         loadComponent: () => import('./features/caja/mi-turno').then(m => m.MiTurno),
       },
       {
+        path: 'ventas/reportes',
+        title: 'Reportes de ventas · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_VENTAS, modulo: 'VENTAS' },
+        loadComponent: () => import('./features/ventas/reportes-ventas').then(m => m.ReportesVentas),
+      },
+      {
         path: 'ventas',
         title: 'Ventas · Supply-Core',
         canActivate: [permisoGuard],
