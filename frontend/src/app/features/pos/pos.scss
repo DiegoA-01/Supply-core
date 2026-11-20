@@ -33,3 +33,12 @@ tr.alerta td { background: #fff8eb; }
 .acciones-cliente { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .dialogo .ayuda { margin: 0 0 10px; font-size: 13px; color: var(--sc-texto-2); }
 .pasos { margin: 0 0 12px; padding-left: 20px; font-size: 13px; line-height: 1.6; }
+
+.etiqueta-cobro { display: block; margin: 10px 0 6px; font-weight: 600; font-size: 14px; }
+.medios { display: flex; flex-wrap: wrap; gap: 6px;
+  .medio { font: inherit; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--sc-borde); background: #fff; cursor: pointer;
+    &.activo { background: var(--sc-primario); border-color: var(--sc-primario); color: #fff; }
+    &:focus-visible { outline: 3px solid #f6b9a3; outline-offset: 2px; } } }
+.recibido { font-size: 22px; padding: 10px 12px; width: 100%; }
+.rapidos { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.enlace { background: none; border: 0; padding: 6px 0; color: var(--sc-primario); text-decoration: underline; cursor: pointer; font: inherit; font-size: 13px; }

@@ -172,28 +172,63 @@
     <div class="velo" (click)="cancelar()"></div>
     <section class="tarjeta dialogo cobro" role="dialog" aria-modal="true" aria-labelledby="t-cobro">
       <h2 id="t-cobro">Cobrar {{ cotizacion()?.totalAPagar | pesos }}</h2>
-      @for (p of pagos(); track $index; let i = $index) {
-        <div class="pago">
-          <select class="entrada" [attr.aria-label]="'Medio del pago ' + (i + 1)" [ngModel]="p.medio" (ngModelChange)="cambiarPago(i, 'medio', $event)">
-            @for (m of ordenMedios(); track m) { <option [ngValue]="m">{{ textoMedio(m) }}</option> }
-          </select>
-          <input class="entrada" type="number" min="0" step="any" [attr.aria-label]="'Valor del pago ' + (i + 1)" placeholder="Valor"
-            [ngModel]="p.monto" (ngModelChange)="cambiarPago(i, 'monto', $event)">
-          @if (esTarjeta(p)) {
-            <input class="entrada corta" inputmode="numeric" maxlength="4" placeholder="Últimos 4" [attr.aria-label]="'Últimos 4 dígitos del pago ' + (i + 1)"
-              [ngModel]="p.ultimos4" (ngModelChange)="cambiarPago(i, 'ultimos4', $event)">
-          }
-          @if (p.medio !== 'EFECTIVO') {
-            <input class="entrada" placeholder="N.º de autorización" [attr.aria-label]="'Autorización del pago ' + (i + 1)"
-              [ngModel]="p.referencia" (ngModelChange)="cambiarPago(i, 'referencia', $event)">
-          }
-          @if (pagos().length > 1) {
-            <button type="button" class="boton chico icono" [attr.aria-label]="'Quitar pago ' + (i + 1)" (click)="quitarPago(i)">
-              <span class="material-symbols-outlined">close</span></button>
+      @if (!dividido()) {
+        @let p = pagos()[0];
+        <p class="etiqueta-cobro">¿Cómo paga el cliente?</p>
+        <div class="medios" role="radiogroup" aria-label="Medio de pago">
+          @for (m of ordenMedios(); track m) {
+            <button type="button" role="radio" class="medio" [class.activo]="p?.medio === m" [attr.aria-checked]="p?.medio === m"
+              (click)="elegirMedio(m)">{{ textoMedio(m) }}</button>
           }
         </div>
+        @if (p?.medio === 'EFECTIVO') {
+          <label class="etiqueta-cobro" for="pos-recibido">¿Con cuánto paga el cliente?</label>
+          <input id="pos-recibido" class="entrada recibido" type="number" min="0" step="any" placeholder="Escriba lo que le entregan"
+            [ngModel]="p.monto" (ngModelChange)="cambiarPago(0, 'monto', $event)">
+          <div class="rapidos">
+            <button type="button" class="boton chico" (click)="pagarExacto()">Exacto</button>
+            @for (b of billetes(); track b) {
+              <button type="button" class="boton chico" (click)="cambiarPago(0, 'monto', b)">{{ b | pesos }}</button>
+            }
+          </div>
+        } @else if (p) {
+          <p class="sub">Se cobra el total por {{ textoMedio(p.medio) }}.</p>
+          @if (esTarjeta(p)) {
+            <input class="entrada corta" inputmode="numeric" maxlength="4" placeholder="Últimos 4 dígitos" aria-label="Últimos 4 dígitos de la tarjeta"
+              [ngModel]="p.ultimos4" (ngModelChange)="cambiarPago(0, 'ultimos4', $event)">
+          }
+          @if (p.medio !== 'CREDITO' && p.medio !== 'SALDO_FAVOR') {
+            <input class="entrada" placeholder="N.º de autorización o referencia" aria-label="Autorización del pago"
+              [ngModel]="p.referencia" (ngModelChange)="cambiarPago(0, 'referencia', $event)">
+          }
+        }
+        <button type="button" class="enlace" (click)="dividir()">El cliente quiere pagar con dos medios (dividir el pago)</button>
+      } @else {
+        <p class="etiqueta-cobro">Pago dividido: escriba cuánto va por cada medio. En efectivo, lo que entrega el cliente.</p>
+        @for (p of pagos(); track $index; let i = $index) {
+          <div class="pago">
+            <select class="entrada" [attr.aria-label]="'Medio del pago ' + (i + 1)" [ngModel]="p.medio" (ngModelChange)="cambiarPago(i, 'medio', $event)">
+              @for (m of ordenMedios(); track m) { <option [ngValue]="m">{{ textoMedio(m) }}</option> }
+            </select>
+            <input class="entrada" type="number" min="0" step="any" [attr.aria-label]="'Valor del pago ' + (i + 1)" placeholder="Valor"
+              [ngModel]="p.monto" (ngModelChange)="cambiarPago(i, 'monto', $event)">
+            @if (esTarjeta(p)) {
+              <input class="entrada corta" inputmode="numeric" maxlength="4" placeholder="Últimos 4" [attr.aria-label]="'Últimos 4 dígitos del pago ' + (i + 1)"
+                [ngModel]="p.ultimos4" (ngModelChange)="cambiarPago(i, 'ultimos4', $event)">
+            }
+            @if (p.medio !== 'EFECTIVO' && p.medio !== 'CREDITO' && p.medio !== 'SALDO_FAVOR') {
+              <input class="entrada" placeholder="N.º de autorización" [attr.aria-label]="'Autorización del pago ' + (i + 1)"
+                [ngModel]="p.referencia" (ngModelChange)="cambiarPago(i, 'referencia', $event)">
+            }
+            <button type="button" class="boton chico icono" [attr.aria-label]="'Quitar pago ' + (i + 1)" (click)="quitarPago(i)">
+              <span class="material-symbols-outlined">close</span></button>
+          </div>
+        }
+        <div class="fila">
+          <button type="button" class="boton chico" (click)="agregarPago()">Agregar otro medio</button>
+          <button type="button" class="enlace" (click)="unSoloMedio()">Volver a un solo medio</button>
+        </div>
       }
-      <button type="button" class="boton chico" (click)="agregarPago()">Agregar otro medio</button>
       <p class="sub">Nunca escriba el número completo de la tarjeta: solo los últimos 4 dígitos y la autorización del datáfono.</p>
       @if (cotizacion(); as c) {
         @if (c.mensajePago) { <p class="aviso ambar" role="status">{{ c.mensajePago }}</p> }

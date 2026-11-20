@@ -223,6 +223,33 @@ describe('Punto de venta', () => {
     expect(c()['cotizacion']().totalAPagar).toBe(7400);
   });
 
+  it('el cobro es de un solo medio: en efectivo pregunta con cuánto paga, y dividir el pago es aparte', () => {
+    crear(['CAJERO']);
+    escanear();
+    cotizar();
+    c()['abrirCobro']();
+    cotizar();
+    expect(c()['pagos']()[0].monto).toBeNull();
+    expect(texto()).toContain('¿Con cuánto paga el cliente?');
+    expect(texto()).not.toContain('Agregar otro medio');
+    expect(c()['billetes']()).toEqual([5000, 10000, 20000]);
+    c()['pagarExacto']();
+    expect(cotizar().request.body.pagos).toEqual([{ medio: 'EFECTIVO', monto: 3700, ultimos4: undefined, referencia: undefined }]);
+    // con tarjeta se cobra el total que da el servidor (sin redondeo del efectivo)
+    c()['elegirMedio']('TARJETA_DEBITO');
+    const r = cotizar(cotizacion({ total: 3710, totalAPagar: 3710 }));
+    expect(r.request.body.pagos[0].medio).toBe('TARJETA_DEBITO');
+    expect(cotizar(cotizacion({ total: 3710, totalAPagar: 3710, cambio: 0 })).request.body.pagos[0].monto).toBe(3710);
+    expect(texto()).toContain('Se cobra el total por Tarjeta débito');
+    c()['dividir']();
+    fixture.detectChanges();
+    expect(c()['dividido']()).toBe(true);
+    expect(texto()).toContain('Agregar otro medio');
+    c()['unSoloMedio']();
+    cotizar(cotizacion({ total: 3710, totalAPagar: 3710, cambio: 0 }));
+    expect(c()['dividido']()).toBe(false);
+  });
+
   it('el panel de cliente explica cuándo identificar al cliente y qué hacer si no aparece', () => {
     crear(['CAJERO']);
     expect(texto()).toContain('¿A quién le vende?');
