@@ -15,3 +15,12 @@ h2 { margin: 16px 0 8px; font-size: 15px; }
 .cuadre { margin-bottom: 10px; p { margin: 4px 0; font-size: 13px; } }
 tr.total td { font-weight: 600; border-top: 2px solid var(--sc-borde); }
 .vacio { color: var(--sc-texto-2); text-align: center; }
+/* Cifras del periodo en una sola franja (una fila en pantalla ancha) en lugar de una tarjeta grande por cifra */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 12px;
+  background: var(--sc-tarjeta); border: 1px solid var(--sc-borde); border-radius: var(--sc-radio); overflow: hidden;
+  .tarjeta.kpi { margin: 0; padding: 10px 16px; background: transparent; border: 0; border-radius: 0; box-shadow: none;
+    border-right: 1px solid var(--sc-borde); min-height: 0;
+    &:last-child { border-right: 0; } }
+  .kpi .etiqueta { font-size: 12px; }
+  .kpi .valor { font-size: 20px; margin: 2px 0 0; }
+  .kpi .sub { font-size: 11px; } }
