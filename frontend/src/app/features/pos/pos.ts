@@ -30,6 +30,9 @@ export interface ItemCarrito {
 }
 
 /** Pago que escribe el cajero. */
+/** Billetes colombianos para los botones de cobro rápido. */
+const BILLETES = [2000, 5000, 10000, 20000, 50000, 100000, 200000];
+
 export interface PagoEscrito {
   medio: MedioPagoVenta;
   monto: number | null;
@@ -113,6 +116,13 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
   protected readonly ultima = signal<Venta | null>(null);
 
   protected readonly vacio = computed(() => this.carrito().length === 0);
+  /** {@code true} si el cliente paga con más de un medio. */
+  protected readonly dividido = computed(() => this.pagos().length > 1);
+  /** Billetes para cobrar rápido: solo los que alcanzan para el total que dio el servidor (comparar, no calcular). */
+  protected readonly billetes = computed(() => {
+    const total = this.cotizacion()?.totalAPagar ?? 0;
+    return BILLETES.filter(b => b > total).slice(0, 3);
+  });
   /**
    * Con la venta en camino o pendiente de reintento el carrito no se toca: si cambiara, el reintento con la misma clave
    * devolvería la venta anterior y lo agregado saldría sin pagar.
@@ -340,9 +350,37 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
       this.guardarPedido();
       return;
     }
-    const total = this.cotizacion()?.totalAPagar ?? null;
-    this.pagos.set([{ medio: 'EFECTIVO', monto: total, ultimos4: '', referencia: '' }]);
+    // En efectivo el cajero escribe con cuánto paga el cliente; el cambio lo calcula el servidor
+    this.pagos.set([{ medio: 'EFECTIVO', monto: null, ultimos4: '', referencia: '' }]);
     this.cobrando.set(true);
+    this.recalcular(true);
+  }
+
+  /** @param m medio elegido con un solo pago; fuera del efectivo se cobra el total que dé el servidor */
+  protected elegirMedio(m: MedioPagoVenta): void {
+    if (this.fijo()) {
+      return;
+    }
+    this.pagos.update(p => [{ ...p[0], medio: m, monto: m === 'EFECTIVO' ? null : this.cotizacion()?.totalAPagar ?? null }]);
+    this.recalcular(true);
+  }
+
+  /** Efectivo exacto: lo recibido es el total que dio el servidor. */
+  protected pagarExacto(): void {
+    this.cambiarPago(0, 'monto', this.cotizacion()?.totalAPagar ?? null);
+  }
+
+  /** Pasa a pago dividido: el primer medio queda como está y se agrega otro vacío. */
+  protected dividir(): void {
+    this.agregarPago();
+  }
+
+  /** Vuelve a un solo medio con el primero de la lista. */
+  protected unSoloMedio(): void {
+    if (this.fijo()) {
+      return;
+    }
+    this.pagos.update(p => p.slice(0, 1));
     this.recalcular(true);
   }
 
@@ -528,6 +566,13 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
           }
           this.calculando.set(false);
           this.cotizacion.set(c);
+          // Un solo medio que no es efectivo cobra el total exacto: si el total cambió (p. ej. sin el redondeo del
+          // efectivo), se ajusta al que dio el servidor y se vuelve a cotizar una vez.
+          const p = this.pagos();
+          if (conPagos && p.length === 1 && p[0].medio !== 'EFECTIVO' && c.totalAPagar != null && p[0].monto !== c.totalAPagar) {
+            this.pagos.set([{ ...p[0], monto: c.totalAPagar }]);
+            this.recalcular(true);
+          }
         },
         error: e => {
           if (numero !== this.consulta) {
