@@ -74,6 +74,9 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
   private readonly lector = viewChild<ElementRef<HTMLInputElement>>('lector');
   private temporizador: ReturnType<typeof setTimeout> | null = null;
   private pedidoPendiente: number | null = null;
+  /** Pausa entre teclas antes de pedir sugerencias, y número de la última búsqueda (las viejas se ignoran). */
+  private temporizadorSugerencias: ReturnType<typeof setTimeout> | null = null;
+  private busqueda = 0;
   /** Número de la última cotización pedida: una respuesta de una anterior llega tarde y se ignora. */
   private consulta = 0;
 
@@ -90,6 +93,10 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
 
   protected readonly texto = signal('');
   protected readonly opciones = signal<ProductoParaVender[]>([]);
+  /** Sugerencia resaltada con las flechas (-1 = ninguna). */
+  protected readonly marcado = signal(-1);
+  /** Texto que no trajo ninguna sugerencia (para decirlo en pantalla). */
+  protected readonly sinCoincidencias = signal('');
   protected readonly carrito = signal<ItemCarrito[]>([]);
   protected readonly cliente = signal<Cliente | null>(null);
   protected readonly consumidorFinal = signal<Cliente | null>(null);
@@ -139,6 +146,10 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
       clearTimeout(this.temporizador);
       this.temporizador = null;
     }
+    if (this.temporizadorSugerencias) {
+      clearTimeout(this.temporizadorSugerencias);
+    }
+    this.busqueda++;
     this.consulta++;
   }
 
@@ -210,14 +221,78 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
 
   // ------------------------------------------------------------- productos
 
+  /**
+   * Mientras se escribe en el lector se piden sugerencias (desde la primera letra, con una pausa corta). El lector de
+   * código de barras escribe rápido y termina con Enter: esa búsqueda la hace {@link #leer} y la sugerencia se descarta.
+   *
+   * @param valor texto escrito
+   */
+  protected escribir(valor: string): void {
+    this.texto.set(valor);
+    this.marcado.set(-1);
+    this.sinCoincidencias.set('');
+    if (this.temporizadorSugerencias) {
+      clearTimeout(this.temporizadorSugerencias);
+    }
+    const q = (valor ?? '').trim();
+    const numero = ++this.busqueda;
+    if (!q) {
+      this.opciones.set([]);
+      return;
+    }
+    this.temporizadorSugerencias = setTimeout(() => {
+      this.temporizadorSugerencias = null;
+      this.catalogo.buscarParaVender(q, this.listaId(), this.bodegaId()).subscribe({
+        next: lista => {
+          if (numero !== this.busqueda) {
+            return;
+          }
+          this.opciones.set(lista);
+          this.marcado.set(lista.length ? 0 : -1);
+          this.sinCoincidencias.set(lista.length ? '' : q);
+        },
+        error: () => undefined,
+      });
+    }, 200);
+  }
+
+  /** @param e tecla en el lector: flechas para elegir sugerencia y Enter para agregarla o buscar */
+  protected teclaLector(e: KeyboardEvent): void {
+    const lista = this.opciones();
+    if (e.key === 'ArrowDown' && lista.length) {
+      e.preventDefault();
+      this.marcado.set((this.marcado() + 1) % lista.length);
+    } else if (e.key === 'ArrowUp' && lista.length) {
+      e.preventDefault();
+      this.marcado.set(this.marcado() <= 0 ? lista.length - 1 : this.marcado() - 1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const elegido = this.marcado() >= 0 ? lista[this.marcado()] : undefined;
+      if (elegido && !this.temporizadorSugerencias) {
+        this.agregar(elegido);
+      } else {
+        this.leer();
+      }
+    }
+  }
+
   /** Enter en el lector: si hay una sola coincidencia (o una exacta por código) se agrega; si no, se listan. */
   protected leer(): void {
     const q = this.texto().trim();
     if (!q) {
       return;
     }
+    // Una sugerencia pendiente o en camino ya no sirve: manda la búsqueda completa
+    if (this.temporizadorSugerencias) {
+      clearTimeout(this.temporizadorSugerencias);
+      this.temporizadorSugerencias = null;
+    }
+    const numero = ++this.busqueda;
     this.catalogo.buscarParaVender(q, this.listaId(), this.bodegaId()).subscribe({
       next: lista => {
+        if (numero !== this.busqueda) {
+          return;
+        }
         const exacto = lista.find(p => p.codigo?.toLowerCase() === q.toLowerCase() || p.codigoBarras === q);
         if (exacto || lista.length === 1) {
           this.agregar(exacto ?? lista[0]);
@@ -226,6 +301,7 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
           this.texto.set('');
         } else {
           this.opciones.set(lista);
+          this.marcado.set(0);
         }
       },
       error: e => this.avisos.error(e),
@@ -253,6 +329,9 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
     }
     this.texto.set('');
     this.opciones.set([]);
+    this.marcado.set(-1);
+    this.sinCoincidencias.set('');
+    this.busqueda++;
     this.recalcular();
     this.enfocar();
   }

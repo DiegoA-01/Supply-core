@@ -87,7 +87,8 @@ public interface PrecioProductoRepository extends JpaRepository<PrecioProducto, 
 
     /**
      * Productos activos y vendibles para vender: coincide el código (empieza por), el código de barras (exacto) o el
-     * nombre (contiene). Primero las coincidencias exactas de código o código de barras, después por nombre.
+     * nombre (contiene). Primero las coincidencias exactas de código o código de barras, después los que empiezan por
+     * el texto (en el nombre o el código) y al final los que solo lo contienen; dentro de cada grupo, por nombre.
      *
      * @param exacto   texto buscado en minúsculas
      * @param prefijo  texto escapado + {@code "%"} (comodines escapados con {@code !})
@@ -101,7 +102,9 @@ public interface PrecioProductoRepository extends JpaRepository<PrecioProducto, 
             where p.activo = true and p.vendible = true
               and (lower(p.codigo) like :prefijo escape '!' or p.codigoBarras = :barras
                    or lower(p.nombre) like :contiene escape '!')
-            order by case when lower(p.codigo) = :exacto or p.codigoBarras = :barras then 0 else 1 end, p.nombre
+            order by case when lower(p.codigo) = :exacto or p.codigoBarras = :barras then 0
+                          when lower(p.nombre) like :prefijo escape '!' or lower(p.codigo) like :prefijo escape '!' then 1
+                          else 2 end, p.nombre
             """)
     List<com.proyecto.supply_core.inventario.entity.Producto> buscarParaVender(@Param("exacto") String exacto,
             @Param("prefijo") String prefijo, @Param("contiene") String contiene, @Param("barras") String barras,
