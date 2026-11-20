@@ -357,7 +357,7 @@ public class PreciosService {
     static PrecioFila fila(Producto p, PrecioProducto precio, BigDecimal stock, List<PrecioUnidad> otras) {
         TarifaImpuesto t = p.getTarifaImpuesto();
         BigDecimal pct = t == null ? null : t.getPorcentaje();
-        BigDecimal costo = p.getCostoReferencia();
+        BigDecimal costo = p.costoVigente();
         List<String> alertas = new ArrayList<>();
         if (costo == null) {
             alertas.add("SIN_COSTO");
@@ -461,8 +461,8 @@ public class PreciosService {
         UnidadMedida u = unidades.computeIfAbsent(precio.getUnidadMedidaId(),
                 id -> unidadRepository.findById(id).orElse(null));
         BigDecimal pct = p.getTarifaImpuesto() == null ? null : p.getTarifaImpuesto().getPorcentaje();
-        BigDecimal costo = p.getCostoReferencia() == null ? null
-                : p.getCostoReferencia().multiply(unidadMedidaService.convertir(BigDecimal.ONE,
+        BigDecimal costo = p.costoVigente() == null ? null
+                : p.costoVigente().multiply(unidadMedidaService.convertir(BigDecimal.ONE,
                         precio.getUnidadMedidaId(), p.getUnidadMedida().getId()));
         CalculoMargen.Resultado r = CalculoMargen.calcular(precio.getPrecio(), p.isPrecioIncluyeImpuesto(), pct, costo);
         return new PrecioUnidad(precio.getUnidadMedidaId(), u == null ? "?" : u.getCodigo(), precio.getPrecio(),

@@ -23,11 +23,12 @@ import com.proyecto.supply_core.inventario.entity.Producto;
  * @param bajoStockMinimo {@code true} si está activo y {@code stockTotal < stockMinimo}
  * @param plazoEntregaDias días hábiles de entrega propios ({@code null} = usa el de la empresa)
  * @param diasSeguridad    días hábiles de colchón propios ({@code null} = usa el de la empresa)
+ * @param costoPromedio    costo promedio ponderado ({@code null} si aún no tiene compras)
  */
 public record ProductoResponse(Long id, String codigo, String nombre, String descripcion,
         CategoriaResponse categoria, UnidadMedidaResponse unidadMedida, BigDecimal stockMinimo,
         BigDecimal stockMaximo, BigDecimal costoReferencia, boolean activo, BigDecimal stockTotal,
-        boolean bajoStockMinimo, Integer plazoEntregaDias, Integer diasSeguridad) {
+        boolean bajoStockMinimo, Integer plazoEntregaDias, Integer diasSeguridad, BigDecimal costoPromedio) {
 
     /**
      * Convierte la entidad en DTO (requiere categoría y unidad cargadas).
@@ -41,6 +42,6 @@ public record ProductoResponse(Long id, String codigo, String nombre, String des
                 CategoriaResponse.of(p.getCategoria()), UnidadMedidaResponse.of(p.getUnidadMedida()),
                 p.getStockMinimo(), p.getStockMaximo(), p.getCostoReferencia(), p.isActivo(), stockTotal,
                 p.isActivo() && stockTotal.compareTo(p.getStockMinimo()) < 0, p.getPlazoEntregaDias(),
-                p.getDiasSeguridad());
+                p.getDiasSeguridad(), p.getCostoPromedio());
     }
 }

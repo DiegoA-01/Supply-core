@@ -29,6 +29,7 @@ import com.proyecto.supply_core.compra.orden.repository.OrdenCompraRepository;
 import com.proyecto.supply_core.compra.orden.service.OrdenCompraService;
 import com.proyecto.supply_core.inventario.entity.Bodega;
 import com.proyecto.supply_core.inventario.repository.BodegaRepository;
+import com.proyecto.supply_core.inventario.service.CostoPromedioService;
 import com.proyecto.supply_core.inventario.service.MovimientoInventarioService;
 import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
 import com.proyecto.supply_core.notificacion.service.NotificacionService;
@@ -85,6 +86,7 @@ public class RecepcionService {
     private final UsuarioRepository usuarioRepository;
     private final AuditoriaService auditoriaService;
     private final NotificacionService notificacionService;
+    private final CostoPromedioService costoPromedioService;
 
     /**
      * @param recepcionRepository recepciones
@@ -97,12 +99,13 @@ public class RecepcionService {
      * @param usuarioRepository   usuarios del proveedor (avisos)
      * @param auditoriaService    registro de acciones
      * @param notificacionService avisos
+     * @param costoPromedioService costo promedio ponderado (spec 008)
      */
     public RecepcionService(RecepcionRepository recepcionRepository, RecepcionLineaRepository lineaRepository,
             OrdenCompraRepository ordenRepository, OrdenCompraService ordenService, BodegaRepository bodegaRepository,
             MovimientoInventarioService movimientoService, EvaluacionProveedorService evaluacionService,
             UsuarioRepository usuarioRepository, AuditoriaService auditoriaService,
-            NotificacionService notificacionService) {
+            NotificacionService notificacionService, CostoPromedioService costoPromedioService) {
         this.recepcionRepository = recepcionRepository;
         this.lineaRepository = lineaRepository;
         this.ordenRepository = ordenRepository;
@@ -113,6 +116,7 @@ public class RecepcionService {
         this.usuarioRepository = usuarioRepository;
         this.auditoriaService = auditoriaService;
         this.notificacionService = notificacionService;
+        this.costoPromedioService = costoPromedioService;
     }
 
     /**
@@ -169,12 +173,15 @@ public class RecepcionService {
         }
         Recepcion guardada = recepcionRepository.saveAndFlush(r);
 
-        // Solo lo aceptado sube el stock; el costo de referencia pasa al último precio de la orden
+        // Solo lo aceptado sube el stock; el costo promedio se recalcula antes de la entrada (spec 008) y el costo de
+        // referencia pasa al último precio de la orden
         for (RecepcionLinea l : guardada.getLineas()) {
             if (l.getCantidadAceptada().signum() > 0) {
                 var producto = l.getOrdenLinea().getProducto();
+                BigDecimal costo = l.getOrdenLinea().getPrecioUnitario();
+                costoPromedioService.registrarCompra(producto, l.getCantidadAceptada(), costo);
                 movimientoService.registrarEntradaCompra(producto.getId(), bodega.getId(), l.getCantidadAceptada(),
-                        REFERENCIA, guardada.getId());
+                        costo, REFERENCIA, guardada.getId());
                 producto.setCostoReferencia(l.getOrdenLinea().getPrecioUnitario());
             }
         }
@@ -268,8 +275,10 @@ public class RecepcionService {
         }
         if (decision == DecisionExceso.ACEPTAR) {
             var producto = l.getOrdenLinea().getProducto();
+            BigDecimal costo = l.getOrdenLinea().getPrecioUnitario();
+            costoPromedioService.registrarCompra(producto, l.getCantidadExcedente(), costo);
             movimientoService.registrarEntradaCompra(producto.getId(), l.getRecepcion().getBodega().getId(),
-                    l.getCantidadExcedente(), REFERENCIA, l.getRecepcion().getId());
+                    l.getCantidadExcedente(), costo, REFERENCIA, l.getRecepcion().getId());
             l.setCantidadAceptada(l.getCantidadAceptada().add(l.getCantidadExcedente()));
             l.setEstado(EstadoRecepcionLinea.ACEPTADA);
         } else {

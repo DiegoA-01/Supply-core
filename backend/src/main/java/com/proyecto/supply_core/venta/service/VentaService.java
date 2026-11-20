@@ -45,6 +45,8 @@ import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.inventario.entity.Producto;
 import com.proyecto.supply_core.inventario.repository.ProductoRepository;
 import com.proyecto.supply_core.inventario.service.MovimientoInventarioService;
+import com.proyecto.supply_core.notificacion.enums.EventoNotificacion;
+import com.proyecto.supply_core.notificacion.service.NotificacionService;
 import com.proyecto.supply_core.security.context.Roles;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.usuario.entity.Usuario;
@@ -122,6 +124,7 @@ public class VentaService {
     private final JdbcTemplate jdbc;
     private final EmpresaRepository empresaRepository;
     private final DevolucionVentaRepository devolucionRepository;
+    private final NotificacionService notificacionService;
 
     /**
      * Línea lista para cobrar: el producto, su precio del día y el resultado del cálculo.
@@ -172,6 +175,7 @@ public class VentaService {
      * @param jdbc                        consecutivo por caja (misma transacción)
      * @param empresaRepository           datos de la empresa para el tiquete
      * @param devolucionRepository        lo ya devuelto de cada línea
+     * @param notificacionService         aviso de venta por debajo del costo (spec 008)
      */
     public VentaService(VentaRepository ventaRepository, PedidoVentaRepository pedidoRepository,
             TurnoCajaRepository turnoRepository, CajaRepository cajaRepository,
@@ -182,7 +186,8 @@ public class VentaService {
             PreciosService preciosService, MovimientoInventarioService movimientoInventarioService,
             AutorizacionService autorizacionService, LimiteDescuentoService limiteService,
             UsuarioRepository usuarioRepository, AuditoriaService auditoriaService, JdbcTemplate jdbc,
-            EmpresaRepository empresaRepository, DevolucionVentaRepository devolucionRepository) {
+            EmpresaRepository empresaRepository, DevolucionVentaRepository devolucionRepository,
+            NotificacionService notificacionService) {
         this.ventaRepository = ventaRepository;
         this.pedidoRepository = pedidoRepository;
         this.turnoRepository = turnoRepository;
@@ -204,6 +209,7 @@ public class VentaService {
         this.jdbc = jdbc;
         this.empresaRepository = empresaRepository;
         this.devolucionRepository = devolucionRepository;
+        this.notificacionService = notificacionService;
     }
 
     /**
@@ -328,7 +334,38 @@ public class VentaService {
                 + (autorizaDescuento == null ? "" : "; descuento autorizado por " + autorizaDescuento)
                 + (autorizaPrecio == null ? "" : "; precio bajo mínimo autorizado por " + autorizaPrecio)
                 + (pedido == null ? "" : "; pedido=" + pedido.getConsecutivo()));
+        avisarBajoCosto(v, lineas);
         return new Confirmacion(respuesta(v), true);
+    }
+
+    /**
+     * Spec 008: vender por debajo del costo promedio no se impide, pero avisa a los jefes (dueño y supervisor de ventas)
+     * con quién vendió, para que hablen con él. El precio neto se compara sin impuesto y en la unidad del producto.
+     *
+     * @param v      venta confirmada
+     * @param lineas líneas calculadas
+     */
+    private void avisarBajoCosto(Venta v, List<LineaPreparada> lineas) {
+        List<String> bajo = new ArrayList<>();
+        for (LineaPreparada l : lineas) {
+            BigDecimal costo = l.producto().costoVigente();
+            if (costo == null || l.cantidadProducto().signum() <= 0) {
+                continue;
+            }
+            BigDecimal neto = l.resultado().base().divide(l.cantidadProducto(), 4, java.math.RoundingMode.HALF_UP);
+            if (neto.compareTo(costo) < 0) {
+                bajo.add(l.producto().getCodigo() + " a " + neto.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString()
+                        + " sin IVA (costo " + costo.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString() + ")");
+            }
+        }
+        if (bajo.isEmpty()) {
+            return;
+        }
+        String cajero = usuarioRepository.findById(v.getCajeroUsuarioId()).map(Usuario::getNombreCompleto).orElse("?");
+        String mensaje = "La venta " + v.getConsecutivo() + " de " + cajero + " vendió por debajo del costo: "
+                + String.join("; ", bajo) + ". Revísela con quien vendió.";
+        notificacionService.notificarRol(Roles.ADMIN_SISTEMA, EventoNotificacion.PRECIO_BAJO_COSTO, mensaje);
+        notificacionService.notificarRol(Roles.SUPERVISOR_VENTAS, EventoNotificacion.PRECIO_BAJO_COSTO, mensaje);
     }
 
     /**
@@ -660,7 +697,7 @@ public class VentaService {
         x.setBaseGravable(l.resultado().base());
         x.setImpuesto(l.resultado().impuesto());
         x.setTotalLinea(l.resultado().total());
-        x.setCostoUnitario(l.producto().getCostoReferencia());
+        x.setCostoUnitario(l.producto().costoVigente());
         x.setAutorizadoPorUsuarioId(autorizadoPor);
         return x;
     }

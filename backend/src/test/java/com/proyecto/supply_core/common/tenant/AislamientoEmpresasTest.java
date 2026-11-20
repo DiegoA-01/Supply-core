@@ -3,6 +3,7 @@ package com.proyecto.supply_core.common.tenant;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -2414,7 +2415,7 @@ class AislamientoEmpresasTest {
                     .andReturn().getResponse().getContentAsString()).get(0).get("id").asLong();
             List<Long> iva = jdbc.queryForList("SELECT id FROM tarifa_impuesto WHERE empresa_id = ? AND porcentaje = 19",
                     Long.class, empresaA);
-            jdbc.update("UPDATE producto SET costo_referencia = 6000, vendible = 1, precio_incluye_impuesto = 1, "
+            jdbc.update("UPDATE producto SET costo_referencia = 6000, costo_promedio = 6000, vendible = 1, precio_incluye_impuesto = 1, "
                     + "tarifa_impuesto_id = ? WHERE id = ?", iva.isEmpty() ? null : iva.get(0), productoA);
             mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
                             .content("{\"listaId\":" + generalA + ",\"productoId\":" + productoA
@@ -2688,7 +2689,7 @@ class AislamientoEmpresasTest {
             jdbc.update("DELETE FROM precio_producto WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("UPDATE stock_producto_bodega SET cantidad = ? WHERE producto_id = ? AND bodega_id = ?", stockAntes,
                     productoA, bodegaA);
-            jdbc.update("UPDATE producto SET costo_referencia = NULL, tarifa_impuesto_id = ? WHERE id = ?", tarifaAntes, productoA);
+            jdbc.update("UPDATE producto SET costo_referencia = NULL, costo_promedio = NULL, tarifa_impuesto_id = ? WHERE id = ?", tarifaAntes, productoA);
             jdbc.update("UPDATE usuario SET pin_supervisor_hash = NULL, pin_intentos_fallidos = 0, pin_bloqueado_hasta = NULL "
                     + "WHERE empresa_id IN (?, ?)", empresaA, empresaB);
         }
@@ -2708,7 +2709,7 @@ class AislamientoEmpresasTest {
         try {
             long generalA = lector.readTree(mvc.perform(get("/api/ventas/listas").header(HttpHeaders.AUTHORIZATION, duenoA))
                     .andReturn().getResponse().getContentAsString()).get(0).get("id").asLong();
-            jdbc.update("UPDATE producto SET costo_referencia = 6000, vendible = 1 WHERE id = ?", productoA);
+            jdbc.update("UPDATE producto SET costo_referencia = 6000, costo_promedio = 6000, vendible = 1 WHERE id = ?", productoA);
             mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
                     .content("{\"listaId\":" + generalA + ",\"productoId\":" + productoA + ",\"precio\":10000}"))
                     .andExpect(status().isOk());
@@ -2747,8 +2748,17 @@ class AislamientoEmpresasTest {
             String linea = "{\"productoId\":" + productoA + ",\"cantidad\":%s}";
 
             // 1) anular en el turno: exige permiso de otra persona; devuelve stock y efectivo; no se anula dos veces
+            // vender por debajo del costo promedio no se impide: avisa al dueño (spec 008)
+            jdbc.update("UPDATE producto SET costo_promedio = 12000 WHERE id = ?", productoA);
+            int avisosAntes = jdbc.queryForObject("SELECT COUNT(*) FROM notificacion WHERE evento = 'PRECIO_BAJO_COSTO' "
+                    + "AND usuario_id = ?", Integer.class, usuarioA);
             com.fasterxml.jackson.databind.JsonNode v1 = vender.apply("dv-1", "{\"lineas\":[" + linea.formatted(2)
                     + "],\"pagos\":[{\"medio\":\"EFECTIVO\",\"monto\":20000}]}");
+            assertEquals(avisosAntes + 1, jdbc.queryForObject("SELECT COUNT(*) FROM notificacion WHERE evento = 'PRECIO_BAJO_COSTO' "
+                    + "AND usuario_id = ?", Integer.class, usuarioA));
+            assertEquals(0, new java.math.BigDecimal("12000").compareTo(jdbc.queryForObject("SELECT costo_unitario FROM venta_linea "
+                    + "WHERE venta_id = ?", java.math.BigDecimal.class, v1.get("id").asLong())), "la línea guarda el costo promedio del momento");
+            jdbc.update("UPDATE producto SET costo_promedio = 6000 WHERE id = ?", productoA);
             long venta1 = v1.get("id").asLong();
             assertEquals(0, new java.math.BigDecimal("8").compareTo(stock.get()));
             String anular = "{\"motivo\":\"El cliente desistió\",\"autorizacion\":\"%s\"}";
@@ -2903,9 +2913,81 @@ class AislamientoEmpresasTest {
             jdbc.update("UPDATE empresa SET bodega_averias_id = NULL WHERE id IN (?, ?)", empresaA, empresaB);
             jdbc.update("UPDATE stock_producto_bodega SET cantidad = ? WHERE producto_id = ? AND bodega_id = ?", stockAntes,
                     productoA, bodegaA);
-            jdbc.update("UPDATE producto SET costo_referencia = NULL WHERE id = ?", productoA);
+            jdbc.update("UPDATE producto SET costo_referencia = NULL, costo_promedio = NULL WHERE id = ?", productoA);
             jdbc.update("UPDATE usuario SET pin_supervisor_hash = NULL, pin_intentos_fallidos = 0, pin_bloqueado_hasta = NULL "
                     + "WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+        }
+    }
+
+    @Test
+    void laRecepcionActualizaElCostoPromedioAunqueLleguenDosALaVez() throws Exception {
+        String almacen = token(empresaA, usuarioA, "ALMACENISTA");
+        java.math.BigDecimal stockAntes = jdbc.queryForObject("SELECT COALESCE(SUM(cantidad), 0) FROM stock_producto_bodega "
+                + "WHERE producto_id = ?", java.math.BigDecimal.class, productoA);
+        List<Long> ordenes = new java.util.ArrayList<>();
+        try {
+            // existencia de 10 a $80; se deja solo esa bodega con stock para que la cuenta sea clara
+            jdbc.update("UPDATE stock_producto_bodega SET cantidad = 0 WHERE producto_id = ?", productoA);
+            jdbc.update("INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad) VALUES (?, ?, ?, 10) "
+                    + "ON DUPLICATE KEY UPDATE cantidad = 10", empresaA, productoA, bodegaA);
+            jdbc.update("UPDATE producto SET costo_promedio = 80 WHERE id = ?", productoA);
+            Long[] o1 = sembrarOrden(empresaA, proveedorA, bodegaA, productoA, "OC-COSTO-1");
+            Long[] o2 = sembrarOrden(empresaA, proveedorA, bodegaA, productoA, "OC-COSTO-2");
+            Long[] o3 = sembrarOrden(empresaA, proveedorA, bodegaA, productoA, "OC-COSTO-3");
+            ordenes.addAll(List.of(o1[0], o2[0], o3[0]));
+            jdbc.update("UPDATE orden_compra_linea SET precio_unitario = 120 WHERE id IN (?, ?)", o2[1], o3[1]);
+
+            // 10 a $100: (10 × 80 + 10 × 100) ÷ 20 = 90
+            recibir(o1[0], almacen, "{\"ordenLineaId\":" + o1[1] + ",\"cantidadRecibida\":10}");
+            assertEquals(0, new java.math.BigDecimal("90").compareTo(jdbc.queryForObject("SELECT costo_promedio FROM producto "
+                    + "WHERE id = ?", java.math.BigDecimal.class, productoA)));
+            assertEquals(0, new java.math.BigDecimal("100").compareTo(jdbc.queryForObject("SELECT costo_unitario FROM "
+                    + "movimiento_inventario WHERE tipo = 'ENTRADA_COMPRA' AND producto_id = ? ORDER BY id DESC LIMIT 1",
+                    java.math.BigDecimal.class, productoA)), "la entrada guarda el costo de la compra");
+
+            // dos recepciones a la vez de 10 a $120: en fila dan 100 y luego 105, nunca un costo que pierda una de las dos
+            java.util.concurrent.CountDownLatch salida = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.ExecutorService hilos = java.util.concurrent.Executors.newFixedThreadPool(2);
+            List<java.util.concurrent.Future<Integer>> estados = new java.util.ArrayList<>();
+            for (Long[] o : List.of(o2, o3)) {
+                estados.add(hilos.submit(() -> {
+                    salida.await();
+                    return mvc.perform(post("/api/ordenes/" + o[0] + "/recepciones").header(HttpHeaders.AUTHORIZATION, almacen)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"lineas\":[{\"ordenLineaId\":" + o[1] + ",\"cantidadRecibida\":10}]}"))
+                            .andReturn().getResponse().getStatus();
+                }));
+            }
+            salida.countDown();
+            for (var f : estados) {
+                assertEquals(201, f.get(30, java.util.concurrent.TimeUnit.SECONDS));
+            }
+            hilos.shutdown();
+            assertEquals(0, new java.math.BigDecimal("105").compareTo(jdbc.queryForObject("SELECT costo_promedio FROM producto "
+                    + "WHERE id = ?", java.math.BigDecimal.class, productoA)));
+            assertEquals(0, new java.math.BigDecimal("40").compareTo(jdbc.queryForObject("SELECT cantidad FROM stock_producto_bodega "
+                    + "WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, productoA, bodegaA)));
+            // el producto muestra su costo promedio; la empresa B no ve el de A (su producto conserva el suyo)
+            mvc.perform(get("/api/productos/" + productoA).header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "ADMIN_COMPRAS")))
+                    .andExpect(jsonPath("$.costoPromedio").value(105.0));
+            mvc.perform(get("/api/productos/" + productoA).header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "ADMIN_COMPRAS")))
+                    .andExpect(status().isNotFound());
+            assertNull(jdbc.queryForObject("SELECT costo_promedio FROM producto WHERE id = ?", java.math.BigDecimal.class, productoB));
+        } finally {
+            for (Long o : ordenes) {
+                jdbc.update("DELETE FROM movimiento_inventario WHERE referencia_tipo = 'RECEPCION' AND referencia_id IN "
+                        + "(SELECT id FROM recepcion WHERE orden_compra_id = ?)", o);
+                jdbc.update("DELETE l FROM recepcion_linea l JOIN recepcion r ON r.id = l.recepcion_id WHERE r.orden_compra_id = ?", o);
+                jdbc.update("DELETE FROM recepcion WHERE orden_compra_id = ?", o);
+                jdbc.update("DELETE FROM evaluacion_proveedor WHERE orden_compra_id = ?", o);
+                jdbc.update("DELETE FROM orden_compra_estado_historial WHERE orden_compra_id = ?", o);
+                jdbc.update("DELETE FROM orden_compra_linea WHERE orden_compra_id = ?", o);
+                jdbc.update("DELETE FROM orden_compra WHERE id = ?", o);
+            }
+            jdbc.update("UPDATE stock_producto_bodega SET cantidad = 0 WHERE producto_id = ?", productoA);
+            jdbc.update("UPDATE stock_producto_bodega SET cantidad = ? WHERE producto_id = ? AND bodega_id = ?", stockAntes,
+                    productoA, bodegaA);
+            jdbc.update("UPDATE producto SET costo_promedio = NULL, costo_referencia = NULL WHERE id = ?", productoA);
         }
     }
 

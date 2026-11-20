@@ -70,6 +70,10 @@ public class Producto {
     @Column(name = "costo_referencia", precision = 18, scale = 4)
     private BigDecimal costoReferencia;
 
+    /** Costo promedio ponderado en la unidad del producto; lo actualiza la recepción (spec 008, V36). */
+    @Column(name = "costo_promedio", precision = 18, scale = 4)
+    private BigDecimal costoPromedio;
+
     @Column(nullable = false)
     private boolean activo = true;
 
@@ -97,4 +101,11 @@ public class Producto {
     /** El precio de mostrador incluye el impuesto (costumbre en Colombia); Java separa base e impuesto. */
     @Column(name = "precio_incluye_impuesto", nullable = false)
     private boolean precioIncluyeImpuesto = true;
+
+    /**
+     * @return costo con que se mide el margen: el promedio ponderado, o el último de compra si aún no hay promedio
+     */
+    public BigDecimal costoVigente() {
+        return costoPromedio != null ? costoPromedio : costoReferencia;
+    }
 }

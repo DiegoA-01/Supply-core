@@ -73,6 +73,10 @@ public class MovimientoInventario {
     @Column(name = "stock_resultante", nullable = false, precision = 18, scale = 4, updatable = false)
     private BigDecimal stockResultante;
 
+    /** Costo unitario del movimiento: el de la compra en las entradas por compra; el promedio vigente en lo demás. */
+    @Column(name = "costo_unitario", precision = 18, scale = 4, updatable = false)
+    private BigDecimal costoUnitario;
+
     /** Solo en traslados: saldo de la bodega de destino después del movimiento (V6). */
     @Column(name = "stock_resultante_destino", precision = 18, scale = 4, updatable = false)
     private BigDecimal stockResultanteDestino;

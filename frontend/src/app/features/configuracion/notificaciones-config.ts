@@ -14,6 +14,7 @@ const EVENTOS: Record<string, string> = {
   PEDIDO_INTERNO: 'Alguien de la empresa necesita un producto',
   PEDIDO_INTERNO_RESPONDIDO: 'Compras respondió tu pedido interno',
   CATALOGO_ACTUALIZADO: 'Un proveedor actualizó su catálogo',
+  PRECIO_BAJO_COSTO: 'Se vendió por debajo del costo',
   SOLICITUD_PENDIENTE_APROBACION: 'Hay una solicitud esperando una decisión',
   SOLICITUD_DECIDIDA: 'Decidieron una solicitud',
   SOLICITUD_APROBADA: 'Una solicitud quedó aprobada y lista para cotizar',

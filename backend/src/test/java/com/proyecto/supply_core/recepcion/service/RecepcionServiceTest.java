@@ -74,6 +74,8 @@ class RecepcionServiceTest {
     private final UsuarioRepository usuarios = mock(UsuarioRepository.class);
     private final AuditoriaService auditoria = mock(AuditoriaService.class);
     private final NotificacionService notificaciones = mock(NotificacionService.class);
+    private final com.proyecto.supply_core.inventario.service.CostoPromedioService costos =
+            mock(com.proyecto.supply_core.inventario.service.CostoPromedioService.class);
     private RecepcionService service;
 
     private OrdenCompra orden;
@@ -86,7 +88,7 @@ class RecepcionServiceTest {
     @BeforeEach
     void setUp() {
         service = new RecepcionService(recepciones, lineas, ordenes, ordenService, bodegas, movimientos, evaluacion,
-                usuarios, auditoria, notificaciones);
+                usuarios, auditoria, notificaciones, costos);
         sesion(new UsuarioAutenticado(7L, "alm@x.com", "Bodeguero", Set.of("ALMACENISTA"), null, 1L));
 
         bodega = new Bodega();
@@ -139,8 +141,8 @@ class RecepcionServiceTest {
         RecepcionResponse r = service.registrar(50L, pedido(linea(501L, "10", "0", null), linea(502L, "4", "0", null)));
 
         assertEquals(900L, r.id());
-        verify(movimientos).registrarEntradaCompra(eq(11L), eq(3L), eq(new BigDecimal("10")), eq("RECEPCION"), eq(900L));
-        verify(movimientos).registrarEntradaCompra(eq(12L), eq(3L), eq(new BigDecimal("4")), eq("RECEPCION"), eq(900L));
+        verify(movimientos).registrarEntradaCompra(eq(11L), eq(3L), eq(new BigDecimal("10")), any(), eq("RECEPCION"), eq(900L));
+        verify(movimientos).registrarEntradaCompra(eq(12L), eq(3L), eq(new BigDecimal("4")), any(), eq("RECEPCION"), eq(900L));
         assertEquals(0, new BigDecimal("100").compareTo(cable.getCostoReferencia()));
         assertEquals(0, new BigDecimal("25").compareTo(cinta.getCostoReferencia()));
         assertEquals(EstadoOrden.RECIBIDA_TOTAL, orden.getEstado());
@@ -154,7 +156,7 @@ class RecepcionServiceTest {
         RecepcionResponse r = service.registrar(50L, pedido(
                 linea(501L, "10", "4", MotivoRechazo.DANADO), linea(502L, "4", "0", null)));
 
-        verify(movimientos).registrarEntradaCompra(eq(11L), eq(3L), eq(new BigDecimal("6")), eq("RECEPCION"), eq(900L));
+        verify(movimientos).registrarEntradaCompra(eq(11L), eq(3L), eq(new BigDecimal("6")), any(), eq("RECEPCION"), eq(900L));
         var cableLinea = r.lineas().stream().filter(l -> l.ordenLineaId() == 501L).findFirst().orElseThrow();
         assertEquals(0, new BigDecimal("4").compareTo(cableLinea.cantidadRechazada()));
         assertEquals(MotivoRechazo.DANADO, cableLinea.motivoRechazo());
@@ -166,7 +168,7 @@ class RecepcionServiceTest {
     void elExcedenteNoSubeElStockQuedaEnRevisionYAvisaAlComprador() {
         RecepcionResponse r = service.registrar(50L, pedido(linea(501L, "13", "0", null), linea(502L, "4", "0", null)));
 
-        verify(movimientos).registrarEntradaCompra(eq(11L), eq(3L), eq(new BigDecimal("10")), eq("RECEPCION"), eq(900L));
+        verify(movimientos).registrarEntradaCompra(eq(11L), eq(3L), eq(new BigDecimal("10")), any(), eq("RECEPCION"), eq(900L));
         var cableLinea = r.lineas().stream().filter(l -> l.ordenLineaId() == 501L).findFirst().orElseThrow();
         assertEquals(EstadoRecepcionLinea.EN_REVISION, cableLinea.estado());
         assertEquals(0, new BigDecimal("3").compareTo(cableLinea.cantidadExcedente()));
@@ -184,7 +186,7 @@ class RecepcionServiceTest {
 
         service.registrar(50L, pedido(linea(501L, "4", "0", null)));
 
-        verify(movimientos).registrarEntradaCompra(eq(11L), eq(3L), eq(new BigDecimal("4")), eq("RECEPCION"), eq(900L));
+        verify(movimientos).registrarEntradaCompra(eq(11L), eq(3L), eq(new BigDecimal("4")), any(), eq("RECEPCION"), eq(900L));
         // la cinta nunca llegó: la orden sigue parcial
         assertEquals(EstadoOrden.RECIBIDA_PARCIAL, orden.getEstado());
     }
@@ -197,7 +199,7 @@ class RecepcionServiceTest {
                 () -> service.registrar(50L, pedido(linea(501L, "1", "0", null))));
 
         assertEquals("ORDEN_NO_RECIBIBLE", ex.getCodigo());
-        verify(movimientos, never()).registrarEntradaCompra(anyLong(), anyLong(), any(), anyString(), anyLong());
+        verify(movimientos, never()).registrarEntradaCompra(anyLong(), anyLong(), any(), any(), anyString(), anyLong());
     }
 
     @Test
@@ -278,7 +280,7 @@ class RecepcionServiceTest {
 
         var r = service.resolverExceso(700L, DecisionExceso.ACEPTAR, "Nos sirve para la obra");
 
-        verify(movimientos).registrarEntradaCompra(eq(11L), eq(3L), eq(new BigDecimal("3")), eq("RECEPCION"), eq(900L));
+        verify(movimientos).registrarEntradaCompra(eq(11L), eq(3L), eq(new BigDecimal("3")), any(), eq("RECEPCION"), eq(900L));
         assertEquals(EstadoRecepcionLinea.ACEPTADA, r.estado());
         assertEquals(0, new BigDecimal("13").compareTo(r.cantidadAceptada()));
         assertNotNull(r.resueltoEn());
@@ -294,7 +296,7 @@ class RecepcionServiceTest {
         var r = service.resolverExceso(700L, DecisionExceso.DEVOLVER, "No lo necesitamos");
 
         assertEquals(EstadoRecepcionLinea.EXCEDENTE_DEVUELTO, r.estado());
-        verify(movimientos, never()).registrarEntradaCompra(anyLong(), anyLong(), any(), anyString(), anyLong());
+        verify(movimientos, never()).registrarEntradaCompra(anyLong(), anyLong(), any(), any(), anyString(), anyLong());
     }
 
     @Test

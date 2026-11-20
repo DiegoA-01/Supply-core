@@ -19,7 +19,7 @@ Estados de una spec: **Propuesta** (en revisión) → **Aprobada** (se puede pla
 | [005-pos-frontend](005-pos-frontend/spec.md) | F5 | POS con lector y atajos, cobro, tiquete de 80 mm, mi turno | `feature/ventas-pos-frontend` | 004 | Hecha (falta PR y prueba en Docker) |
 | [006-anulacion-devolucion](006-anulacion-devolucion/spec.md) | F6 | Anulación en el turno y devolución de cliente | `feature/ventas-pos-frontend` (junto con 004 y 005) | 004 | Hecha (V35, falta PR) |
 | [007-cartera](007-cartera/spec.md) | F7 | Crédito, cupos, abonos y edades | `feature/ventas-cartera` | 004 | Propuesta |
-| [008-costo-promedio-margen](008-costo-promedio-margen/spec.md) | F8 | Costo promedio ponderado y margen real | `feature/inventario-costo-promedio` | 004 | Propuesta |
+| [008-costo-promedio-margen](008-costo-promedio-margen/spec.md) | F8 | Costo promedio ponderado y margen real | `feature/ventas-pos-frontend` (junto con 004 a 007) | 004 | Hecha (V36, falta PR) |
 | [009-reportes-cuadre](009-reportes-cuadre/spec.md) | F9 | Reportes de ventas y caja, tablero, cuadre diario automático | `feature/ventas-reportes` | 006, 008 | Propuesta |
 | [010-endurecimiento-e2e](010-endurecimiento-e2e/spec.md) | F10 | Alertas, pruebas de punta a punta en el CI, prueba de carga | `feature/ventas-endurecimiento` | 009 | Propuesta |
 
@@ -57,7 +57,9 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V33 | `feature/caja-turnos` | Cajas, turnos, libro de caja, PIN y autorizaciones (spec 003) |
 | V34 | `feature/ventas-pos-backend` | La venta: venta, líneas, pagos, pedido de venta, límite de descuento por rol y consecutivo por caja (spec 004) |
 | V35 | `feature/ventas-pos-frontend` | Anulación y devolución: tipos de movimiento, devoluciones, saldo a favor y bodega de averías (spec 006) |
-| V36 en adelante | libre | Se reserva al empezar cada spec |
+| V36 | `feature/ventas-pos-frontend` | Costo promedio del producto y costo de cada movimiento (spec 008) |
+| V37 | `feature/ventas-pos-frontend` | Cartera: cuentas por cobrar, abonos y excepción de crédito (spec 007), reservada |
+| V38 en adelante | libre | Se reserva al empezar cada spec |
 
 ## Riesgos generales
 
