@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.proyecto.supply_core.common.tenant.EmpresaContexto;
+import com.proyecto.supply_core.empresa.repository.EmpresaRepository;
 import com.proyecto.supply_core.inventario.entity.Producto;
 import com.proyecto.supply_core.inventario.repository.StockProductoBodegaRepository;
 
@@ -26,12 +27,15 @@ public class CostoPromedioService {
     private EntityManager em;
 
     private final StockProductoBodegaRepository stockRepository;
+    private final EmpresaRepository empresaRepository;
 
     /**
-     * @param stockRepository existencia total con bloqueo
+     * @param stockRepository   existencia total con bloqueo
+     * @param empresaRepository bodega de averías de la empresa (su mercancía no se vende y no pesa en el promedio)
      */
-    public CostoPromedioService(StockProductoBodegaRepository stockRepository) {
+    public CostoPromedioService(StockProductoBodegaRepository stockRepository, EmpresaRepository empresaRepository) {
         this.stockRepository = stockRepository;
+        this.empresaRepository = empresaRepository;
     }
 
     /**
@@ -47,8 +51,11 @@ public class CostoPromedioService {
         // Primero se guardan los cambios pendientes del producto; luego se relee con bloqueo (valor confirmado más reciente)
         em.flush();
         em.refresh(producto, LockModeType.PESSIMISTIC_WRITE);
-        BigDecimal existencia = stockRepository.existenciaBloqueada(EmpresaContexto.requerida(), producto.getId());
-        BigDecimal nuevo = CalculoCosto.promedio(existencia, producto.getCostoPromedio(), cantidad, costoCompra);
+        Long empresaId = EmpresaContexto.requerida();
+        Long averias = empresaRepository.findById(empresaId).map(e -> e.getBodegaAveriasId()).orElse(null);
+        BigDecimal existencia = stockRepository.existenciaBloqueada(empresaId, producto.getId(), averias);
+        // Sin promedio todavía (producto creado o cargado después de V36), la existencia vale al último costo de compra
+        BigDecimal nuevo = CalculoCosto.promedio(existencia, producto.costoVigente(), cantidad, costoCompra);
         producto.setCostoPromedio(nuevo);
         return nuevo;
     }

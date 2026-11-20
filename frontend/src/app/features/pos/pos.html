@@ -20,7 +20,9 @@
   }
   @if (reintento()) {
     <div class="aviso ambar" role="alert"><span class="material-symbols-outlined">wifi_off</span>
-      Se perdió la conexión al cobrar. Vuelva a confirmar: la venta lleva la misma clave y no se cobrará dos veces.</div>
+      Se perdió la conexión al cobrar. Vuelva a confirmar sin cambiar nada: la venta lleva la misma clave y no se cobrará
+      dos veces. El carrito queda fijo hasta que se confirme o se descarte.
+      <button type="button" class="boton secundario" (click)="descartar()">Descartar</button></div>
   }
 
   @if (listo()) {

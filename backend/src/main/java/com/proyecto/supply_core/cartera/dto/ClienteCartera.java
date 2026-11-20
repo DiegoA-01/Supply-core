@@ -15,6 +15,7 @@ import java.time.LocalDate;
  * @param disponible        cupo menos saldo (nunca negativo)
  * @param saldoFavor        saldo a favor
  * @param alDia             saldo que aún no vence
+ * @param vencido           saldo ya vencido (saldo menos lo que está al día)
  * @param d1a30             saldo vencido 1 a 30 días
  * @param d31a60            31 a 60 días
  * @param d61a90            61 a 90 días
@@ -26,7 +27,7 @@ import java.time.LocalDate;
  * @param excepcionPor      quién dio la excepción
  */
 public record ClienteCartera(Long clienteId, String nombre, String documento, BigDecimal cupo, int plazoDias,
-        BigDecimal saldo, BigDecimal disponible, BigDecimal saldoFavor, BigDecimal alDia, BigDecimal d1a30,
+        BigDecimal saldo, BigDecimal disponible, BigDecimal saldoFavor, BigDecimal alDia, BigDecimal vencido, BigDecimal d1a30,
         BigDecimal d31a60, BigDecimal d61a90, BigDecimal mas90, boolean enMora, boolean bloqueado,
         LocalDate excepcionHasta, String excepcionMotivo, String excepcionPor) {
 }

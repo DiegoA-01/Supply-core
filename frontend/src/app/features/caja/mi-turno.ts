@@ -109,9 +109,9 @@ const TIPOS: Record<TipoMovimiento, string> = { RETIRO: 'Retiro a la bóveda', G
                   @for (m of medios; track m) { <option [ngValue]="m">{{ textoMedio(m) }}</option> }
                 </select></div>
               <div class="campo"><label for="ab-ref">Referencia</label>
-                <input id="ab-ref" class="entrada" maxlength="40" placeholder="Opcional" [ngModel]="referenciaAbono()" (ngModelChange)="referenciaAbono.set($event)"></div>
+                <input id="ab-ref" class="entrada" maxlength="40" [placeholder]="medioAbono() === 'EFECTIVO' ? 'Opcional' : 'Obligatoria'" [ngModel]="referenciaAbono()" (ngModelChange)="referenciaAbono.set($event)"></div>
             </div>
-            <button type="button" class="boton primario" [disabled]="!clienteAbono() || (valorAbono() ?? 0) <= 0 || enviando()" (click)="abonar()">Registrar abono e imprimir recibo</button>
+            <button type="button" class="boton primario" [disabled]="!clienteAbono() || (valorAbono() ?? 0) <= 0 || enviando() || (medioAbono() !== 'EFECTIVO' && !referenciaAbono().trim())" (click)="abonar()">Registrar abono e imprimir recibo</button>
           </section>
         }
 

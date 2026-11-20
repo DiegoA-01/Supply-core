@@ -1,6 +1,6 @@
 # 006 - Anulación y devolución
 
-**Estado:** Hecha (V35) · **Rama:** `feature/ventas-anulacion-devolucion` · **Depende de:** 004
+**Estado:** Hecha (V35) · **Rama:** `feature/ventas-pos` (con 004 a 008) · **Depende de:** 004
 
 ## Objetivo
 Corregir una venta sin borrar nada: anularla si el error ocurre en el mismo turno, o recibir una devolución del cliente

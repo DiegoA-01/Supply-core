@@ -7,6 +7,16 @@ pruebas pasan). El flujo está en `AGENTS.md`.
 Estados de una spec: **Propuesta** (en revisión) → **Aprobada** (se puede planear y construir) → **En construcción** →
 **Hecha** (criterios de aceptación verificados).
 
+> **Revisión del 2026-11-20 (rama `fix/ventas-pos-revision`, sobre `feature/ventas-pos`).** Las specs 004 a 008 se
+> construyeron juntas en `feature/ventas-pos`. La revisión corrigió: la devolución de una venta a crédito rebaja primero
+> su deuda (no saca efectivo ni crea saldo a favor mientras se deba); la venta devuelta del todo devuelve también el
+> redondeo; el reintento con la misma clave ve la venta ya creada y rechaza otro carrito (`CLAVE_REPETIDA`); el turno se
+> bloquea en la primera lectura (venta, devolución y abono, mismo orden de bloqueo); el permiso de descuento no pasa el
+> límite de quien lo da; el pedido se cobra con sus mismos productos (`PEDIDO_DISTINTO`); una venta de menos de $25 no se
+> redondea a cero; el costo promedio parte del costo vigente y no cuenta la bodega de averías; el abono con tarjeta o
+> transferencia pide referencia; la cartera entrega `vencido`; y el POS fija el carrito mientras la venta va en camino,
+> no vacía el carrito con Esc desde un campo ni sin preguntar, F9 en el cobro confirma y descarta cotizaciones viejas.
+
 ## Índice
 
 | Spec | Fase de la spec original | Qué entrega | Rama | Depende de | Estado |
@@ -15,11 +25,11 @@ Estados de una spec: **Propuesta** (en revisión) → **Aprobada** (se puede pla
 | [001-ventas-catalogo](001-ventas-catalogo/spec.md) | F1 | Módulos, roles, impuestos, código de barras, listas y precios con historial | `feature/ventas-catalogo` | 000 | Hecha (V29 + V31, PR #28) |
 | [002-ventas-clientes](002-ventas-clientes/spec.md) | F2 | Clientes, consumidor final, autorización de datos | `feature/ventas-clientes` | 001 | Hecha (V32, PR #29) |
 | [003-caja-turnos](003-caja-turnos/spec.md) | F3 | Cajas, turnos, libro de caja, PIN de supervisor, cierre ciego | `feature/caja-turnos` | 001 | Hecha (V33, PR #30) |
-| [004-venta-backend](004-venta-backend/spec.md) | F4 | La venta en una sola transacción: precios, descuentos, impuestos, pagos, stock, caja, idempotencia | `feature/ventas-pos-frontend` (una sola rama para 004 a 006) | 002, 003 | Hecha (V34, falta PR) |
-| [005-pos-frontend](005-pos-frontend/spec.md) | F5 | POS con lector y atajos, cobro, tiquete de 80 mm, mi turno | `feature/ventas-pos-frontend` | 004 | Hecha (falta PR y prueba en Docker) |
-| [006-anulacion-devolucion](006-anulacion-devolucion/spec.md) | F6 | Anulación en el turno y devolución de cliente | `feature/ventas-pos-frontend` (junto con 004 y 005) | 004 | Hecha (V35, falta PR) |
-| [007-cartera](007-cartera/spec.md) | F7 | Crédito, cupos, abonos y edades | `feature/ventas-pos-frontend` (junto con 004 a 008) | 004 | Hecha (V37, falta PR) |
-| [008-costo-promedio-margen](008-costo-promedio-margen/spec.md) | F8 | Costo promedio ponderado y margen real | `feature/ventas-pos-frontend` (junto con 004 a 007) | 004 | Hecha (V36, falta PR) |
+| [004-venta-backend](004-venta-backend/spec.md) | F4 | La venta en una sola transacción: precios, descuentos, impuestos, pagos, stock, caja, idempotencia | `feature/ventas-pos` | 002, 003 | Hecha (V34, falta PR) |
+| [005-pos-frontend](005-pos-frontend/spec.md) | F5 | POS con lector y atajos, cobro, tiquete de 80 mm, mi turno | `feature/ventas-pos` | 004 | Hecha (falta PR y prueba en Docker) |
+| [006-anulacion-devolucion](006-anulacion-devolucion/spec.md) | F6 | Anulación en el turno y devolución de cliente | `feature/ventas-pos` | 004 | Hecha (V35, falta PR) |
+| [007-cartera](007-cartera/spec.md) | F7 | Crédito, cupos, abonos y edades | `feature/ventas-pos` | 004 | Hecha (V37, falta PR) |
+| [008-costo-promedio-margen](008-costo-promedio-margen/spec.md) | F8 | Costo promedio ponderado y margen real | `feature/ventas-pos` | 004 | Hecha (V36, falta PR) |
 | [009-reportes-cuadre](009-reportes-cuadre/spec.md) | F9 | Reportes de ventas y caja, tablero, cuadre diario automático | `feature/ventas-reportes` | 006, 008 | Propuesta |
 | [010-endurecimiento-e2e](010-endurecimiento-e2e/spec.md) | F10 | Alertas, pruebas de punta a punta en el CI, prueba de carga | `feature/ventas-endurecimiento` | 009 | Propuesta |
 
@@ -55,10 +65,10 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V31 | `feature/ventas-catalogo` | Completar la spec 001: módulos, roles y precio vigente único |
 | V32 | `feature/ventas-clientes` | Clientes y consumidor final (spec 002) |
 | V33 | `feature/caja-turnos` | Cajas, turnos, libro de caja, PIN y autorizaciones (spec 003) |
-| V34 | `feature/ventas-pos-backend` | La venta: venta, líneas, pagos, pedido de venta, límite de descuento por rol y consecutivo por caja (spec 004) |
-| V35 | `feature/ventas-pos-frontend` | Anulación y devolución: tipos de movimiento, devoluciones, saldo a favor y bodega de averías (spec 006) |
-| V36 | `feature/ventas-pos-frontend` | Costo promedio del producto y costo de cada movimiento (spec 008) |
-| V37 | `feature/ventas-pos-frontend` | Cartera: cuentas por cobrar, abonos, saldo a favor como medio de pago y excepción de crédito (spec 007) |
+| V34 | `feature/ventas-pos` | La venta: venta, líneas, pagos, pedido de venta, límite de descuento por rol y consecutivo por caja (spec 004) |
+| V35 | `feature/ventas-pos` | Anulación y devolución: tipos de movimiento, devoluciones, saldo a favor y bodega de averías (spec 006) |
+| V36 | `feature/ventas-pos` | Costo promedio del producto y costo de cada movimiento (spec 008) |
+| V37 | `feature/ventas-pos` | Cartera: cuentas por cobrar, abonos, saldo a favor como medio de pago y excepción de crédito (spec 007) |
 | V38 en adelante | libre | Se reserva al empezar cada spec |
 
 ## Riesgos generales

@@ -148,6 +148,10 @@ public final class CalculoVenta {
             return BigDecimal.ZERO.setScale(2);
         }
         BigDecimal cobrado = total.divide(MULTIPLO_EFECTIVO, 0, RoundingMode.HALF_UP).multiply(MULTIPLO_EFECTIVO);
+        if (cobrado.signum() <= 0) {
+            // Una venta de menos de $25 no se redondea a cero: se cobra exacta
+            return BigDecimal.ZERO.setScale(2);
+        }
         return cobrado.subtract(total).setScale(2, RoundingMode.HALF_UP);
     }
 

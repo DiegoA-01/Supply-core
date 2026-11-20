@@ -1,6 +1,6 @@
 # 008 - Costo promedio y margen real
 
-**Estado:** Hecha (V36) · **Rama:** `feature/inventario-costo-promedio` · **Depende de:** 004
+**Estado:** Hecha (V36) · **Rama:** `feature/ventas-pos` (con 004 a 008) · **Depende de:** 004
 
 ## Objetivo
 Saber cuánto gana el negocio de verdad en cada venta, con un costo que refleje lo que se pagó por toda la mercancía en

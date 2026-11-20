@@ -211,32 +211,26 @@ public class CarteraService {
     }
 
     /**
-     * Devolución de una venta a crédito por el mismo medio: rebaja la cuenta; lo que sobre queda como saldo a favor.
+     * Devolución de una venta que se pagó (todo o en parte) a crédito: el valor devuelto rebaja primero la deuda abierta
+     * de esa venta. Solo lo que sobre se reembolsa por la forma que se pidió; así nunca sale dinero de la caja ni queda
+     * saldo a favor mientras el cliente siga debiendo esa misma venta.
      *
-     * @param v            venta original
-     * @param total        valor devuelto
-     * @param devolucionId devolución
+     * @param v     venta original
+     * @param total valor devuelto
+     * @return lo que se aplicó a la deuda (0 si la venta no tiene cuenta abierta)
      */
     @Transactional
-    public void acreditarDevolucion(Venta v, BigDecimal total, Long devolucionId) {
-        BigDecimal resto = total;
+    public BigDecimal aplicarDevolucionADeuda(Venta v, BigDecimal total) {
         CuentaPorCobrar c = cuentaRepository.deVentaBloqueada(v.getId()).orElse(null);
-        if (c != null && c.getEstado() == EstadoCuenta.ABIERTA) {
-            BigDecimal aplica = resto.min(c.getSaldo());
-            c.setSaldo(c.getSaldo().subtract(aplica));
-            if (c.getSaldo().signum() == 0) {
-                c.setEstado(EstadoCuenta.PAGADA);
-            }
-            resto = resto.subtract(aplica);
+        if (c == null || c.getEstado() != EstadoCuenta.ABIERTA || total.signum() <= 0) {
+            return BigDecimal.ZERO.setScale(2);
         }
-        if (resto.signum() > 0) {
-            SaldoFavorCliente s = new SaldoFavorCliente();
-            s.setClienteId(v.getClienteId());
-            s.setDevolucionId(devolucionId);
-            s.setMonto(resto);
-            s.setMotivo("Devolución de la venta a crédito " + v.getConsecutivo());
-            saldoRepository.save(s);
+        BigDecimal aplica = total.min(c.getSaldo());
+        c.setSaldo(c.getSaldo().subtract(aplica));
+        if (c.getSaldo().signum() == 0) {
+            c.setEstado(EstadoCuenta.PAGADA);
         }
+        return aplica;
     }
 
     /**
@@ -392,7 +386,7 @@ public class CarteraService {
         boolean enMora = e.vencido().signum() > 0;
         return new ClienteCartera(c.getId(), c.getNombre(), c.getTipoDocumento() + " " + c.getNumeroDocumento(),
                 c.getCupoCredito(), c.getPlazoDias(), e.total(), c.getCupoCredito().subtract(e.total()).max(BigDecimal.ZERO),
-                saldoFavor, e.alDia(), e.d1a30(), e.d31a60(), e.d61a90(), e.mas90(), enMora,
+                saldoFavor, e.alDia(), e.vencido(), e.d1a30(), e.d31a60(), e.d61a90(), e.mas90(), enMora,
                 enMora && !excepcionVigente(c, hoy), c.getCreditoExcepcionHasta(), c.getCreditoExcepcionMotivo(),
                 c.getCreditoExcepcionPorUsuarioId() == null ? null : nombres.get(c.getCreditoExcepcionPorUsuarioId()));
     }

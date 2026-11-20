@@ -4604,6 +4604,7 @@ export interface components {
             disponible?: number;
             saldoFavor?: number;
             alDia?: number;
+            vencido?: number;
             d1a30?: number;
             d31a60?: number;
             d61a90?: number;

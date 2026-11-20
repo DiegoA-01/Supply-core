@@ -71,6 +71,9 @@ class CalculoVentaTest {
         assertEquals(n("25.00"), CalculoVenta.redondeo(n("23825"), true));
         assertEquals(n("0.00"), CalculoVenta.redondeo(n("23850"), true));
         assertEquals(n("0.00"), CalculoVenta.redondeo(n("23820"), false));
+        // menos de $25 no se redondea a cero (el pago en efectivo quedaría en 0): se cobra exacto
+        assertEquals(n("0.00"), CalculoVenta.redondeo(n("20"), true));
+        assertEquals(n("25.00"), CalculoVenta.redondeo(n("25"), true));
     }
 
     /** El cambio sale del efectivo y en la caja queda lo cobrado. */

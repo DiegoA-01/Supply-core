@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, OnInit, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -58,7 +58,7 @@ type PinPendiente = 'DESCUENTO' | 'PRECIO_BAJO_MINIMO' | null;
   templateUrl: './pos.html',
   styleUrl: './pos.scss',
 })
-export class PuntoDeVenta implements OnInit {
+export class PuntoDeVenta implements OnInit, OnDestroy {
   private readonly ventas = inject(VentaService);
   private readonly catalogo = inject(VentasService);
   private readonly caja = inject(CajaService);
@@ -71,6 +71,8 @@ export class PuntoDeVenta implements OnInit {
   private readonly lector = viewChild<ElementRef<HTMLInputElement>>('lector');
   private temporizador: ReturnType<typeof setTimeout> | null = null;
   private pedidoPendiente: number | null = null;
+  /** Número de la última cotización pedida: una respuesta de una anterior llega tarde y se ignora. */
+  private consulta = 0;
 
   protected readonly medios = MEDIOS_VENTA;
   /** Medios que se ofrecen: el crédito (con módulo de cartera) y el saldo a favor solo con un cliente registrado. */
@@ -109,11 +111,24 @@ export class PuntoDeVenta implements OnInit {
   protected readonly ultima = signal<Venta | null>(null);
 
   protected readonly vacio = computed(() => this.carrito().length === 0);
+  /**
+   * Con la venta en camino o pendiente de reintento el carrito no se toca: si cambiara, el reintento con la misma clave
+   * devolvería la venta anterior y lo agregado saldría sin pagar.
+   */
+  protected readonly bloqueado = computed(() => this.enviando() || this.reintento());
   /** El cobro solo se confirma cuando el servidor dice que los pagos cuadran. */
   protected readonly puedeConfirmar = computed(() => {
     const c = this.cotizacion();
     return !!c && c.cambio != null && !c.mensajePago && !this.enviando() && !this.calculando();
   });
+
+  ngOnDestroy(): void {
+    if (this.temporizador) {
+      clearTimeout(this.temporizador);
+      this.temporizador = null;
+    }
+    this.consulta++;
+  }
 
   ngOnInit(): void {
     this.pedidoPendiente = Number(this.ruta.snapshot.queryParamMap.get('pedido')) || null;
@@ -156,10 +171,29 @@ export class PuntoDeVenta implements OnInit {
       this.abrirClientes();
     } else if (e.key === 'F9') {
       e.preventDefault();
-      this.abrirCobro();
+      if (this.cobrando()) {
+        this.confirmar();
+      } else {
+        this.abrirCobro();
+      }
     } else if (e.key === 'Escape') {
-      this.cancelar();
+      this.cancelar(PuntoDeVenta.enCampo(e));
     }
+  }
+
+  /** @param e tecla @returns si se escribía en un campo (Esc ahí no debe vaciar el carrito) */
+  private static enCampo(e: KeyboardEvent): boolean {
+    const destino = e.target as HTMLElement | null;
+    return !!destino && ['INPUT', 'SELECT', 'TEXTAREA'].includes(destino.tagName);
+  }
+
+  /** @returns {@code true} (y avisa) si el carrito no se puede cambiar ahora */
+  private fijo(): boolean {
+    if (this.bloqueado()) {
+      this.avisos.ok('La venta está en camino: confírmela o descártela antes de cambiar el carrito.');
+      return true;
+    }
+    return false;
   }
 
   // ------------------------------------------------------------- productos
@@ -188,6 +222,9 @@ export class PuntoDeVenta implements OnInit {
 
   /** @param p producto elegido; si ya está en el carrito suma una unidad */
   protected agregar(p: ProductoParaVender): void {
+    if (this.fijo()) {
+      return;
+    }
     if (p.precio == null) {
       this.avisos.ok(`${p.nombre} no tiene precio de venta.`);
       return;
@@ -210,6 +247,9 @@ export class PuntoDeVenta implements OnInit {
 
   /** @param i posición; @param cantidad cantidad nueva (0 o menos quita la línea) */
   protected cambiarCantidad(i: number, cantidad: number | null): void {
+    if (this.fijo()) {
+      return;
+    }
     if (cantidad == null || cantidad <= 0) {
       this.quitar(i);
       return;
@@ -220,6 +260,9 @@ export class PuntoDeVenta implements OnInit {
 
   /** @param i posición; @param pct descuento pedido */
   protected cambiarDescuento(i: number, pct: number | null): void {
+    if (this.fijo()) {
+      return;
+    }
     const valor = Math.min(100, Math.max(0, pct ?? 0));
     this.carrito.update(items => items.map((x, j) => (j === i ? { ...x, descuentoPct: valor } : x)));
     this.tokenDescuento.set(null);
@@ -229,6 +272,9 @@ export class PuntoDeVenta implements OnInit {
 
   /** @param i posición */
   protected quitar(i: number): void {
+    if (this.fijo()) {
+      return;
+    }
     this.carrito.update(items => items.filter((_, j) => j !== i));
     this.recalcular();
     this.enfocar();
@@ -258,6 +304,10 @@ export class PuntoDeVenta implements OnInit {
 
   /** @param c cliente elegido o recién creado */
   protected elegirCliente(c: Cliente | null): void {
+    if (this.fijo()) {
+      this.panelCliente.set(false);
+      return;
+    }
     this.cliente.set(c && !c.esConsumidorFinal ? c : null);
     this.panelCliente.set(false);
     this.creandoCliente.set(false);
@@ -268,7 +318,7 @@ export class PuntoDeVenta implements OnInit {
   // ------------------------------------------------------------- cobro
 
   protected abrirCobro(): void {
-    if (this.vacio()) {
+    if (this.vacio() || this.cobrando() || this.bloqueado()) {
       return;
     }
     if (!this.cobra()) {
@@ -282,17 +332,26 @@ export class PuntoDeVenta implements OnInit {
   }
 
   protected agregarPago(): void {
+    if (this.fijo()) {
+      return;
+    }
     this.pagos.update(p => [...p, { medio: 'TARJETA_DEBITO', monto: null, ultimos4: '', referencia: '' }]);
   }
 
   /** @param i pago; @param campo campo; @param valor valor nuevo */
   protected cambiarPago<K extends keyof PagoEscrito>(i: number, campo: K, valor: PagoEscrito[K]): void {
+    if (this.fijo()) {
+      return;
+    }
     this.pagos.update(p => p.map((x, j) => (j === i ? { ...x, [campo]: valor } : x)));
     this.recalcular(true);
   }
 
   /** @param i pago */
   protected quitarPago(i: number): void {
+    if (this.fijo()) {
+      return;
+    }
     this.pagos.update(p => p.filter((_, j) => j !== i));
     this.recalcular(true);
   }
@@ -392,8 +451,16 @@ export class PuntoDeVenta implements OnInit {
     });
   }
 
-  /** Esc: cierra el panel abierto o, si no hay ninguno, vacía el carrito. */
-  protected cancelar(): void {
+  /**
+   * Esc: cierra el panel abierto. Sin panel abierto vacía el carrito, pero solo fuera de un campo y después de
+   * preguntar; con la venta en camino o por reintentar no hace nada (para eso está «Descartar»).
+   *
+   * @param enCampo si la tecla salió de un campo de texto
+   */
+  protected cancelar(enCampo = false): void {
+    if (this.bloqueado() && !this.pin()) {
+      return;
+    }
     if (this.pin()) {
       this.pin.set(null);
     } else if (this.panelCliente()) {
@@ -403,10 +470,23 @@ export class PuntoDeVenta implements OnInit {
       this.recalcular();
     } else if (this.opciones().length) {
       this.opciones.set([]);
-    } else if (!this.vacio()) {
+    } else if (!this.vacio() && !enCampo && confirm('¿Vaciar el carrito?')) {
       this.limpiar();
     }
     this.enfocar();
+  }
+
+  /**
+   * Abandona una venta que quedó sin respuesta por la red. Antes de cobrar otra vez hay que revisar el historial: si
+   * la primera sí llegó, ya está cobrada.
+   */
+  protected descartar(): void {
+    if (this.enviando()) {
+      return;
+    }
+    if (confirm('La venta pudo haberse cobrado. Revise el historial de ventas antes de cobrarla otra vez. ¿Descartar el carrito?')) {
+      this.limpiar();
+    }
   }
 
   // ------------------------------------------------------------- apoyo
@@ -417,18 +497,27 @@ export class PuntoDeVenta implements OnInit {
       clearTimeout(this.temporizador);
     }
     if (this.vacio()) {
+      this.consulta++;
+      this.calculando.set(false);
       this.cotizacion.set(null);
       return;
     }
     this.calculando.set(true);
+    const numero = ++this.consulta;
     this.temporizador = setTimeout(() => {
       this.temporizador = null;
       this.ventas.cotizar(this.cliente()?.id ?? null, this.lineas(), conPagos ? this.pagosEnviados() : []).subscribe({
         next: c => {
+          if (numero !== this.consulta) {
+            return; // llegó tarde: ya se pidió otra con datos más nuevos
+          }
           this.calculando.set(false);
           this.cotizacion.set(c);
         },
         error: e => {
+          if (numero !== this.consulta) {
+            return;
+          }
           this.calculando.set(false);
           this.avisos.error(e);
         },

@@ -14,7 +14,7 @@ import com.proyecto.supply_core.auditoria.enums.EntidadAuditada;
 import com.proyecto.supply_core.auditoria.service.AuditoriaService;
 import com.proyecto.supply_core.caja.entity.MovimientoCaja;
 import com.proyecto.supply_core.caja.entity.TurnoCaja;
-import com.proyecto.supply_core.caja.enums.EstadoTurno;
+import com.proyecto.supply_core.caja.enums.MedioPago;
 import com.proyecto.supply_core.caja.enums.TipoMovimientoCaja;
 import com.proyecto.supply_core.caja.repository.MovimientoCajaRepository;
 import com.proyecto.supply_core.caja.repository.TurnoCajaRepository;
@@ -91,14 +91,17 @@ public class AbonoService {
     @Transactional
     public AbonoResponse registrar(AbonoRequest req) {
         Long yo = SesionActual.usuario().id();
-        // Las cuentas se bloquean ANTES de cualquier otra lectura (misma razón que en las devoluciones)
-        List<CuentaPorCobrar> cuentas = cuentaRepository.abiertasBloqueadas(req.clienteId());
-        Long turnoId = turnoRepository.abiertoDe(yo).map(TurnoCaja::getId)
-                .orElseThrow(() -> new NegocioException("TURNO_NO_ABIERTO", "Abra su turno de caja para recibir el abono"));
-        TurnoCaja turno = turnoRepository.bloquear(turnoId).orElseThrow();
-        if (turno.getEstado() != EstadoTurno.ABIERTO) {
-            throw new NegocioException("TURNO_NO_ABIERTO", "El turno ya está cerrado");
+        boolean sinReferencia = req.referencia() == null || req.referencia().isBlank();
+        if (sinReferencia && req.medioPago() != MedioPago.EFECTIVO) {
+            throw new NegocioException("REFERENCIA_REQUERIDA",
+                    "Escriba la referencia o el número de aprobación del pago con " + req.medioPago());
         }
+        // Mismo orden de bloqueo que la venta y la anulación (primero el turno, después las cuentas del cliente), para
+        // que un abono y una venta a crédito del mismo cajero no se bloqueen entre sí. Las dos son lecturas con bloqueo,
+        // así que ven lo último confirmado aunque otra petición haya terminado mientras se esperaba.
+        TurnoCaja turno = turnoRepository.abiertoDeBloqueado(yo)
+                .orElseThrow(() -> new NegocioException("TURNO_NO_ABIERTO", "Abra su turno de caja para recibir el abono"));
+        List<CuentaPorCobrar> cuentas = cuentaRepository.abiertasBloqueadas(req.clienteId());
         Cliente cliente = clienteRepository.findById(req.clienteId()).orElseThrow(() -> new NoEncontradoException("Cliente no encontrado"));
         BigDecimal valor = req.valor().setScale(2, java.math.RoundingMode.HALF_UP);
         BigDecimal debe = cuentas.stream().map(CuentaPorCobrar::getSaldo).reduce(BigDecimal.ZERO, BigDecimal::add);

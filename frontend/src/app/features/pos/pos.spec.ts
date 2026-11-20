@@ -151,7 +151,8 @@ describe('Punto de venta', () => {
     expect(c()['vacio']()).toBe(true);
   });
 
-  it('Esc cierra el cobro y luego vacía el carrito', () => {
+  it('Esc cierra el cobro y luego vacía el carrito, preguntando antes y nunca desde un campo', () => {
+    const pregunta = vi.spyOn(window, 'confirm').mockReturnValue(true);
     crear(['CAJERO']);
     escanear();
     cotizar();
@@ -160,7 +161,65 @@ describe('Punto de venta', () => {
     c()['atajo'](new KeyboardEvent('keydown', { key: 'Escape' }));
     expect(c()['cobrando']()).toBe(false);
     cotizar();
+    // Esc escrito en un campo (el lector, una cantidad) no vacía el carrito
+    const campo = document.createElement('input');
+    document.body.appendChild(campo);
+    campo.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(c()['vacio']()).toBe(false);
+    campo.remove();
     c()['atajo'](new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(pregunta).toHaveBeenCalled();
     expect(c()['vacio']()).toBe(true);
+    pregunta.mockRestore();
+  });
+
+  it('F9 dentro del cobro confirma y no borra los pagos escritos', () => {
+    crear(['CAJERO']);
+    escanear();
+    cotizar();
+    c()['abrirCobro']();
+    c()['cambiarPago'](0, 'monto', 5000);
+    cotizar(cotizacion({ cambio: 1300, pagado: 5000 }));
+    c()['atajo'](new KeyboardEvent('keydown', { key: 'F9' }));
+    const venta = backend.expectOne('/api/ventas');
+    expect(venta.request.body.pagos[0].monto).toBe(5000);
+    venta.flush({ id: 52, consecutivo: 'C1-000003', totalAPagar: 3700, cambio: 1300 });
+    backend.expectOne('/api/ventas/52/tiquete').flush({ copia: false, venta: { consecutivo: 'C1-000003', lineas: [], pagos: [] } });
+    backend.expectOne('/api/turnos/actual').flush(turno);
+  });
+
+  it('pendiente de reintento, el carrito queda fijo: ni Esc ni cambios mueven la clave', () => {
+    crear(['CAJERO']);
+    escanear();
+    cotizar(cotizacion({ cambio: 0 }));
+    const clave = c()['clave']();
+    c()['confirmar']();
+    backend.expectOne('/api/ventas').error(new ProgressEvent('error'), { status: 0 });
+    c()['atajo'](new KeyboardEvent('keydown', { key: 'Escape' }));
+    c()['cambiarCantidad'](0, 5);
+    c()['quitar'](0);
+    vi.advanceTimersByTime(300);
+    backend.expectNone('/api/ventas/cotizar');
+    expect(c()['carrito']()[0].cantidad).toBe(1);
+    expect(c()['clave']()).toBe(clave);
+    // descartar pregunta y solo entonces abre un carrito nuevo
+    const pregunta = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    c()['descartar']();
+    expect(c()['vacio']()).toBe(true);
+    expect(c()['clave']()).not.toBe(clave);
+    pregunta.mockRestore();
+  });
+
+  it('una cotización que llega tarde no pisa la más reciente', () => {
+    crear(['CAJERO']);
+    escanear();
+    vi.advanceTimersByTime(300);
+    const vieja = backend.expectOne('/api/ventas/cotizar');
+    c()['cambiarCantidad'](0, 2);
+    vi.advanceTimersByTime(300);
+    const nueva = backend.expectOne('/api/ventas/cotizar');
+    nueva.flush(cotizacion({ total: 7400, totalAPagar: 7400 }));
+    vieja.flush(cotizacion());
+    expect(c()['cotizacion']().totalAPagar).toBe(7400);
   });
 });

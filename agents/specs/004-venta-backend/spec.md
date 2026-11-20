@@ -1,6 +1,6 @@
 # 004 - La venta (el corazón del módulo)
 
-**Estado:** Hecha (V34) · **Rama:** `feature/ventas-pos-backend` · **Depende de:** 002, 003
+**Estado:** Hecha (V34) · **Rama:** `feature/ventas-pos` (con 004 a 008) · **Depende de:** 002, 003
 
 ## Objetivo
 Que cobrar una venta descuente el stock, registre el dinero en la caja y deje una foto fija de precios, impuestos,

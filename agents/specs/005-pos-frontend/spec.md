@@ -1,6 +1,6 @@
 # 005 - Punto de venta, tiquete y mi turno
 
-**Estado:** Hecha (falta probar en Docker) · **Rama:** `feature/ventas-pos-frontend` · **Depende de:** 004
+**Estado:** Hecha (falta probar en Docker) · **Rama:** `feature/ventas-pos` (con 004 a 008) · **Depende de:** 004
 
 ## Objetivo
 Que el cajero venda rápido con el lector y el teclado, cobre con pagos mixtos, imprima el tiquete y maneje su turno

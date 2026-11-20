@@ -231,18 +231,19 @@ public class VentaService {
     public Confirmacion confirmar(VentaRequest req, String clave) {
         String llave = validarClave(clave);
         Long cajero = SesionActual.usuario().id();
-        Long turnoAbierto = turnoRepository.abiertoDe(cajero).map(TurnoCaja::getId)
+        // Primera lectura de la transacción y con bloqueo: ordena los reenvíos del mismo cajero, y como la foto de MySQL
+        // se toma después de esperar, la búsqueda de la clave ya ve la venta que confirmó el primer envío. Si el turno se
+        // cerró durante la espera no aparece, así que nunca se vende en un turno cerrado.
+        TurnoCaja turno = turnoRepository.abiertoDeBloqueado(cajero)
                 .orElseThrow(() -> new NegocioException("TURNO_NO_ABIERTO", "Abra su turno de caja antes de vender"));
-        // Bloquear el turno ordena los reenvíos del mismo cajero y evita vender en un turno que se está cerrando
-        TurnoCaja turno = turnoRepository.bloquear(turnoAbierto)
-                .orElseThrow(() -> new NegocioException("TURNO_NO_ABIERTO", "Abra su turno de caja antes de vender"));
-        if (turno.getEstado() != EstadoTurno.ABIERTO) {
-            throw new NegocioException("TURNO_NO_ABIERTO", "El turno ya está cerrado");
-        }
         Venta anterior = ventaRepository.findByClaveIdempotencia(llave).orElse(null);
         if (anterior != null) {
             if (!anterior.getCajeroUsuarioId().equals(cajero)) {
                 throw new NegocioException("CLAVE_REPETIDA", "Esa clave de venta ya la usó otra caja: abra un carrito nuevo");
+            }
+            if (!firma(req.lineas()).equals(firmaVenta(anterior))) {
+                throw new NegocioException("CLAVE_REPETIDA",
+                        "Esa clave ya cobró la venta " + anterior.getConsecutivo() + " con otro carrito: revise esa venta");
             }
             return new Confirmacion(respuesta(anterior), false);
         }
@@ -255,6 +256,11 @@ public class VentaService {
                 throw new NegocioException("PEDIDO_NO_PENDIENTE", "El pedido " + pedido.getConsecutivo() + " ya se "
                         + (pedido.getEstado() == EstadoPedidoVenta.COBRADO ? "cobró" : "descartó"));
             }
+            // El pedido se cobra con sus mismos productos y cantidades: así no se le acredita a un vendedor otra venta
+            if (!firmaSinDescuento(req.lineas()).equals(firmaPedido(pedido))) {
+                throw new NegocioException("PEDIDO_DISTINTO", "El carrito no coincide con el pedido " + pedido.getConsecutivo()
+                        + ": cárguelo de nuevo o cobre sin el pedido");
+            }
         }
         Cliente cliente = cliente(req.clienteId() != null ? req.clienteId() : pedido == null ? null : pedido.getClienteId());
         ListaPrecio lista = listaDe(cliente);
@@ -265,6 +271,16 @@ public class VentaService {
         Long autorizaDescuento = lineas.stream().anyMatch(LineaPreparada::pasaLimite)
                 ? autorizacionService.consumir(req.autorizacionDescuento(), AccionAutorizada.DESCUENTO, turno.getId(), null)
                 : null;
+        if (autorizaDescuento != null) {
+            // El permiso cubre hasta el límite de quien lo dio: un supervisor no autoriza más de lo que él mismo puede dar
+            BigDecimal tope = usuarioRepository.findById(autorizaDescuento)
+                    .map(u -> limiteService.limiteDe(u.codigosRoles())).orElse(BigDecimal.ZERO);
+            lineas.stream().filter(l -> l.descuentoPct().compareTo(tope) > 0).findFirst().ifPresent(l -> {
+                throw new NegocioException("DESCUENTO_SOBRE_AUTORIZACION", "El descuento de " + l.producto().getNombre()
+                        + " (" + l.descuentoPct().toPlainString() + " %) pasa el máximo de quien autorizó ("
+                        + tope.toPlainString() + " %)");
+            });
+        }
         Long autorizaPrecio = lineas.stream().anyMatch(LineaPreparada::bajoMinimo)
                 ? autorizacionService.consumir(req.autorizacionPrecio(), AccionAutorizada.PRECIO_BAJO_MINIMO,
                         turno.getId(), null)
@@ -357,6 +373,54 @@ public class VentaService {
                 + (pedido == null ? "" : "; pedido=" + pedido.getConsecutivo()));
         avisarBajoCosto(v, lineas);
         return new Confirmacion(respuesta(v), true);
+    }
+
+    /**
+     * Huella de un carrito pedido: producto, cantidad y descuento de cada línea, en orden, para saber si un reenvío con la
+     * misma clave es de verdad la misma venta.
+     *
+     * @param lineas líneas pedidas
+     * @return huella ordenada
+     */
+    static List<String> firma(List<LineaVentaRequest> lineas) {
+        return lineas.stream().map(l -> huella(l.productoId(), l.cantidad(),
+                l.descuentoPct() == null ? BigDecimal.ZERO : l.descuentoPct())).sorted().toList();
+    }
+
+    /**
+     * @param v venta ya guardada
+     * @return su huella, comparable con {@link #firma(List)}
+     */
+    static List<String> firmaVenta(Venta v) {
+        return v.getLineas().stream().map(l -> huella(l.getProductoId(), l.getCantidad(),
+                l.getDescuentoPct() == null ? BigDecimal.ZERO : l.getDescuentoPct())).sorted().toList();
+    }
+
+    /**
+     * @param lineas líneas pedidas
+     * @return huella sin el descuento (el cajero puede ajustar el descuento de un pedido con su permiso)
+     */
+    static List<String> firmaSinDescuento(List<LineaVentaRequest> lineas) {
+        return lineas.stream().map(l -> huella(l.productoId(), l.cantidad(), null)).sorted().toList();
+    }
+
+    /**
+     * @param p pedido de venta
+     * @return huella de sus líneas sin el descuento
+     */
+    static List<String> firmaPedido(PedidoVenta p) {
+        return p.getLineas().stream().map(l -> huella(l.getProductoId(), l.getCantidad(), null)).sorted().toList();
+    }
+
+    /**
+     * @param productoId producto
+     * @param cantidad   cantidad
+     * @param descuento  porcentaje ({@code null} = no cuenta)
+     * @return texto que identifica la línea sin depender de la escala de los números
+     */
+    private static String huella(Long productoId, BigDecimal cantidad, BigDecimal descuento) {
+        return productoId + "|" + cantidad.stripTrailingZeros().toPlainString() + "|"
+                + (descuento == null ? "" : descuento.signum() == 0 ? "0" : descuento.stripTrailingZeros().toPlainString());
     }
 
     /**

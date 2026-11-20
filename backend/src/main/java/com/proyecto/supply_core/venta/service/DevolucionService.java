@@ -157,13 +157,9 @@ public class DevolucionService {
         // La venta se bloquea ANTES de cualquier otra lectura: en MySQL (lectura repetible) la foto de la transacción
         // se toma en la primera lectura normal, y así ya incluye las devoluciones que otra caja terminó mientras se esperaba.
         Venta v = ventaRepository.bloquear(req.ventaId()).orElseThrow(() -> new NoEncontradoException("Venta no encontrada"));
-        Long turnoAbierto = turnoRepository.abiertoDe(yo).map(TurnoCaja::getId).orElseThrow(
+        // Turno bloqueado en la misma lectura: si se cerró mientras se esperaba, no se devuelve en un turno cerrado
+        TurnoCaja turno = turnoRepository.abiertoDeBloqueado(yo).orElseThrow(
                 () -> new NegocioException("TURNO_NO_ABIERTO", "Abra su turno de caja para recibir la devolución"));
-        TurnoCaja turno = turnoRepository.bloquear(turnoAbierto)
-                .orElseThrow(() -> new NegocioException("TURNO_NO_ABIERTO", "Abra su turno de caja"));
-        if (turno.getEstado() != EstadoTurno.ABIERTO) {
-            throw new NegocioException("TURNO_NO_ABIERTO", "El turno ya está cerrado");
-        }
         if (v.getEstado() != EstadoVenta.CONFIRMADA) {
             throw new NegocioException("VENTA_ANULADA", "La venta " + v.getConsecutivo() + " está anulada: no tiene qué devolver");
         }
@@ -177,6 +173,7 @@ public class DevolucionService {
 
         DevolucionVenta d = new DevolucionVenta();
         Set<Long> vistas = new HashSet<>();
+        Set<Long> completas = new HashSet<>();
         BigDecimal total = BigDecimal.ZERO.setScale(2);
         for (DevolucionLineaRequest r : req.lineas()) {
             VentaLinea l = lineas.get(r.ventaLineaId());
@@ -210,20 +207,40 @@ public class DevolucionService {
             x.setValor(valor);
             d.getLineas().add(x);
             total = total.add(valor);
+            if (ultima) {
+                completas.add(l.getId());
+            }
+        }
+        // Con esta devolución la venta queda devuelta del todo: se devuelve también el ajuste del redondeo (D3), para que
+        // el reembolso sume exactamente lo que el cliente pagó y no lo que decía la línea antes de redondear.
+        boolean ventaCompleta = v.getLineas().stream().allMatch(l -> completas.contains(l.getId())
+                || (previo.get(l.getId()) != null && previo.get(l.getId()).cantidad().compareTo(l.getCantidad()) >= 0));
+        if (ventaCompleta && v.getRedondeo() != null && v.getRedondeo().signum() != 0) {
+            total = total.add(v.getRedondeo()).max(BigDecimal.ZERO).setScale(2, RoundingMode.HALF_UP);
         }
 
-        MedioPagoVenta original = medioUnico(v);
-        // Mismo medio en una venta a crédito o con saldo a favor: vuelve a la cuenta o al saldo, no a la caja
-        boolean aCuenta = req.formaReembolso() == FormaReembolso.MISMO_MEDIO && original == MedioPagoVenta.CREDITO;
-        boolean aSaldo = req.formaReembolso() == FormaReembolso.SALDO_A_FAVOR
-                || (req.formaReembolso() == FormaReembolso.MISMO_MEDIO && original == MedioPagoVenta.SALDO_FAVOR);
-        MedioPago medio = aCuenta || aSaldo ? null : medioDeReembolso(req.formaReembolso(), v);
-        if (medio == MedioPago.EFECTIVO && total.signum() > 0
-                && movimientoCajaRepository.saldo(turno.getId(), MedioPago.EFECTIVO).compareTo(total) < 0) {
-            throw new NegocioException("EFECTIVO_INSUFICIENTE", "No hay efectivo suficiente en la caja para devolver "
-                    + total.toPlainString() + ": elija otro medio o saldo a favor");
+        Set<MedioPagoVenta> mediosVenta = v.getPagos().stream().map(p -> p.getMedio()).collect(Collectors.toSet());
+        if (req.formaReembolso() == FormaReembolso.EFECTIVO && mediosVenta.contains(MedioPagoVenta.SALDO_FAVOR)) {
+            throw new NegocioException("REEMBOLSO_SALDO",
+                    "Parte de la venta se pagó con saldo a favor: devuelva como saldo a favor, no en efectivo");
         }
-        if (aSaldo) {
+        // Una venta a crédito rebaja primero su propia deuda; solo el resto se reembolsa por la forma pedida
+        BigDecimal aDeuda = mediosVenta.contains(MedioPagoVenta.CREDITO)
+                ? carteraService.aplicarDevolucionADeuda(v, total) : BigDecimal.ZERO.setScale(2);
+        BigDecimal resto = total.subtract(aDeuda);
+
+        MedioPagoVenta original = medioUnico(v);
+        // Mismo medio en una venta a crédito o con saldo a favor: lo que sobre de la deuda queda como saldo a favor
+        boolean aSaldo = req.formaReembolso() == FormaReembolso.SALDO_A_FAVOR
+                || (req.formaReembolso() == FormaReembolso.MISMO_MEDIO
+                        && (original == MedioPagoVenta.CREDITO || original == MedioPagoVenta.SALDO_FAVOR));
+        MedioPago medio = aSaldo || resto.signum() == 0 ? null : medioDeReembolso(req.formaReembolso(), v);
+        if (medio == MedioPago.EFECTIVO
+                && movimientoCajaRepository.saldo(turno.getId(), MedioPago.EFECTIVO).compareTo(resto) < 0) {
+            throw new NegocioException("EFECTIVO_INSUFICIENTE", "No hay efectivo suficiente en la caja para devolver "
+                    + resto.toPlainString() + ": elija otro medio o saldo a favor");
+        }
+        if (aSaldo && resto.signum() > 0) {
             Cliente c = clienteRepository.findById(v.getClienteId()).orElseThrow(() -> new NoEncontradoException("Cliente no encontrado"));
             if (c.isEsConsumidorFinal()) {
                 throw new NegocioException("SALDO_CONSUMIDOR_FINAL",
@@ -257,15 +274,13 @@ public class DevolucionService {
                 movimientoInventarioService.registrarDevolucionCliente(productoId, bodegaId, cantidad,
                         "Devolución " + d.getConsecutivo() + " de " + v.getConsecutivo() + ": " + motivo, d.getId())));
 
-        if (total.signum() > 0) {
-            if (aCuenta) {
-                carteraService.acreditarDevolucion(v, total, d.getId());
-            } else if (medio != null) {
+        if (resto.signum() > 0) {
+            if (medio != null) {
                 MovimientoCaja m = new MovimientoCaja();
                 m.setTurnoId(turno.getId());
                 m.setTipo(TipoMovimientoCaja.DEVOLUCION);
                 m.setMedioPago(medio);
-                m.setMonto(total.negate());
+                m.setMonto(resto.negate());
                 m.setReferenciaTipo(REFERENCIA);
                 m.setReferenciaId(d.getId());
                 m.setMotivo("Devolución " + d.getConsecutivo() + " de " + v.getConsecutivo());
@@ -276,13 +291,14 @@ public class DevolucionService {
                 SaldoFavorCliente s = new SaldoFavorCliente();
                 s.setClienteId(v.getClienteId());
                 s.setDevolucionId(d.getId());
-                s.setMonto(total);
+                s.setMonto(resto);
                 s.setMotivo("Devolución " + d.getConsecutivo() + " de " + v.getConsecutivo());
                 saldoRepository.save(s);
             }
         }
         auditoriaService.exito(AccionAuditoria.VENTA_DEVOLVER, EntidadAuditada.DEVOLUCION_VENTA, d.getId(), d.getConsecutivo()
-                + "; venta=" + v.getConsecutivo() + "; total=" + total.toPlainString() + "; reembolso=" + req.formaReembolso()
+                + "; venta=" + v.getConsecutivo() + "; total=" + total.toPlainString() + "; aDeuda=" + aDeuda.toPlainString()
+                + "; reembolso=" + req.formaReembolso()
                 + (medio == null ? "" : " " + medio) + "; autorizó=" + supervisor + "; motivo=" + motivo);
         return respuesta(d, v);
     }

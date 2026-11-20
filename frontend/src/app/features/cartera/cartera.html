@@ -28,7 +28,7 @@
             <tr>
               <td><strong>{{ c.nombre }}</strong><span class="sub">{{ c.documento }} · {{ c.plazoDias }} días</span></td>
               <td class="num">{{ c.cupo | pesos }}</td><td class="num">{{ c.saldo | pesos }}</td><td class="num">{{ c.disponible | pesos }}</td>
-              <td class="num">{{ (c.saldo ?? 0) - (c.alDia ?? 0) | pesos }}</td>
+              <td class="num">{{ c.vencido | pesos }}</td>
               <td>
                 @if (c.bloqueado) { <span class="chip rojo">Bloqueado por mora</span> }
                 @else if (c.enMora) { <span class="chip ambar">En mora, habilitado hasta {{ c.excepcionHasta | fecha }}</span> }

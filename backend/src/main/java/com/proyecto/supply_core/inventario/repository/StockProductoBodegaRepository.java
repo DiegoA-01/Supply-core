@@ -94,12 +94,15 @@ public interface StockProductoBodegaRepository extends JpaRepository<StockProduc
      * ya haya leído antes. La usa el costo promedio para que dos recepciones a la vez no se pisen.
      *
      * @param empresaId  empresa (SQL nativo: va a mano)
-     * @param productoId producto
-     * @return total en todas las bodegas
+     * @param productoId      producto
+     * @param excluirBodegaId bodega que no cuenta (la de averías; {@code null} = ninguna)
+     * @return total en las bodegas que cuentan
      */
     @Query(value = "SELECT COALESCE(SUM(cantidad), 0) FROM stock_producto_bodega WHERE empresa_id = :empresaId "
-            + "AND producto_id = :productoId FOR UPDATE", nativeQuery = true)
-    BigDecimal existenciaBloqueada(@Param("empresaId") Long empresaId, @Param("productoId") Long productoId);
+            + "AND producto_id = :productoId AND (:excluir IS NULL OR bodega_id <> :excluir) FOR UPDATE",
+            nativeQuery = true)
+    BigDecimal existenciaBloqueada(@Param("empresaId") Long empresaId, @Param("productoId") Long productoId,
+            @Param("excluir") Long excluirBodegaId);
 
     /**
      * Stock del producto en las bodegas de una sede.

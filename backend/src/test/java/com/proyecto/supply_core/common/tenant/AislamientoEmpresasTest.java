@@ -3145,6 +3145,34 @@ class AislamientoEmpresasTest {
                     .andExpect(status().isOk());
             assertEquals("ANULADA", jdbc.queryForObject("SELECT estado FROM cuenta_por_cobrar WHERE venta_id = ?", String.class, venta3));
 
+            // 7b) la misma clave con otro carrito no devuelve la venta vieja como si fuera la nueva
+            vender.apply("cr-1", credito.formatted(cliente, 1, 10000))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CLAVE_REPETIDA"));
+
+            // 7c) devolver una venta a crédito, aunque se pida en efectivo, rebaja su deuda y no saca plata de la caja
+            com.fasterxml.jackson.databind.JsonNode v4 = lector.readTree(vender.apply("cr-4", credito.formatted(cliente, "0.5", 5000))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+            long venta4 = v4.get("id").asLong();
+            String permisoDevolucion = lector.readTree(mvc.perform(post("/api/autorizaciones").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content("{\"correo\":\"admin@mismo.com\",\"pin\":\"123456\",\"accion\":\"DEVOLUCION\","
+                                    + "\"turnoId\":" + turno + ",\"referenciaId\":" + venta4 + "}"))
+                    .andReturn().getResponse().getContentAsString()).get("token").asText();
+            mvc.perform(post("/api/devoluciones").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"ventaId\":" + venta4 + ",\"motivo\":\"No era la medida\",\"formaReembolso\":\"EFECTIVO\","
+                                    + "\"lineas\":[{\"ventaLineaId\":" + v4.get("lineas").get(0).get("id").asLong()
+                                    + ",\"cantidad\":0.5,\"estadoProducto\":\"BUENO\"}],\"autorizacion\":\"" + permisoDevolucion + "\"}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.totalReembolso").value(5000.0))
+                    .andExpect(jsonPath("$.medioReembolso").doesNotExist());
+            assertEquals("PAGADA", jdbc.queryForObject("SELECT estado FROM cuenta_por_cobrar WHERE venta_id = ?", String.class, venta4));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM movimiento_caja WHERE turno_id = ? AND tipo = 'DEVOLUCION'",
+                    Integer.class, turno), "nada sale de la caja por una venta que no se pagó");
+
+            // 7d) un abono con tarjeta exige la referencia del pago
+            mvc.perform(post("/api/abonos").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"clienteId\":" + cliente + ",\"valor\":1000,\"medioPago\":\"TARJETA_DEBITO\"}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("REFERENCIA_REQUERIDA"));
+
             // 8) el saldo a favor se usa como medio de pago y no se gasta dos veces
             jdbc.update("INSERT INTO saldo_favor_cliente (empresa_id, cliente_id, monto, motivo) VALUES (?, ?, 3000, 'Prueba')",
                     empresaA, cliente);
@@ -3170,11 +3198,15 @@ class AislamientoEmpresasTest {
             jdbc.update("DELETE FROM abono_cliente WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM cuenta_por_cobrar WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM saldo_favor_cliente WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE l FROM devolucion_venta_linea l JOIN devolucion_venta d ON d.id = l.devolucion_id "
+                    + "WHERE d.empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM devolucion_venta WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE p FROM venta_pago p JOIN venta v ON v.id = p.venta_id WHERE v.empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE l FROM venta_linea l JOIN venta v ON v.id = l.venta_id WHERE v.empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM venta WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM cliente WHERE empresa_id IN (?, ?) AND numero_documento = '55667788'", empresaA, empresaB);
-            jdbc.update("DELETE FROM movimiento_inventario WHERE empresa_id IN (?, ?) AND referencia_tipo = 'VENTA'", empresaA, empresaB);
+            jdbc.update("DELETE FROM movimiento_inventario WHERE empresa_id IN (?, ?) AND referencia_tipo IN ('VENTA', 'DEVOLUCION_VENTA')",
+                    empresaA, empresaB);
             jdbc.update("DELETE FROM autorizacion_supervisor WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM movimiento_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
             jdbc.update("DELETE FROM turno_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);

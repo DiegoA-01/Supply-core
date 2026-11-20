@@ -1,6 +1,6 @@
 # 007 - Crédito y cartera
 
-**Estado:** Hecha (V37) · **Rama:** `feature/ventas-cartera` · **Depende de:** 004 (y 002 por los cupos)
+**Estado:** Hecha (V37) · **Rama:** `feature/ventas-pos` (con 004 a 008) · **Depende de:** 004 (y 002 por los cupos)
 
 ## Objetivo
 Vender a crédito a clientes conocidos, sin pasar su cupo, cobrar los abonos por la caja y saber quién debe y desde
