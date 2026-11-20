@@ -26,3 +26,10 @@ tr.alerta td { background: #fff8eb; }
 .pago { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; select, input { flex: 1 1 140px; } .corta { flex: 0 0 100px; } }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 @media (max-width: 900px) { .pos-cuerpo { grid-template-columns: 1fr; } .lateral { position: static; } }
+
+.panel-cliente { display: grid; gap: 6px;
+  .nombre-cliente { font-size: 17px; }
+  .ayuda { margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--sc-texto-2); } }
+.acciones-cliente { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.dialogo .ayuda { margin: 0 0 10px; font-size: 13px; color: var(--sc-texto-2); }
+.pasos { margin: 0 0 12px; padding-left: 20px; font-size: 13px; line-height: 1.6; }

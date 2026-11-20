@@ -222,4 +222,22 @@ describe('Punto de venta', () => {
     vieja.flush(cotizacion());
     expect(c()['cotizacion']().totalAPagar).toBe(7400);
   });
+
+  it('el panel de cliente explica cuándo identificar al cliente y qué hacer si no aparece', () => {
+    crear(['CAJERO']);
+    expect(texto()).toContain('¿A quién le vende?');
+    expect(texto()).toContain('Consumidor final');
+    expect(texto()).toContain('pide la factura a su nombre');
+    expect(texto()).toContain('Crear cliente nuevo');
+    c()['abrirClientes']();
+    c()['buscarCliente'].set('99887766');
+    c()['buscarClientes']();
+    backend.expectOne(r => r.url === '/api/clientes').flush({ contenido: [], pagina: 0, tamano: 20, totalElementos: 0, totalPaginas: 0 });
+    fixture.detectChanges();
+    expect(texto()).toContain('No hay ningún cliente con «99887766»');
+    expect(texto()).toContain('Seguir como consumidor final');
+    c()['creandoCliente'].set(true);
+    fixture.detectChanges();
+    expect(texto()).toContain('Escriba el tipo y número de documento');
+  });
 });
