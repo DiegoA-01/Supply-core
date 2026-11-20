@@ -28,7 +28,9 @@ public class ConsecutivoGenerator {
 
     /** Prefijo de los pedidos internos ("Necesito este producto"). */
     public static final String PEDIDO_INTERNO = "PED";
-    private static final Set<String> PREFIJOS = Set.of(SOLICITUD, RFQ, ORDEN_COMPRA, DESPACHO, PEDIDO_INTERNO);
+    /** Pedido de venta sin cobrar (spec 004). */
+    public static final String PEDIDO_VENTA = "PV";
+    private static final Set<String> PREFIJOS = Set.of(SOLICITUD, RFQ, ORDEN_COMPRA, DESPACHO, PEDIDO_INTERNO, PEDIDO_VENTA);
 
     private final JdbcTemplate jdbc;
 

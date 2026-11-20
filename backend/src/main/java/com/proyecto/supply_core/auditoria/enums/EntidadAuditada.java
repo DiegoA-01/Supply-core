@@ -80,5 +80,11 @@ public enum EntidadAuditada {
     /** Tabla {@code turno_caja}. */
     TURNO_CAJA,
     /** Tabla {@code autorizacion_supervisor}. */
-    AUTORIZACION
+    AUTORIZACION,
+    /** Tabla {@code venta}. */
+    VENTA,
+    /** Tabla {@code pedido_venta}. */
+    PEDIDO_VENTA,
+    /** Tabla {@code limite_descuento_rol}. */
+    LIMITE_DESCUENTO
 }

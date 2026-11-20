@@ -546,7 +546,7 @@ de aceptación verificados → rama propia desde `develop` → PR que crea y mez
 | 001 Catálogo de venta | Módulos `VENTAS`, `CAJA`, `CARTERA`; roles `SUPERVISOR_VENTAS` y `VENDEDOR`; impuestos, listas y precios con historial; precio por unidad; carga de precios por Excel; búsqueda para vender | V29 + V31 | #27 + #28 | **Hecha** |
 | 002 Clientes | Clientes con consumidor final, documento validado (NIT con dígito DIAN), autorización de datos, cupo solo para dueño o supervisor, exportación | V32 | #29 | **Hecha** |
 | 003 Cajas y turnos | Cajas, turnos, libro de caja, PIN de supervisor, autorizaciones de un solo uso, cierre ciego, aprobación de diferencias | V33 | #30 | **Hecha** |
-| 004 La venta | Venta en una sola transacción: precio vigente, descuentos con límite por rol, impuestos, pagos mixtos, cambio, redondeo, stock, caja, idempotencia, pedido de venta | (V34) | — | Propuesta |
+| 004 La venta | Venta en una sola transacción: precio vigente, descuentos con límite por rol, impuestos, pagos mixtos, cambio, redondeo, stock, caja, idempotencia, pedido de venta | V34 | (rama `feature/ventas-pos-backend`) | **Hecha** (2026-11-20, falta PR) |
 | 005 POS | POS con lector y atajos, cobro, tiquete de 80 mm, "Mi turno" (con la foto del recibo del gasto), historial de ventas | — | — | Propuesta |
 | 006 Anulación y devolución | Anular en el turno, devolver con estado del producto y reembolso, rotación que las descuenta | — | — | Propuesta |
 | 007 Cartera | Venta a crédito con cupo y mora, abonos en la caja, edades, saldo a favor | — | — | Propuesta |

@@ -15,7 +15,7 @@ Estados de una spec: **Propuesta** (en revisión) → **Aprobada** (se puede pla
 | [001-ventas-catalogo](001-ventas-catalogo/spec.md) | F1 | Módulos, roles, impuestos, código de barras, listas y precios con historial | `feature/ventas-catalogo` | 000 | Hecha (V29 + V31, PR #28) |
 | [002-ventas-clientes](002-ventas-clientes/spec.md) | F2 | Clientes, consumidor final, autorización de datos | `feature/ventas-clientes` | 001 | Hecha (V32, PR #29) |
 | [003-caja-turnos](003-caja-turnos/spec.md) | F3 | Cajas, turnos, libro de caja, PIN de supervisor, cierre ciego | `feature/caja-turnos` | 001 | Hecha (V33, PR #30) |
-| [004-venta-backend](004-venta-backend/spec.md) | F4 | La venta en una sola transacción: precios, descuentos, impuestos, pagos, stock, caja, idempotencia | `feature/ventas-pos-backend` | 002, 003 | Propuesta |
+| [004-venta-backend](004-venta-backend/spec.md) | F4 | La venta en una sola transacción: precios, descuentos, impuestos, pagos, stock, caja, idempotencia | `feature/ventas-pos-backend` | 002, 003 | Hecha (V34, falta PR) |
 | [005-pos-frontend](005-pos-frontend/spec.md) | F5 | POS con lector y atajos, cobro, tiquete de 80 mm, mi turno | `feature/ventas-pos-frontend` | 004 | Propuesta |
 | [006-anulacion-devolucion](006-anulacion-devolucion/spec.md) | F6 | Anulación en el turno y devolución de cliente | `feature/ventas-anulacion-devolucion` | 004 | Propuesta |
 | [007-cartera](007-cartera/spec.md) | F7 | Crédito, cupos, abonos y edades | `feature/ventas-cartera` | 004 | Propuesta |
@@ -33,9 +33,9 @@ referencias cruzadas; catálogos de proveedor en PDF leídos con IA; correo real
 
 | # | Pregunta | Decisión | Estado | Spec |
 |---|---|---|---|---|
-| D1 | ¿Se permite vender sin stock (stock negativo)? | **No.** Es la principal fuente de descuadres. | Recomendada | 004 |
+| D1 | ¿Se permite vender sin stock (stock negativo)? | **No.** Es la principal fuente de descuadres. | **Tomada** (2026-11-20, construida en V34) | 004 |
 | D2 | ¿El precio de mostrador incluye IVA? | **Sí**, como es costumbre en Colombia; Java separa base e impuesto. | **Tomada** (construida en V29) | 001 |
-| D3 | ¿Redondear el total en efectivo a $50? | **Sí**, guardando la diferencia en `redondeo` para que cuadre. | Recomendada | 004 |
+| D3 | ¿Redondear el total en efectivo a $50? | **Sí**, guardando la diferencia en `redondeo` para que cuadre. | **Tomada** (2026-11-20, construida en V34) | 004 |
 | D4 | ¿Crédito a clientes en la primera versión? | **No**: dejarlo para la 007 y salir primero con contado. | Recomendada | 007 |
 | D5 | ¿Roles nuevos `SUPERVISOR_VENTAS` y `VENDEDOR`? | **Sí**; el dueño puede asignar los dos a la misma persona en negocios pequeños. | **Tomada** (2026-11-19) | 001 |
 | D6 | ¿Tolerancia de diferencia de caja sin aprobación? | $2.000, configurable por empresa. | **Tomada** (2026-11-19) | 003 |
@@ -55,7 +55,9 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V31 | `feature/ventas-catalogo` | Completar la spec 001: módulos, roles y precio vigente único |
 | V32 | `feature/ventas-clientes` | Clientes y consumidor final (spec 002) |
 | V33 | `feature/caja-turnos` | Cajas, turnos, libro de caja, PIN y autorizaciones (spec 003) |
-| V34 en adelante | libre | Se reserva al empezar cada spec |
+| V34 | `feature/ventas-pos-backend` | La venta: venta, líneas, pagos, pedido de venta, límite de descuento por rol y consecutivo por caja (spec 004) |
+| V35 | `feature/ventas-anulacion-devolucion` | Anulación y devolución (spec 006), reservada |
+| V36 en adelante | libre | Se reserva al empezar cada spec |
 
 ## Riesgos generales
 

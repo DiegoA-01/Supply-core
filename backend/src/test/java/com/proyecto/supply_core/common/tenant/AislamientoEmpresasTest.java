@@ -2399,6 +2399,267 @@ class AislamientoEmpresasTest {
     }
 
     @Test
+    void laVentaCobraEnUnaTransaccionSinDuplicarNiVenderSinStockYNoCruzaEmpresas() throws Exception {
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        com.fasterxml.jackson.databind.ObjectMapper lector = new com.fasterxml.jackson.databind.ObjectMapper();
+        String duenoA = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+        String cajeroA = token(empresaA, usuarioA2, "CAJERO");
+        Long sedeA = jdbc.queryForObject("SELECT sede_id FROM bodega WHERE id = ?", Long.class, bodegaA);
+        java.math.BigDecimal stockAntes = jdbc.queryForObject("SELECT COALESCE(SUM(cantidad), 0) FROM stock_producto_bodega "
+                + "WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, productoA, bodegaA);
+        Long tarifaAntes = jdbc.queryForObject("SELECT tarifa_impuesto_id FROM producto WHERE id = ?", Long.class, productoA);
+        try {
+            // precio de mostrador con IVA incluido y mínimo; 10 unidades en la bodega de la caja
+            long generalA = lector.readTree(mvc.perform(get("/api/ventas/listas").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andReturn().getResponse().getContentAsString()).get(0).get("id").asLong();
+            List<Long> iva = jdbc.queryForList("SELECT id FROM tarifa_impuesto WHERE empresa_id = ? AND porcentaje = 19",
+                    Long.class, empresaA);
+            jdbc.update("UPDATE producto SET costo_referencia = 6000, vendible = 1, precio_incluye_impuesto = 1, "
+                    + "tarifa_impuesto_id = ? WHERE id = ?", iva.isEmpty() ? null : iva.get(0), productoA);
+            mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"listaId\":" + generalA + ",\"productoId\":" + productoA
+                                    + ",\"precio\":11930,\"precioMinimo\":10000}"))
+                    .andExpect(status().isOk());
+            jdbc.update("INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad) VALUES (?, ?, ?, 10) "
+                    + "ON DUPLICATE KEY UPDATE cantidad = 10", empresaA, productoA, bodegaA);
+
+            // dos cajas en la misma bodega; el cajero abre turno en la primera
+            long caja1 = lector.readTree(mvc.perform(post("/api/cajas").header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content("{\"nombre\":\"Caja venta 1\",\"sedeId\":" + sedeA + ",\"bodegaId\":"
+                                    + bodegaA + ",\"prefijoConsecutivo\":\"V1\",\"topeEfectivo\":0}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            long caja2 = lector.readTree(mvc.perform(post("/api/cajas").header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content("{\"nombre\":\"Caja venta 2\",\"sedeId\":" + sedeA + ",\"bodegaId\":"
+                                    + bodegaA + ",\"prefijoConsecutivo\":\"V2\",\"topeEfectivo\":0}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            String linea = "{\"productoId\":" + productoA + ",\"cantidad\":%s,\"descuentoPct\":%s}";
+            String venta = "{\"lineas\":[" + linea + "],\"pagos\":[%s]%s}";
+            // sin turno no se vende
+            mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-0")
+                            .contentType(json).content(venta.formatted(1, 0, "{\"medio\":\"EFECTIVO\",\"monto\":20000}", "")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("TURNO_NO_ABIERTO"));
+            long turno = lector.readTree(mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content("{\"cajaId\":" + caja1 + ",\"baseApertura\":0}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            // sin clave de idempotencia, 400
+            mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(venta.formatted(1, 0, "{\"medio\":\"EFECTIVO\",\"monto\":20000}", "")))
+                    .andExpect(status().isBadRequest());
+
+            // venta en efectivo: el sistema pone el precio, redondea a $50 (D3) y calcula el cambio
+            String primera = venta.formatted(1, 0, "{\"medio\":\"EFECTIVO\",\"monto\":20000}", ",\"total\":1");
+            String respuesta = mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .header("Idempotency-Key", "k-1").contentType(json).content(primera))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.consecutivo").value("V1-000001"))
+                    .andExpect(jsonPath("$.total").value(11930.0))
+                    .andExpect(jsonPath("$.redondeo").value(20.0))
+                    .andExpect(jsonPath("$.totalAPagar").value(11950.0))
+                    .andExpect(jsonPath("$.cambio").value(8050.0))
+                    .andExpect(jsonPath("$.pagos[0].recibido").value(20000.0))
+                    .andExpect(jsonPath("$.pagos[0].monto").value(11950.0))
+                    .andExpect(jsonPath("$.lineas[0].precioLista").value(11930.0))
+                    .andReturn().getResponse().getContentAsString();
+            long venta1 = lector.readTree(respuesta).get("id").asLong();
+            assertFalse(respuesta.contains("costo"), "el cajero no ve el costo");
+            assertEquals(0, new java.math.BigDecimal("9").compareTo(jdbc.queryForObject("SELECT cantidad FROM "
+                    + "stock_producto_bodega WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, productoA, bodegaA)));
+            assertEquals(0, new java.math.BigDecimal("11950").compareTo(jdbc.queryForObject("SELECT SUM(monto) FROM movimiento_caja "
+                    + "WHERE turno_id = ? AND tipo = 'VENTA' AND referencia_id = ?", java.math.BigDecimal.class, turno, venta1)));
+            assertEquals(0, new java.math.BigDecimal("6000").compareTo(jdbc.queryForObject("SELECT costo_unitario FROM venta_linea "
+                    + "WHERE venta_id = ?", java.math.BigDecimal.class, venta1)), "la línea guarda el costo del día");
+
+            // la misma venta reenviada con la misma clave: 200 con la misma venta y no se cobra dos veces
+            mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-1")
+                            .contentType(json).content(primera))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(venta1));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM venta WHERE empresa_id = ?", Integer.class, empresaA));
+            assertEquals(0, new java.math.BigDecimal("9").compareTo(jdbc.queryForObject("SELECT cantidad FROM "
+                    + "stock_producto_bodega WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, productoA, bodegaA)));
+
+            // no alcanza el stock (D1): se rechaza toda la venta, nada queda a medias y el consecutivo no deja hueco
+            mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-2")
+                            .contentType(json).content(venta.formatted(50, 0, "{\"medio\":\"EFECTIVO\",\"monto\":1000000}", "")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("STOCK_INSUFICIENTE"));
+            // la tarjeta exige últimos 4 dígitos y autorización, y no puede pasarse del total
+            mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-3")
+                            .contentType(json).content(venta.formatted(1, 0, "{\"medio\":\"TARJETA_DEBITO\",\"monto\":11930}", "")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("TARJETA_SIN_DATOS"));
+            mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-3")
+                            .contentType(json).content(venta.formatted(1, 0,
+                                    "{\"medio\":\"TARJETA_DEBITO\",\"monto\":11931,\"ultimos4\":\"4242\",\"referencia\":\"A1\"}", "")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("PAGO_EXCEDE"));
+            mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-3")
+                            .contentType(json).content(venta.formatted(1, 0,
+                                    "{\"medio\":\"TARJETA_DEBITO\",\"monto\":11930,\"ultimos4\":\"424242\",\"referencia\":\"A1\"}", "")))
+                    .andExpect(status().isBadRequest());
+            mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-3")
+                            .contentType(json).content(venta.formatted(1, 0,
+                                    "{\"medio\":\"TARJETA_DEBITO\",\"monto\":11930,\"ultimos4\":\"4242\",\"referencia\":\"A1\"}", "")))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.consecutivo").value("V1-000002"))
+                    .andExpect(jsonPath("$.redondeo").value(0.0))
+                    .andExpect(jsonPath("$.pagos[0].ultimos4").value("4242"));
+
+            // descuento sobre el límite del cajero (5 %): pide el PIN del supervisor, que se gasta en la venta
+            mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-4")
+                            .contentType(json).content(venta.formatted(1, 10, "{\"medio\":\"EFECTIVO\",\"monto\":20000}", "")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("AUTORIZACION_REQUERIDA"));
+            mvc.perform(put("/api/autorizaciones/mi-pin").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"passwordActual\":\"" + CLAVE + "\",\"pin\":\"123456\"}"))
+                    .andExpect(status().isNoContent());
+            String pedirPermiso = "{\"correo\":\"admin@mismo.com\",\"pin\":\"123456\",\"accion\":\"%s\",\"turnoId\":" + turno + "}";
+            String permiso = lector.readTree(mvc.perform(post("/api/autorizaciones").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content(pedirPermiso.formatted("DESCUENTO")))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("token").asText();
+            String conPermiso = venta.formatted(1, 10, "{\"medio\":\"EFECTIVO\",\"monto\":20000}",
+                    ",\"autorizacionDescuento\":\"" + permiso + "\"");
+            mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-4")
+                            .contentType(json).content(conPermiso))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.lineas[0].precioUnitario").value(10737.0))
+                    .andExpect(jsonPath("$.lineas[0].autorizadoPor").exists())
+                    .andExpect(jsonPath("$.autorizadaPor").exists());
+            // el permiso ya se usó
+            mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-5")
+                            .contentType(json).content(conPermiso))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("AUTORIZACION_INVALIDA"));
+
+            // el dueño sube el límite del cajero a 25 %: un 20 % ya no pide descuento, pero el precio queda bajo el mínimo
+            mvc.perform(put("/api/ventas/limites-descuento").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("[{\"rol\":\"CAJERO\",\"descuentoMaximoPct\":25}]"))
+                    .andExpect(status().isForbidden());
+            mvc.perform(put("/api/ventas/limites-descuento").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("[{\"rol\":\"CAJERO\",\"descuentoMaximoPct\":25}]"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[?(@.rol=='CAJERO')].descuentoMaximoPct").value(25.0))
+                    .andExpect(jsonPath("$[?(@.rol=='SUPERVISOR_VENTAS')].descuentoMaximoPct").value(15.0));
+            mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-5")
+                            .contentType(json).content(venta.formatted(1, 20, "{\"medio\":\"EFECTIVO\",\"monto\":20000}", "")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("AUTORIZACION_REQUERIDA"));
+
+            // pedido de venta: el vendedor lo arma sin tocar stock; el cajero lo cobra una sola vez
+            String vendedorA = token(empresaA, usuarioA, "VENDEDOR");
+            long pedido = lector.readTree(mvc.perform(post("/api/pedidos-venta").header(HttpHeaders.AUTHORIZATION, vendedorA)
+                            .contentType(json).content("{\"lineas\":[" + linea.formatted(2, 0) + "],\"nota\":\"Mostrador\"}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.consecutivo").value(org.hamcrest.Matchers.startsWith("PV-")))
+                    .andExpect(jsonPath("$.estado").value("PENDIENTE_COBRO"))
+                    .andReturn().getResponse().getContentAsString()).get("id").asLong();
+            java.math.BigDecimal stockConPedido = jdbc.queryForObject("SELECT cantidad FROM stock_producto_bodega "
+                    + "WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, productoA, bodegaA);
+            assertEquals(0, new java.math.BigDecimal("7").compareTo(stockConPedido), "el pedido no descuenta stock");
+            // solo quien lo armó (o un supervisor) lo edita; otro vendedor ni lo ve en su lista
+            String otroVendedor = token(empresaA, usuarioA2, "VENDEDOR");
+            String editado = "{\"lineas\":[" + linea.formatted(2, 0) + "],\"nota\":\"Editado\"}";
+            mvc.perform(put("/api/pedidos-venta/" + pedido).header(HttpHeaders.AUTHORIZATION, otroVendedor)
+                            .contentType(json).content(editado))
+                    .andExpect(status().isForbidden());
+            mvc.perform(get("/api/pedidos-venta").header(HttpHeaders.AUTHORIZATION, otroVendedor))
+                    .andExpect(jsonPath("$.totalElementos").value(0));
+            mvc.perform(get("/api/pedidos-venta/" + pedido).header(HttpHeaders.AUTHORIZATION, otroVendedor))
+                    .andExpect(status().isNotFound());
+            mvc.perform(put("/api/pedidos-venta/" + pedido).header(HttpHeaders.AUTHORIZATION, vendedorA)
+                            .contentType(json).content(editado))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.nota").value("Editado"))
+                    .andExpect(jsonPath("$.lineas.length()").value(1));
+            // un pedido descartado no se vuelve a descartar ni se cobra
+            long descartado = lector.readTree(mvc.perform(post("/api/pedidos-venta").header(HttpHeaders.AUTHORIZATION, vendedorA)
+                            .contentType(json).content("{\"lineas\":[" + linea.formatted(1, 0) + "]}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            mvc.perform(post("/api/pedidos-venta/" + descartado + "/descartar").header(HttpHeaders.AUTHORIZATION, vendedorA))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.estado").value("DESCARTADO"));
+            mvc.perform(post("/api/pedidos-venta/" + descartado + "/descartar").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("PEDIDO_NO_PENDIENTE"));
+            mvc.perform(get("/api/pedidos-venta?estado=PENDIENTE_COBRO").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(jsonPath("$.totalElementos").value(1));
+            String cobrarPedido = "{\"pedidoVentaId\":" + pedido + ",\"lineas\":[" + linea.formatted(2, 0)
+                    + "],\"pagos\":[{\"medio\":\"TRANSFERENCIA\",\"monto\":23860,\"referencia\":\"T-9\"}]}";
+            mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-6")
+                            .contentType(json).content(cobrarPedido))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.vendedor").exists())
+                    .andExpect(jsonPath("$.pedidoVentaId").value(pedido));
+            mvc.perform(get("/api/pedidos-venta/" + pedido).header(HttpHeaders.AUTHORIZATION, vendedorA))
+                    .andExpect(jsonPath("$.estado").value("COBRADO"));
+            mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-7")
+                            .contentType(json).content(cobrarPedido))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("PEDIDO_NO_PENDIENTE"));
+            mvc.perform(get("/api/ventas?estado=CONFIRMADA").header(HttpHeaders.AUTHORIZATION, vendedorA))
+                    .andExpect(jsonPath("$.totalElementos").value(1));
+
+            // el cajero no ve el historial (cierre ciego): solo busca una venta suya por consecutivo
+            mvc.perform(get("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA)).andExpect(status().isForbidden());
+            mvc.perform(get("/api/ventas?consecutivo=v1-000001").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(jsonPath("$.contenido[0].id").value(venta1));
+            mvc.perform(get("/api/ventas").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$.totalElementos").value(4));
+
+            // nada cruza de empresa: B no ve las ventas ni los pedidos de A, ni vende ni pide productos de A
+            String duenoB = token(empresaB, usuarioB, "ADMIN_SISTEMA");
+            mvc.perform(get("/api/ventas/" + venta1).header(HttpHeaders.AUTHORIZATION, duenoB)).andExpect(status().isNotFound());
+            mvc.perform(get("/api/ventas").header(HttpHeaders.AUTHORIZATION, duenoB)).andExpect(jsonPath("$.totalElementos").value(0));
+            mvc.perform(get("/api/pedidos-venta/" + pedido).header(HttpHeaders.AUTHORIZATION, duenoB)).andExpect(status().isNotFound());
+            mvc.perform(post("/api/pedidos-venta").header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "VENDEDOR"))
+                            .contentType(json).content("{\"lineas\":[" + linea.formatted(1, 0) + "]}"))
+                    .andExpect(status().isNotFound());
+            mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "CAJERO"))
+                            .header("Idempotency-Key", "k-1").contentType(json).content(primera))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("TURNO_NO_ABIERTO"));
+
+            // dos cajas venden a la vez la última unidad: una pasa, la otra no; el stock nunca queda negativo
+            jdbc.update("UPDATE stock_producto_bodega SET cantidad = 1 WHERE producto_id = ? AND bodega_id = ?", productoA, bodegaA);
+            mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "CAJERO"))
+                            .contentType(json).content("{\"cajaId\":" + caja2 + ",\"baseApertura\":0}"))
+                    .andExpect(status().isCreated());
+            java.util.concurrent.CountDownLatch salida = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.ExecutorService hilos = java.util.concurrent.Executors.newFixedThreadPool(2);
+            List<java.util.concurrent.Future<Integer>> estados = new java.util.ArrayList<>();
+            for (Long cajero : List.of(usuarioA, usuarioA2)) {
+                estados.add(hilos.submit(() -> {
+                    salida.await();
+                    return mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, token(empresaA, cajero, "CAJERO"))
+                            .header("Idempotency-Key", "ultima-" + cajero).contentType(json)
+                            .content(venta.formatted(1, 0, "{\"medio\":\"EFECTIVO\",\"monto\":20000}", "")))
+                            .andReturn().getResponse().getStatus();
+                }));
+            }
+            salida.countDown();
+            List<Integer> resultado = new java.util.ArrayList<>();
+            for (var f : estados) {
+                resultado.add(f.get(30, java.util.concurrent.TimeUnit.SECONDS));
+            }
+            hilos.shutdown();
+            assertEquals(List.of(201, 409), resultado.stream().sorted().toList());
+            assertEquals(0, java.math.BigDecimal.ZERO.compareTo(jdbc.queryForObject("SELECT cantidad FROM stock_producto_bodega "
+                    + "WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, productoA, bodegaA)));
+            // los consecutivos de cada caja no tienen huecos
+            assertEquals(List.of("V1-000001", "V1-000002", "V1-000003", "V1-000004"), jdbc.queryForList("SELECT consecutivo "
+                    + "FROM venta WHERE caja_id = ? ORDER BY id", String.class, caja1).subList(0, 4));
+            assertTrue(jdbc.queryForObject("SELECT COUNT(*) FROM auditoria WHERE empresa_id = ? AND accion = 'VENTA_CONFIRMAR'",
+                    Integer.class, empresaA) >= 5);
+        } finally {
+            jdbc.update("UPDATE pedido_venta SET venta_id = NULL WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE p FROM venta_pago p JOIN venta v ON v.id = p.venta_id WHERE v.empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE l FROM venta_linea l JOIN venta v ON v.id = l.venta_id WHERE v.empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM venta WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM pedido_venta WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM limite_descuento_rol WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM movimiento_inventario WHERE empresa_id IN (?, ?) AND referencia_tipo = 'VENTA'", empresaA, empresaB);
+            jdbc.update("DELETE FROM autorizacion_supervisor WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM movimiento_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM turno_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM precio_producto WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("UPDATE stock_producto_bodega SET cantidad = ? WHERE producto_id = ? AND bodega_id = ?", stockAntes,
+                    productoA, bodegaA);
+            jdbc.update("UPDATE producto SET costo_referencia = NULL, tarifa_impuesto_id = ? WHERE id = ?", tarifaAntes, productoA);
+            jdbc.update("UPDATE usuario SET pin_supervisor_hash = NULL, pin_intentos_fallidos = 0, pin_bloqueado_hasta = NULL "
+                    + "WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+        }
+    }
+
+    @Test
     void elCatalogoDelProveedorSeCruzaConElInventarioSinQueElProveedorVeaNadaNuestro() throws Exception {
         String portalA = tokenProveedor(empresaA, usuarioA, proveedorA);
         String comprasA = token(empresaA, usuarioA, "ADMIN_COMPRAS");

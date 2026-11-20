@@ -240,5 +240,15 @@ public enum AccionAuditoria {
     /** Intento de autorización con un correo o PIN que no sirven, o con el PIN bloqueado. */
     AUTORIZACION_FALLO,
     /** Un supervisor fijó o cambió su PIN. */
-    PIN_CAMBIAR
+    PIN_CAMBIAR,
+    /** Se confirmó una venta (spec 004). */
+    VENTA_CONFIRMAR,
+    /** Un vendedor creó un pedido de venta. */
+    PEDIDO_VENTA_CREAR,
+    /** Se editó un pedido de venta pendiente. */
+    PEDIDO_VENTA_EDITAR,
+    /** Se descartó un pedido de venta sin cobrar. */
+    PEDIDO_VENTA_DESCARTAR,
+    /** El dueño cambió el límite de descuento de un rol. */
+    LIMITE_DESCUENTO_CAMBIAR
 }
