@@ -250,6 +250,32 @@ describe('Punto de venta', () => {
     expect(c()['dividido']()).toBe(false);
   });
 
+  it('mientras se escribe sugiere productos, se eligen con las flechas y Enter los agrega', () => {
+    crear(['CAJERO']);
+    const cemento: ProductoParaVender = { ...cable, productoId: 8, codigo: 'CEM-50', codigoBarras: '770999', nombre: 'Cemento gris 50 kg', precio: 49500 };
+    c()['escribir']('c');
+    c()['escribir']('ce');
+    vi.advanceTimersByTime(250);
+    const req = backend.expectOne(r => r.url === '/api/ventas/productos');
+    expect(req.request.params.get('q')).toBe('ce');
+    req.flush([cemento, cable]);
+    fixture.detectChanges();
+    expect(texto()).toContain('Cemento gris 50 kg');
+    expect(c()['marcado']()).toBe(0);
+    c()['teclaLector'](new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+    expect(c()['marcado']()).toBe(1);
+    c()['teclaLector'](new KeyboardEvent('keydown', { key: 'Enter' }));
+    expect(c()['carrito']()[0].productoId).toBe(7);
+    expect(c()['opciones']().length).toBe(0);
+    cotizar();
+    // sin coincidencias lo dice
+    c()['escribir']('zzz');
+    vi.advanceTimersByTime(250);
+    backend.expectOne(r => r.url === '/api/ventas/productos').flush([]);
+    fixture.detectChanges();
+    expect(texto()).toContain('No hay productos que coincidan con «zzz»');
+  });
+
   it('el panel de cliente explica cuándo identificar al cliente y qué hacer si no aparece', () => {
     crear(['CAJERO']);
     expect(texto()).toContain('¿A quién le vende?');

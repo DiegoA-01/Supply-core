@@ -31,17 +31,24 @@
         <div class="lector">
           <label class="sr-only" for="lector">Código de barras, código o nombre</label>
           <span class="material-symbols-outlined">barcode_scanner</span>
-          <input #lector id="lector" class="entrada" autocomplete="off" placeholder="Escanee o escriba el código o el nombre y presione Enter"
-            [ngModel]="texto()" (ngModelChange)="texto.set($event)" (keydown.enter)="leer()">
+          <input #lector id="lector" class="entrada" autocomplete="off" role="combobox" aria-autocomplete="list"
+            aria-controls="sugerencias" [attr.aria-expanded]="opciones().length > 0"
+            [attr.aria-activedescendant]="marcado() >= 0 ? 'sugerencia-' + marcado() : null"
+            placeholder="Escanee o escriba el código o el nombre (por ejemplo: ce, pin, cable)"
+            [ngModel]="texto()" (ngModelChange)="escribir($event)" (keydown)="teclaLector($event)">
         </div>
         @if (opciones().length) {
-          <ul class="opciones" role="listbox" aria-label="Productos encontrados">
-            @for (p of opciones(); track p.productoId) {
-              <li><button type="button" (click)="agregar(p)">
-                <strong>{{ p.nombre }}</strong><span class="sub">{{ p.codigo }} · {{ p.precio != null ? (p.precio | pesos) : 'sin precio' }} · stock {{ p.stock | numero }} {{ p.unidad }}</span>
-              </button></li>
+          <ul id="sugerencias" class="opciones desplegable" role="listbox" aria-label="Productos que coinciden">
+            @for (p of opciones(); track p.productoId + '-' + p.unidadMedidaId; let i = $index) {
+              <li [id]="'sugerencia-' + i" role="option" [attr.aria-selected]="i === marcado()">
+                <button type="button" [class.marcado]="i === marcado()" (mousedown)="$event.preventDefault()" (click)="agregar(p)">
+                  <strong>{{ p.nombre }}</strong><span class="sub">{{ p.codigo }} · {{ p.precio != null ? (p.precio | pesos) : 'sin precio' }} · stock {{ p.stock | numero }} {{ p.unidad }}</span>
+                </button></li>
             }
           </ul>
+          <p class="sub ayuda-lector">↑ ↓ para moverse, Enter para agregar, Esc para cerrar.</p>
+        } @else if (sinCoincidencias()) {
+          <p class="sub ayuda-lector">No hay productos que coincidan con «{{ sinCoincidencias() }}».</p>
         }
         @if (pedidoConsecutivo()) { <p class="chip azul pedido">Cobrando el pedido {{ pedidoConsecutivo() }}</p> }
 
