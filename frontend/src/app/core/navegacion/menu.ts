@@ -35,6 +35,14 @@ export const ROLES_CATALOGOS = ['ADMIN_COMPRAS', 'COMPRADOR', 'AUDITOR', 'ADMIN_
 export const ROLES_PRECIOS = ['ADMIN_SISTEMA', 'ADMIN_COMPRAS', 'AUDITOR'];
 /** Roles que consultan clientes (mismos que {@code GET /api/clientes}). */
 export const ROLES_CLIENTES = ['CAJERO', 'VENDEDOR', 'SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR'];
+/** Roles que usan el punto de venta: cobra el cajero o el supervisor; el vendedor arma pedidos. */
+export const ROLES_POS = ['CAJERO', 'SUPERVISOR_VENTAS', 'VENDEDOR'];
+/** Roles que abren y cierran su propio turno de caja (mismos que {@code /api/turnos}). */
+export const ROLES_MI_TURNO = ['CAJERO', 'SUPERVISOR_VENTAS'];
+/** Roles que ven el historial de ventas (mismos que {@code GET /api/ventas}, sin el cajero, que busca por consecutivo). */
+export const ROLES_VENTAS = ['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR', 'VENDEDOR'];
+/** Roles que ven los pedidos de venta (mismos que {@code /api/pedidos-venta}). */
+export const ROLES_PEDIDOS_VENTA = ['VENDEDOR', 'CAJERO', 'SUPERVISOR_VENTAS', 'ADMIN_SISTEMA'];
 /** Roles que ven cajas y turnos (mismos que {@code GET /api/turnos}). */
 export const ROLES_CAJA = ['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR'];
 /** Roles que ven el tablero del dueño (mismos que {@code GET /api/reportes/tablero}). */
@@ -76,8 +84,12 @@ export const MENU: SeccionMenu[] = [
   {
     titulo: 'Ventas',
     opciones: [
+      { texto: 'Punto de venta', icono: 'shopping_cart_checkout', ruta: '/app/pos', roles: ROLES_POS, modulo: 'VENTAS' },
+      { texto: 'Mi turno', icono: 'schedule', ruta: '/app/caja/mi-turno', roles: ROLES_MI_TURNO, modulo: 'CAJA' },
+      { texto: 'Pedidos de venta', icono: 'receipt_long', ruta: '/app/pedidos-venta', roles: ROLES_PEDIDOS_VENTA, modulo: 'VENTAS' },
+      { texto: 'Ventas', icono: 'point_of_sale', ruta: '/app/ventas', roles: ROLES_VENTAS, modulo: 'VENTAS' },
       { texto: 'Clientes', icono: 'groups', ruta: '/app/clientes', roles: ROLES_CLIENTES, modulo: 'VENTAS' },
-      { texto: 'Cajas y turnos', icono: 'point_of_sale', ruta: '/app/caja', roles: ROLES_CAJA, modulo: 'CAJA' },
+      { texto: 'Cajas y turnos', icono: 'storefront', ruta: '/app/caja', roles: ROLES_CAJA, modulo: 'CAJA', exacta: true },
     ],
   },
   {

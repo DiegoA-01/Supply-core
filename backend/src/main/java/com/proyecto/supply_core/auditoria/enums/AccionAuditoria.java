@@ -250,5 +250,9 @@ public enum AccionAuditoria {
     /** Se descartó un pedido de venta sin cobrar. */
     PEDIDO_VENTA_DESCARTAR,
     /** El dueño cambió el límite de descuento de un rol. */
-    LIMITE_DESCUENTO_CAMBIAR
+    LIMITE_DESCUENTO_CAMBIAR,
+    /** Se imprimió el tiquete original de una venta (spec 005). */
+    VENTA_IMPRIMIR,
+    /** Se reimprimió el tiquete de una venta: sale con la marca COPIA. */
+    VENTA_REIMPRIMIR
 }

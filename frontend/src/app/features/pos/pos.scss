@@ -1,0 +1,27 @@
+.atajos { gap: 6px; flex-wrap: wrap; align-items: center; }
+.pos-cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+.carrito { display: grid; gap: 10px; }
+.lector { display: flex; align-items: center; gap: 8px; .material-symbols-outlined { color: var(--sc-primario); font-size: 28px; } input { font-size: 18px; padding: 12px; } }
+.opciones { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 260px; overflow: auto;
+  button { width: 100%; text-align: left; border: 1px solid var(--sc-borde); border-radius: 8px; background: #fff; padding: 8px 10px; font: inherit; cursor: pointer; }
+  button:hover, button:focus-visible { border-color: var(--sc-primario); outline: none; } }
+.sub { display: block; font-size: 12px; color: var(--sc-texto-2); font-weight: 400; }
+.sub.ambar { color: #9a5b00; }
+.mini { width: 84px; text-align: right; }
+.corta { width: 100px; }
+tr.alerta td { background: #fff8eb; }
+.pedido { margin: 0; }
+.lateral { display: grid; gap: 12px; position: sticky; top: 12px; }
+.entre { justify-content: space-between; align-items: center; gap: 8px; }
+.totales { display: grid; gap: 12px;
+  dl { margin: 0; display: grid; gap: 6px; } dl > div { display: flex; justify-content: space-between; } dt { color: var(--sc-texto-2); } dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .grande { font-size: 22px; font-weight: 700; border-top: 1px solid var(--sc-borde); padding-top: 8px; dt { color: inherit; } } }
+.ancho { width: 100%; justify-content: center; font-size: 16px; padding: 12px; }
+.cambio { margin: 0; font-weight: 700; color: #1b6e3a; }
+.cambio.grande { font-size: 22px; }
+.velo { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); z-index: 20; }
+.dialogo { position: fixed; z-index: 21; top: 8vh; left: 50%; transform: translateX(-50%); width: min(560px, calc(100vw - 32px));
+  max-height: 84vh; overflow: auto; display: grid; gap: 12px; h2 { margin: 0; } }
+.pago { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; select, input { flex: 1 1 140px; } .corta { flex: 0 0 100px; } }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+@media (max-width: 900px) { .pos-cuerpo { grid-template-columns: 1fr; } .lateral { position: static; } }

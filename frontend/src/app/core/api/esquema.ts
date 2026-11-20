@@ -596,6 +596,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ventas/cotizar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cotizar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/usuarios": {
         parameters: {
             query?: never;
@@ -2508,6 +2524,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["obtener_17"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ventas/{id}/tiquete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["tiquete"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4580,6 +4612,46 @@ export interface components {
             porcentaje?: number;
             activo?: boolean;
         };
+        CotizarRequest: {
+            /** Format: int64 */
+            clienteId?: number;
+            lineas: components["schemas"]["LineaVentaRequest"][];
+            pagos?: components["schemas"]["PagoVentaRequest"][];
+        };
+        CotizacionVenta: {
+            lineas?: components["schemas"]["LineaCotizada"][];
+            subtotal?: number;
+            descuentoTotal?: number;
+            baseGravable?: number;
+            impuestos?: number;
+            total?: number;
+            redondeo?: number;
+            totalAPagar?: number;
+            pagado?: number;
+            cambio?: number;
+            mensajePago?: string;
+            limiteDescuentoPct?: number;
+            requiereAutorizacionDescuento?: boolean;
+            requiereAutorizacionPrecio?: boolean;
+        };
+        LineaCotizada: {
+            /** Format: int64 */
+            productoId?: number;
+            codigo?: string;
+            nombre?: string;
+            /** Format: int64 */
+            unidadMedidaId?: number;
+            unidad?: string;
+            cantidad?: number;
+            precioLista?: number;
+            precioUnitario?: number;
+            descuentoPct?: number;
+            descuentoValor?: number;
+            tarifaImpuestoPct?: number;
+            totalLinea?: number;
+            pasaLimite?: boolean;
+            bajoMinimo?: boolean;
+        };
         UsuarioRequest: {
             nombreCompleto: string;
             /** Format: email */
@@ -5054,8 +5126,8 @@ export interface components {
             /** @enum {string} */
             motivoRechazo?: "DANADO" | "NO_CUMPLE_ESPECIFICACION" | "VENCIDO" | "CANTIDAD_ERRADA" | "OTRO";
             observacionCalidad?: string;
-            motivoPresenteSiRechaza?: boolean;
             rechazoNoSuperaRecibido?: boolean;
+            motivoPresenteSiRechaza?: boolean;
         };
         RegistrarRecepcionRequest: {
             /** Format: int64 */
@@ -5473,8 +5545,8 @@ export interface components {
             /** Format: date */
             vigenteHasta: string;
             precios: components["schemas"]["PrecioRequest"][];
-            productosSinRepetir?: boolean;
             vigenciaEnOrden?: boolean;
+            productosSinRepetir?: boolean;
         };
         PrecioRequest: {
             /** Format: int64 */
@@ -5729,6 +5801,24 @@ export interface components {
             totalAPagar?: number;
             /** Format: date-time */
             confirmadaEn?: string;
+        };
+        ImpuestoTiquete: {
+            tarifaPct?: number;
+            base?: number;
+            impuesto?: number;
+        };
+        TiqueteResponse: {
+            copia?: boolean;
+            /** Format: int32 */
+            impresion?: number;
+            /** Format: date-time */
+            impresoEn?: string;
+            empresa?: string;
+            nit?: string;
+            direccion?: string;
+            sede?: string;
+            venta?: components["schemas"]["VentaResponse"];
+            impuestos?: components["schemas"]["ImpuestoTiquete"][];
         };
         PrecioEnUnidad: {
             /** Format: int64 */
@@ -6509,7 +6599,7 @@ export interface components {
             /** Format: int64 */
             entidadId?: number;
             /** @enum {string} */
-            accion?: "LOGIN" | "LOGOUT" | "REFRESH_REUTILIZADO" | "CUENTA_BLOQUEADA" | "USUARIO_CREAR" | "USUARIO_EDITAR" | "USUARIO_ACTIVAR" | "USUARIO_DESACTIVAR" | "USUARIO_RESTABLECER_PASSWORD" | "PASSWORD_CAMBIAR" | "PROVEEDOR_REGISTRAR" | "PROVEEDOR_HABILITAR" | "PROVEEDOR_RECHAZAR" | "PROVEEDOR_SUSPENDER" | "PROVEEDOR_EDITAR" | "EMPRESA_EDITAR" | "SEDE_CREAR" | "SEDE_EDITAR" | "SEDE_CAMBIAR_ESTADO" | "CENTRO_COSTO_CREAR" | "CENTRO_COSTO_EDITAR" | "CENTRO_COSTO_CAMBIAR_ESTADO" | "DELEGACION_CREAR" | "DELEGACION_REVOCAR" | "SOLICITUD_ESCALAR" | "REORDEN_GENERAR" | "PRODUCTO_CARGA_MASIVA" | "CONTRATO_CREAR" | "CONTRATO_EDITAR" | "CONTRATO_ANULAR" | "ORDEN_EMITIR_DIRECTA" | "PRESUPUESTO_CREAR" | "PRESUPUESTO_EDITAR" | "SOLICITUD_EXCEPCION" | "POLITICA_CREAR" | "POLITICA_EDITAR" | "POLITICA_CAMBIAR_ESTADO" | "CATEGORIA_CREAR" | "CATEGORIA_EDITAR" | "CATEGORIA_CAMBIAR_ESTADO" | "UNIDAD_CREAR" | "UNIDAD_EDITAR" | "UNIDAD_CAMBIAR_ESTADO" | "PRODUCTO_CREAR" | "PRODUCTO_EDITAR" | "PRODUCTO_CAMBIAR_ESTADO" | "BODEGA_CREAR" | "BODEGA_EDITAR" | "BODEGA_CAMBIAR_ESTADO" | "INVENTARIO_AJUSTE" | "DOCUMENTO_SUBIR" | "CONFIG_NOTIFICACION_CAMBIAR" | "SOLICITUD_CREAR" | "SOLICITUD_EDITAR" | "SOLICITUD_ENVIAR" | "SOLICITUD_CANCELAR" | "SOLICITUD_DECIDIR" | "RFQ_CREAR" | "RFQ_EDITAR" | "RFQ_ABRIR" | "RFQ_CERRAR" | "RFQ_CANCELAR" | "DESPACHO_CREAR" | "DESPACHO_EDITAR" | "DESPACHO_CONFIRMAR" | "DESPACHO_ANULAR" | "COTIZACION_GUARDAR" | "COTIZACION_ENVIAR" | "EXTRACCION_CONFIRMAR" | "COTIZACION_DIGITAR" | "PESOS_CAMBIAR" | "ANALISIS_GENERAR" | "ANALISIS_PUBLICAR" | "ADJUDICACION_CREAR" | "ADJUDICACION_DECIDIR" | "ORDEN_EMITIR" | "ORDEN_VERSIONAR" | "ORDEN_CANCELAR" | "ORDEN_PROVEEDOR" | "PAGO_REGISTRAR" | "PAGO_COMPROBANTE" | "PAGO_ANULAR" | "RECEPCION_REGISTRAR" | "RECEPCION_RESOLVER_EXCESO" | "RECEPCION_CERRAR" | "FACTURA_REGISTRAR" | "FACTURA_RECRUZAR" | "FACTURA_APROBAR" | "FACTURA_ANULAR" | "FACTURA_ARCHIVO" | "EXPORTAR_ARCHIVO" | "EXPORTAR_CORREO" | "PASSWORD_RECUPERAR_PEDIR" | "PASSWORD_RECUPERAR_USAR" | "MFA_ACTIVAR" | "MFA_DESACTIVAR" | "MFA_FALLO" | "INFORME_PEDIR" | "INFORME_ENVIAR" | "PEDIDO_INTERNO_CREAR" | "PEDIDO_INTERNO_GESTIONAR" | "PRECIO_CONFIGURAR" | "PRECIO_CAMBIAR" | "CATALOGO_CARGAR" | "CATALOGO_EQUIVALENCIA" | "CLIENTE_CREAR" | "CLIENTE_EDITAR" | "CLIENTE_CUPO_CAMBIAR" | "CAJA_CREAR" | "CAJA_EDITAR" | "CAJA_CONFIGURAR" | "TURNO_ABRIR" | "TURNO_MOVIMIENTO" | "TURNO_CERRAR" | "TURNO_APROBAR" | "AUTORIZACION_OTORGAR" | "AUTORIZACION_FALLO" | "PIN_CAMBIAR" | "VENTA_CONFIRMAR" | "PEDIDO_VENTA_CREAR" | "PEDIDO_VENTA_EDITAR" | "PEDIDO_VENTA_DESCARTAR" | "LIMITE_DESCUENTO_CAMBIAR";
+            accion?: "LOGIN" | "LOGOUT" | "REFRESH_REUTILIZADO" | "CUENTA_BLOQUEADA" | "USUARIO_CREAR" | "USUARIO_EDITAR" | "USUARIO_ACTIVAR" | "USUARIO_DESACTIVAR" | "USUARIO_RESTABLECER_PASSWORD" | "PASSWORD_CAMBIAR" | "PROVEEDOR_REGISTRAR" | "PROVEEDOR_HABILITAR" | "PROVEEDOR_RECHAZAR" | "PROVEEDOR_SUSPENDER" | "PROVEEDOR_EDITAR" | "EMPRESA_EDITAR" | "SEDE_CREAR" | "SEDE_EDITAR" | "SEDE_CAMBIAR_ESTADO" | "CENTRO_COSTO_CREAR" | "CENTRO_COSTO_EDITAR" | "CENTRO_COSTO_CAMBIAR_ESTADO" | "DELEGACION_CREAR" | "DELEGACION_REVOCAR" | "SOLICITUD_ESCALAR" | "REORDEN_GENERAR" | "PRODUCTO_CARGA_MASIVA" | "CONTRATO_CREAR" | "CONTRATO_EDITAR" | "CONTRATO_ANULAR" | "ORDEN_EMITIR_DIRECTA" | "PRESUPUESTO_CREAR" | "PRESUPUESTO_EDITAR" | "SOLICITUD_EXCEPCION" | "POLITICA_CREAR" | "POLITICA_EDITAR" | "POLITICA_CAMBIAR_ESTADO" | "CATEGORIA_CREAR" | "CATEGORIA_EDITAR" | "CATEGORIA_CAMBIAR_ESTADO" | "UNIDAD_CREAR" | "UNIDAD_EDITAR" | "UNIDAD_CAMBIAR_ESTADO" | "PRODUCTO_CREAR" | "PRODUCTO_EDITAR" | "PRODUCTO_CAMBIAR_ESTADO" | "BODEGA_CREAR" | "BODEGA_EDITAR" | "BODEGA_CAMBIAR_ESTADO" | "INVENTARIO_AJUSTE" | "DOCUMENTO_SUBIR" | "CONFIG_NOTIFICACION_CAMBIAR" | "SOLICITUD_CREAR" | "SOLICITUD_EDITAR" | "SOLICITUD_ENVIAR" | "SOLICITUD_CANCELAR" | "SOLICITUD_DECIDIR" | "RFQ_CREAR" | "RFQ_EDITAR" | "RFQ_ABRIR" | "RFQ_CERRAR" | "RFQ_CANCELAR" | "DESPACHO_CREAR" | "DESPACHO_EDITAR" | "DESPACHO_CONFIRMAR" | "DESPACHO_ANULAR" | "COTIZACION_GUARDAR" | "COTIZACION_ENVIAR" | "EXTRACCION_CONFIRMAR" | "COTIZACION_DIGITAR" | "PESOS_CAMBIAR" | "ANALISIS_GENERAR" | "ANALISIS_PUBLICAR" | "ADJUDICACION_CREAR" | "ADJUDICACION_DECIDIR" | "ORDEN_EMITIR" | "ORDEN_VERSIONAR" | "ORDEN_CANCELAR" | "ORDEN_PROVEEDOR" | "PAGO_REGISTRAR" | "PAGO_COMPROBANTE" | "PAGO_ANULAR" | "RECEPCION_REGISTRAR" | "RECEPCION_RESOLVER_EXCESO" | "RECEPCION_CERRAR" | "FACTURA_REGISTRAR" | "FACTURA_RECRUZAR" | "FACTURA_APROBAR" | "FACTURA_ANULAR" | "FACTURA_ARCHIVO" | "EXPORTAR_ARCHIVO" | "EXPORTAR_CORREO" | "PASSWORD_RECUPERAR_PEDIR" | "PASSWORD_RECUPERAR_USAR" | "MFA_ACTIVAR" | "MFA_DESACTIVAR" | "MFA_FALLO" | "INFORME_PEDIR" | "INFORME_ENVIAR" | "PEDIDO_INTERNO_CREAR" | "PEDIDO_INTERNO_GESTIONAR" | "PRECIO_CONFIGURAR" | "PRECIO_CAMBIAR" | "CATALOGO_CARGAR" | "CATALOGO_EQUIVALENCIA" | "CLIENTE_CREAR" | "CLIENTE_EDITAR" | "CLIENTE_CUPO_CAMBIAR" | "CAJA_CREAR" | "CAJA_EDITAR" | "CAJA_CONFIGURAR" | "TURNO_ABRIR" | "TURNO_MOVIMIENTO" | "TURNO_CERRAR" | "TURNO_APROBAR" | "AUTORIZACION_OTORGAR" | "AUTORIZACION_FALLO" | "PIN_CAMBIAR" | "VENTA_CONFIRMAR" | "PEDIDO_VENTA_CREAR" | "PEDIDO_VENTA_EDITAR" | "PEDIDO_VENTA_DESCARTAR" | "LIMITE_DESCUENTO_CAMBIAR" | "VENTA_IMPRIMIR" | "VENTA_REIMPRIMIR";
             /** @enum {string} */
             resultado?: "EXITO" | "FALLO";
             /** Format: date-time */
@@ -8069,6 +8159,30 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["TarifaImpuestoResponse"];
+                };
+            };
+        };
+    };
+    cotizar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CotizarRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CotizacionVenta"];
                 };
             };
         };
@@ -11655,6 +11769,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["VentaResponse"];
+                };
+            };
+        };
+    };
+    tiquete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TiqueteResponse"];
                 };
             };
         };

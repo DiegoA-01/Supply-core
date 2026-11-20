@@ -49,7 +49,14 @@ import com.proyecto.supply_core.security.context.Roles;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.usuario.entity.Usuario;
 import com.proyecto.supply_core.usuario.repository.UsuarioRepository;
+import com.proyecto.supply_core.empresa.entity.Empresa;
+import com.proyecto.supply_core.empresa.repository.EmpresaRepository;
+import com.proyecto.supply_core.venta.dto.LineaCotizada;
+import com.proyecto.supply_core.venta.dto.CotizacionVenta;
+import com.proyecto.supply_core.venta.dto.CotizarRequest;
+import com.proyecto.supply_core.venta.dto.ImpuestoTiquete;
 import com.proyecto.supply_core.venta.dto.LineaVentaRequest;
+import com.proyecto.supply_core.venta.dto.TiqueteResponse;
 import com.proyecto.supply_core.venta.dto.PagoVentaRequest;
 import com.proyecto.supply_core.venta.dto.VentaLineaResponse;
 import com.proyecto.supply_core.venta.dto.VentaPagoResponse;
@@ -112,6 +119,7 @@ public class VentaService {
     private final UsuarioRepository usuarioRepository;
     private final AuditoriaService auditoriaService;
     private final JdbcTemplate jdbc;
+    private final EmpresaRepository empresaRepository;
 
     /**
      * Línea lista para cobrar: el producto, su precio del día y el resultado del cálculo.
@@ -160,6 +168,7 @@ public class VentaService {
      * @param usuarioRepository           nombres de cajeros, vendedores y supervisores
      * @param auditoriaService            registro de la venta
      * @param jdbc                        consecutivo por caja (misma transacción)
+     * @param empresaRepository           datos de la empresa para el tiquete
      */
     public VentaService(VentaRepository ventaRepository, PedidoVentaRepository pedidoRepository,
             TurnoCajaRepository turnoRepository, CajaRepository cajaRepository,
@@ -169,7 +178,8 @@ public class VentaService {
             UnidadMedidaRepository unidadRepository, UnidadMedidaService unidadMedidaService,
             PreciosService preciosService, MovimientoInventarioService movimientoInventarioService,
             AutorizacionService autorizacionService, LimiteDescuentoService limiteService,
-            UsuarioRepository usuarioRepository, AuditoriaService auditoriaService, JdbcTemplate jdbc) {
+            UsuarioRepository usuarioRepository, AuditoriaService auditoriaService, JdbcTemplate jdbc,
+            EmpresaRepository empresaRepository) {
         this.ventaRepository = ventaRepository;
         this.pedidoRepository = pedidoRepository;
         this.turnoRepository = turnoRepository;
@@ -189,6 +199,7 @@ public class VentaService {
         this.usuarioRepository = usuarioRepository;
         this.auditoriaService = auditoriaService;
         this.jdbc = jdbc;
+        this.empresaRepository = empresaRepository;
     }
 
     /**
@@ -392,6 +403,82 @@ public class VentaService {
         Venta v = ventaRepository.findById(id).orElseThrow(() -> new NoEncontradoException("Venta no encontrada"));
         verificarAcceso(v);
         return respuesta(v);
+    }
+
+    /**
+     * Totales del carrito sin guardar nada (spec 005): el mismo cálculo que la venta, así lo que ve el cajero es lo
+     * que se cobra. No consume autorizaciones ni toca stock o caja.
+     *
+     * @param req cliente, líneas y pagos escritos
+     * @return líneas con su precio, totales, redondeo, cambio y qué autorizaciones hacen falta
+     */
+    @Transactional
+    public CotizacionVenta cotizar(CotizarRequest req) {
+        Cliente cliente = cliente(req.clienteId());
+        BigDecimal limite = limiteService.limiteDe(SesionActual.usuario().roles());
+        List<LineaPreparada> lineas = preparar(req.lineas(), listaDe(cliente), limite);
+        CalculoVenta.Totales t = CalculoVenta.totales(lineas.stream().map(LineaPreparada::resultado).toList());
+        List<PagoVentaRequest> escritos = req.pagos() == null ? List.of() : req.pagos();
+        boolean soloEfectivo = escritos.stream().allMatch(p -> p.medio() == MedioPagoVenta.EFECTIVO);
+        BigDecimal redondeo = CalculoVenta.redondeo(t.total(), soloEfectivo);
+        BigDecimal aPagar = t.total().add(redondeo);
+        BigDecimal pagado = escritos.stream().map(p -> CalculoVenta.dinero(p.monto())).reduce(BigDecimal.ZERO.setScale(2),
+                BigDecimal::add);
+        BigDecimal cambio = null;
+        String mensaje = null;
+        if (!escritos.isEmpty()) {
+            try {
+                validarTarjetas(escritos);
+                cambio = CalculoVenta.pagos(aPagar, escritos.stream()
+                        .map(p -> new CalculoVenta.Pago(p.medio(), p.monto())).toList()).cambio();
+            } catch (NegocioException e) {
+                mensaje = e.getMessage();
+            }
+        }
+        List<LineaCotizada> salida = lineas.stream().map(l -> new LineaCotizada(l.producto().getId(),
+                l.producto().getCodigo(), l.producto().getNombre(), l.unidad().getId(), l.unidad().getCodigo(), l.cantidad(),
+                l.precio().getPrecio(), l.resultado().precioUnitario(), l.descuentoPct(), l.resultado().descuento(),
+                l.producto().getTarifaImpuesto() == null ? BigDecimal.ZERO : l.producto().getTarifaImpuesto().getPorcentaje(),
+                l.resultado().total(), l.pasaLimite(), l.bajoMinimo())).toList();
+        return new CotizacionVenta(salida, t.subtotal(), t.descuento(), t.base(), t.impuestos(), t.total(), redondeo, aPagar,
+                pagado, cambio, mensaje, limite, lineas.stream().anyMatch(LineaPreparada::pasaLimite),
+                lineas.stream().anyMatch(LineaPreparada::bajoMinimo));
+    }
+
+    /**
+     * Datos del tiquete. La primera impresión es el original; las siguientes dicen COPIA. Cada impresión queda en la
+     * auditoría ({@code VENTA_IMPRIMIR} o {@code VENTA_REIMPRIMIR}).
+     *
+     * @param id venta
+     * @return tiquete
+     * @throws NoEncontradoException si no es de la empresa o la sesión no puede verla
+     */
+    @Transactional
+    public TiqueteResponse tiquete(Long id) {
+        Venta v = ventaRepository.findById(id).orElseThrow(() -> new NoEncontradoException("Venta no encontrada"));
+        verificarAcceso(v);
+        Long empresaId = EmpresaContexto.requerida();
+        Integer previas = jdbc.queryForObject("SELECT COUNT(*) FROM auditoria WHERE empresa_id = ? AND entidad = ? "
+                + "AND entidad_id = ? AND accion IN (?, ?)", Integer.class, empresaId, EntidadAuditada.VENTA.name(), v.getId(),
+                AccionAuditoria.VENTA_IMPRIMIR.name(), AccionAuditoria.VENTA_REIMPRIMIR.name());
+        int impresion = (previas == null ? 0 : previas) + 1;
+        boolean copia = impresion > 1;
+        auditoriaService.exito(copia ? AccionAuditoria.VENTA_REIMPRIMIR : AccionAuditoria.VENTA_IMPRIMIR,
+                EntidadAuditada.VENTA, v.getId(), v.getConsecutivo() + (copia ? "; copia " + (impresion - 1) : "; original"));
+        Empresa empresa = empresaRepository.findById(empresaId).orElse(null);
+        String sede = cajaRepository.conDetalle(v.getCajaId()).map(c -> c.getSede().getNombre()).orElse(null);
+        Map<BigDecimal, BigDecimal[]> porTarifa = new TreeMap<>();
+        v.getLineas().forEach(l -> {
+            BigDecimal[] suma = porTarifa.computeIfAbsent(l.getTarifaImpuestoPct().stripTrailingZeros(),
+                    k -> new BigDecimal[] { BigDecimal.ZERO.setScale(2), BigDecimal.ZERO.setScale(2) });
+            suma[0] = suma[0].add(l.getBaseGravable());
+            suma[1] = suma[1].add(l.getImpuesto());
+        });
+        List<ImpuestoTiquete> impuestos = porTarifa.entrySet().stream()
+                .map(e -> new ImpuestoTiquete(e.getKey(), e.getValue()[0], e.getValue()[1])).toList();
+        return new TiqueteResponse(copia, impresion, LocalDateTime.now(), empresa == null ? null : empresa.getRazonSocial(),
+                empresa == null ? null : empresa.getNit(), empresa == null ? null : empresa.getDireccionPrincipal(), sede,
+                respuesta(v), impuestos);
     }
 
     // ------------------------------------------------------------------ cálculo

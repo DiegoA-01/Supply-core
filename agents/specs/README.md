@@ -16,7 +16,7 @@ Estados de una spec: **Propuesta** (en revisión) → **Aprobada** (se puede pla
 | [002-ventas-clientes](002-ventas-clientes/spec.md) | F2 | Clientes, consumidor final, autorización de datos | `feature/ventas-clientes` | 001 | Hecha (V32, PR #29) |
 | [003-caja-turnos](003-caja-turnos/spec.md) | F3 | Cajas, turnos, libro de caja, PIN de supervisor, cierre ciego | `feature/caja-turnos` | 001 | Hecha (V33, PR #30) |
 | [004-venta-backend](004-venta-backend/spec.md) | F4 | La venta en una sola transacción: precios, descuentos, impuestos, pagos, stock, caja, idempotencia | `feature/ventas-pos-backend` | 002, 003 | Hecha (V34, falta PR) |
-| [005-pos-frontend](005-pos-frontend/spec.md) | F5 | POS con lector y atajos, cobro, tiquete de 80 mm, mi turno | `feature/ventas-pos-frontend` | 004 | Propuesta |
+| [005-pos-frontend](005-pos-frontend/spec.md) | F5 | POS con lector y atajos, cobro, tiquete de 80 mm, mi turno | `feature/ventas-pos-frontend` | 004 | Hecha (falta PR y prueba en Docker) |
 | [006-anulacion-devolucion](006-anulacion-devolucion/spec.md) | F6 | Anulación en el turno y devolución de cliente | `feature/ventas-anulacion-devolucion` | 004 | Propuesta |
 | [007-cartera](007-cartera/spec.md) | F7 | Crédito, cupos, abonos y edades | `feature/ventas-cartera` | 004 | Propuesta |
 | [008-costo-promedio-margen](008-costo-promedio-margen/spec.md) | F8 | Costo promedio ponderado y margen real | `feature/inventario-costo-promedio` | 004 | Propuesta |

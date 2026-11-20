@@ -2477,6 +2477,41 @@ class AislamientoEmpresasTest {
             assertEquals(0, new java.math.BigDecimal("9").compareTo(jdbc.queryForObject("SELECT cantidad FROM "
                     + "stock_producto_bodega WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, productoA, bodegaA)));
 
+            // cotizar (spec 005): mismo cálculo que la venta, sin guardar nada ni gastar permisos
+            String carrito = "{\"lineas\":[" + linea.formatted(1, 0) + "],\"pagos\":[%s]}";
+            mvc.perform(post("/api/ventas/cotizar").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(carrito.formatted("{\"medio\":\"EFECTIVO\",\"monto\":20000}")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.total").value(11930.0))
+                    .andExpect(jsonPath("$.totalAPagar").value(11950.0))
+                    .andExpect(jsonPath("$.cambio").value(8050.0))
+                    .andExpect(jsonPath("$.lineas[0].nombre").exists());
+            mvc.perform(post("/api/ventas/cotizar").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(carrito.formatted("{\"medio\":\"TRANSFERENCIA\",\"monto\":20000}")))
+                    .andExpect(jsonPath("$.cambio").doesNotExist())
+                    .andExpect(jsonPath("$.mensajePago").exists());
+            mvc.perform(post("/api/ventas/cotizar").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"lineas\":[" + linea.formatted(1, 10) + "]}"))
+                    .andExpect(jsonPath("$.requiereAutorizacionDescuento").value(true))
+                    .andExpect(jsonPath("$.limiteDescuentoPct").value(5.0));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM venta WHERE empresa_id = ?", Integer.class, empresaA));
+
+            // tiquete: el original y luego COPIA, cada impresión auditada; otra empresa no lo ve
+            mvc.perform(get("/api/ventas/" + venta1 + "/tiquete").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.copia").value(false))
+                    .andExpect(jsonPath("$.nit").exists())
+                    .andExpect(jsonPath("$.venta.consecutivo").value("V1-000001"))
+                    .andExpect(jsonPath("$.impuestos.length()").value(1));
+            mvc.perform(get("/api/ventas/" + venta1 + "/tiquete").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(jsonPath("$.copia").value(true))
+                    .andExpect(jsonPath("$.impresion").value(2));
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM auditoria WHERE empresa_id = ? AND accion = 'VENTA_REIMPRIMIR' "
+                    + "AND entidad_id = ?", Integer.class, empresaA, venta1));
+            mvc.perform(get("/api/ventas/" + venta1 + "/tiquete").header(HttpHeaders.AUTHORIZATION,
+                            token(empresaB, usuarioB, "ADMIN_SISTEMA")))
+                    .andExpect(status().isNotFound());
+
             // no alcanza el stock (D1): se rechaza toda la venta, nada queda a medias y el consecutivo no deja hueco
             mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", "k-2")
                             .contentType(json).content(venta.formatted(50, 0, "{\"medio\":\"EFECTIVO\",\"monto\":1000000}", "")))

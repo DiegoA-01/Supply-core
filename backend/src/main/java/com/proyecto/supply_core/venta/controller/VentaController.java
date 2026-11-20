@@ -29,7 +29,10 @@ import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.security.context.Roles;
 import com.proyecto.supply_core.security.context.SesionActual;
+import com.proyecto.supply_core.venta.dto.CotizacionVenta;
+import com.proyecto.supply_core.venta.dto.CotizarRequest;
 import com.proyecto.supply_core.venta.dto.LimiteDescuento;
+import com.proyecto.supply_core.venta.dto.TiqueteResponse;
 import com.proyecto.supply_core.venta.dto.VentaRequest;
 import com.proyecto.supply_core.venta.dto.VentaResponse;
 import com.proyecto.supply_core.venta.dto.VentaResumen;
@@ -122,6 +125,28 @@ public class VentaController {
     @RequiereRol({ Roles.CAJERO, Roles.VENDEDOR, Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR })
     public VentaResponse obtener(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return ventaService.obtener(id);
+    }
+
+    /**
+     * Totales del carrito sin guardar nada (spec 005).
+     *
+     * @param request cliente, líneas y pagos escritos
+     * @return totales, redondeo, cambio y autorizaciones que hacen falta
+     */
+    @PostMapping("/cotizar")
+    @RequiereRol({ Roles.CAJERO, Roles.VENDEDOR, Roles.SUPERVISOR_VENTAS })
+    public CotizacionVenta cotizar(@Valid @RequestBody CotizarRequest request) {
+        return ventaService.cotizar(request);
+    }
+
+    /**
+     * @param id venta
+     * @return datos del tiquete (desde la segunda vez, COPIA)
+     */
+    @GetMapping("/{id:\\d+}/tiquete")
+    @RequiereRol({ Roles.CAJERO, Roles.VENDEDOR, Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    public TiqueteResponse tiquete(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
+        return ventaService.tiquete(id);
     }
 
     /**

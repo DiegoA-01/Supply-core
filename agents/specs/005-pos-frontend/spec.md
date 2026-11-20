@@ -1,6 +1,6 @@
 # 005 - Punto de venta, tiquete y mi turno
 
-**Estado:** Propuesta · **Rama:** `feature/ventas-pos-frontend` · **Depende de:** 004
+**Estado:** Hecha (falta probar en Docker) · **Rama:** `feature/ventas-pos-frontend` · **Depende de:** 004
 
 ## Objetivo
 Que el cajero venda rápido con el lector y el teclado, cobre con pagos mixtos, imprima el tiquete y maneje su turno
@@ -20,16 +20,16 @@ desde una sola pantalla.
 - Como supervisor o dueño, quiero ver el historial de ventas con filtros y su detalle.
 
 ## Criterios de aceptación
-- [ ] El campo del lector tiene el foco siempre; Enter agrega el producto.
-- [ ] Los atajos F2, F4, F9 y Esc funcionan.
-- [ ] La pantalla nunca calcula dinero: totales y cambio vienen del servidor.
-- [ ] Se puede cobrar con pagos mixtos y el cambio aparece antes de confirmar.
-- [ ] Aparece el aviso cuando la caja pasa su tope de efectivo.
-- [ ] El tiquete sale en 80 mm con consecutivo, NIT, impuestos discriminados y "COPIA" en las reimpresiones.
-- [ ] La reimpresión queda en la auditoría.
-- [ ] "Mi turno" permite abrir, retirar, registrar gastos y cerrar a ciegas; no muestra el esperado antes de guardar.
-- [ ] Una venta completa se puede hacer desde la pantalla en el stack de Docker.
-- [ ] Hay pruebas de cada pantalla y pasan.
+- [x] El campo del lector tiene el foco siempre; Enter agrega el producto.
+- [x] Los atajos F2, F4, F9 y Esc funcionan.
+- [x] La pantalla nunca calcula dinero: totales y cambio vienen del servidor.
+- [x] Se puede cobrar con pagos mixtos y el cambio aparece antes de confirmar.
+- [x] Aparece el aviso cuando la caja pasa su tope de efectivo.
+- [x] El tiquete sale en 80 mm con consecutivo, NIT, impuestos discriminados y "COPIA" en las reimpresiones.
+- [x] La reimpresión queda en la auditoría.
+- [x] "Mi turno" permite abrir, retirar, registrar gastos y cerrar a ciegas; no muestra el esperado antes de guardar.
+- [~] Una venta completa se puede hacer desde la pantalla en el stack de Docker (probada en la demo local; falta Docker).
+- [x] Hay pruebas de cada pantalla y pasan.
 
 ## Fuera de alcance
 - Vender sin internet.
