@@ -24,7 +24,11 @@ public enum TipoMovimiento {
     /** Salida por despacho (venta o entrega) confirmado (solo desde {@code DespachoService}). */
     SALIDA_VENTA,
     /** Entrada que devuelve al stock lo de un despacho anulado (solo desde {@code DespachoService}). Exige motivo. */
-    ANULACION_DESPACHO;
+    ANULACION_DESPACHO,
+    /** Entrada que devuelve al stock lo de una venta anulada en su turno (spec 006). */
+    ANULACION_VENTA,
+    /** Entrada por la mercancía que devuelve un cliente (spec 006). */
+    DEVOLUCION_CLIENTE;
 
     /**
      * Indica si el almacenista lo puede registrar directamente (UC-03).
@@ -51,7 +55,8 @@ public enum TipoMovimiento {
      * @return {@code true} para entrada de compra, ajuste positivo, traslado y anulación de despacho
      */
     public boolean usaDestino() {
-        return this == ENTRADA_COMPRA || this == AJUSTE_POSITIVO || this == TRASLADO || this == ANULACION_DESPACHO;
+        return this == ENTRADA_COMPRA || this == AJUSTE_POSITIVO || this == TRASLADO || this == ANULACION_DESPACHO
+                || this == ANULACION_VENTA || this == DEVOLUCION_CLIENTE;
     }
 
     /**
@@ -61,6 +66,6 @@ public enum TipoMovimiento {
      */
     public boolean exigeMotivo() {
         return this == AJUSTE_POSITIVO || this == AJUSTE_NEGATIVO || this == DEVOLUCION_PROVEEDOR
-                || this == ANULACION_DESPACHO;
+                || this == ANULACION_DESPACHO || this == ANULACION_VENTA || this == DEVOLUCION_CLIENTE;
     }
 }

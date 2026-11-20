@@ -52,6 +52,8 @@ export class CajasTurnos implements OnInit {
   protected readonly bodegas = signal<Bodega[]>([]);
   protected readonly edicion = signal<EdicionCaja | null>(null);
   protected readonly tolerancia = signal<number | null>(null);
+  /** Bodega para lo devuelto en mal estado (spec 006); null = no reingresa. */
+  protected readonly averias = signal<number | null>(null);
   protected readonly tienePin = signal<boolean | null>(null);
   protected readonly passwordActual = signal('');
   protected readonly pinNuevo = signal('');
@@ -68,7 +70,13 @@ export class CajasTurnos implements OnInit {
   ngOnInit(): void {
     this.cargarTurnos();
     this.servicio.cajas().subscribe({ next: l => this.cajas.set(l), error: e => this.avisos.error(e) });
-    this.servicio.configuracion().subscribe({ next: c => this.tolerancia.set(c.toleranciaDiferencia), error: () => undefined });
+    this.servicio.configuracion().subscribe({
+      next: c => {
+        this.tolerancia.set(c.toleranciaDiferencia);
+        this.averias.set(c.bodegaAveriasId ?? null);
+      },
+      error: () => undefined,
+    });
     if (this.puedeAprobar()) {
       this.servicio.tienePin().subscribe({ next: r => this.tienePin.set(r.tienePin), error: () => undefined });
     }
@@ -148,13 +156,21 @@ export class CajasTurnos implements OnInit {
     if (t === null || t < 0) {
       return;
     }
-    this.servicio.configurar(t).subscribe({
+    this.servicio.configurar(t, this.averias()).subscribe({
       next: c => {
         this.tolerancia.set(c.toleranciaDiferencia);
-        this.avisos.ok('Tolerancia guardada.');
+        this.averias.set(c.bodegaAveriasId ?? null);
+        this.avisos.ok('Configuración guardada.');
       },
       error: e => this.avisos.error(e),
     });
+  }
+
+  /** Trae las bodegas la primera vez que se abre la lista de bodegas de averías. */
+  protected cargarBodegas(): void {
+    if (this.bodegas().length === 0) {
+      this.inventario.bodegas().subscribe({ next: l => this.bodegas.set(l), error: () => undefined });
+    }
   }
 
   protected guardarPin(): void {

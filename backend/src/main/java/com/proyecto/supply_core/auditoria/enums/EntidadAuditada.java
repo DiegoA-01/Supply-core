@@ -86,5 +86,7 @@ public enum EntidadAuditada {
     /** Tabla {@code pedido_venta}. */
     PEDIDO_VENTA,
     /** Tabla {@code limite_descuento_rol}. */
-    LIMITE_DESCUENTO
+    LIMITE_DESCUENTO,
+    /** Tabla {@code devolucion_venta}. */
+    DEVOLUCION_VENTA
 }

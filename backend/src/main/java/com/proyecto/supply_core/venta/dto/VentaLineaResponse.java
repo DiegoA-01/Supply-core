@@ -19,9 +19,11 @@ import java.math.BigDecimal;
  * @param impuesto          impuesto
  * @param totalLinea        total de la línea
  * @param autorizadoPor     supervisor que autorizó el descuento o el precio ({@code null} si no hizo falta)
+ * @param id                id de la línea (para devolverla)
+ * @param cantidadDevuelta  cantidad ya devuelta por el cliente
  */
 public record VentaLineaResponse(Long productoId, String codigo, String nombre, String unidad, BigDecimal cantidad,
         BigDecimal precioLista, BigDecimal precioUnitario, BigDecimal descuentoPct, BigDecimal descuentoValor,
         BigDecimal tarifaImpuestoPct, BigDecimal baseGravable, BigDecimal impuesto, BigDecimal totalLinea,
-        String autorizadoPor) {
+        String autorizadoPor, Long id, BigDecimal cantidadDevuelta) {
 }

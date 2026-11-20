@@ -2695,6 +2695,221 @@ class AislamientoEmpresasTest {
     }
 
     @Test
+    void anularYDevolverDejanStockYCajaExactosSinPasarLoVendidoNiCruzarEmpresas() throws Exception {
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        com.fasterxml.jackson.databind.ObjectMapper lector = new com.fasterxml.jackson.databind.ObjectMapper();
+        String duenoA = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+        String cajeroA = token(empresaA, usuarioA2, "CAJERO");
+        Long sedeA = jdbc.queryForObject("SELECT sede_id FROM bodega WHERE id = ?", Long.class, bodegaA);
+        java.math.BigDecimal stockAntes = jdbc.queryForObject("SELECT COALESCE(SUM(cantidad), 0) FROM stock_producto_bodega "
+                + "WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, productoA, bodegaA);
+        java.util.function.Supplier<java.math.BigDecimal> stock = () -> jdbc.queryForObject("SELECT cantidad FROM "
+                + "stock_producto_bodega WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, productoA, bodegaA);
+        try {
+            long generalA = lector.readTree(mvc.perform(get("/api/ventas/listas").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andReturn().getResponse().getContentAsString()).get(0).get("id").asLong();
+            jdbc.update("UPDATE producto SET costo_referencia = 6000, vendible = 1 WHERE id = ?", productoA);
+            mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                    .content("{\"listaId\":" + generalA + ",\"productoId\":" + productoA + ",\"precio\":10000}"))
+                    .andExpect(status().isOk());
+            jdbc.update("INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad) VALUES (?, ?, ?, 10) "
+                    + "ON DUPLICATE KEY UPDATE cantidad = 10", empresaA, productoA, bodegaA);
+            long caja = lector.readTree(mvc.perform(post("/api/cajas").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"nombre\":\"Caja dev\",\"sedeId\":" + sedeA + ",\"bodegaId\":" + bodegaA
+                                    + ",\"prefijoConsecutivo\":\"D1\",\"topeEfectivo\":0}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            long turno = lector.readTree(mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content("{\"cajaId\":" + caja + ",\"baseApertura\":50000}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            mvc.perform(put("/api/autorizaciones/mi-pin").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                    .content("{\"passwordActual\":\"" + CLAVE + "\",\"pin\":\"123456\"}")).andExpect(status().isNoContent());
+            // permiso de un solo uso del dueño para una acción sobre una venta
+            java.util.function.BiFunction<String, Long, String> permiso = (accion, ventaId) -> {
+                try {
+                    return lector.readTree(mvc.perform(post("/api/autorizaciones").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                                    .contentType(json).content("{\"correo\":\"admin@mismo.com\",\"pin\":\"123456\",\"accion\":\""
+                                            + accion + "\",\"turnoId\":" + turno + ",\"referenciaId\":" + ventaId + "}"))
+                            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("token").asText();
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+            };
+            // vende y devuelve la respuesta de la venta
+            java.util.function.BiFunction<String, String, com.fasterxml.jackson.databind.JsonNode> vender = (clave, cuerpo) -> {
+                try {
+                    return lector.readTree(mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                                    .header("Idempotency-Key", clave).contentType(json).content(cuerpo))
+                            .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString());
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+            };
+            String linea = "{\"productoId\":" + productoA + ",\"cantidad\":%s}";
+
+            // 1) anular en el turno: exige permiso de otra persona; devuelve stock y efectivo; no se anula dos veces
+            com.fasterxml.jackson.databind.JsonNode v1 = vender.apply("dv-1", "{\"lineas\":[" + linea.formatted(2)
+                    + "],\"pagos\":[{\"medio\":\"EFECTIVO\",\"monto\":20000}]}");
+            long venta1 = v1.get("id").asLong();
+            assertEquals(0, new java.math.BigDecimal("8").compareTo(stock.get()));
+            String anular = "{\"motivo\":\"El cliente desistió\",\"autorizacion\":\"%s\"}";
+            mvc.perform(post("/api/ventas/" + venta1 + "/anular").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(anular.formatted("no-sirve")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("AUTORIZACION_INVALIDA"));
+            mvc.perform(post("/api/ventas/" + venta1 + "/anular").header(HttpHeaders.AUTHORIZATION, token(empresaA, usuarioA, "CAJERO"))
+                            .contentType(json).content(anular.formatted("x")))
+                    .andExpect(status().isForbidden());
+            mvc.perform(post("/api/ventas/" + venta1 + "/anular").header(HttpHeaders.AUTHORIZATION, token(empresaB, usuarioB, "CAJERO"))
+                            .contentType(json).content(anular.formatted("x")))
+                    .andExpect(status().isNotFound());
+            mvc.perform(post("/api/ventas/" + venta1 + "/anular").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(anular.formatted(permiso.apply("ANULAR_VENTA", venta1))))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.estado").value("ANULADA"))
+                    .andExpect(jsonPath("$.motivoAnulacion").value("El cliente desistió"));
+            assertEquals(0, new java.math.BigDecimal("10").compareTo(stock.get()), "la anulación devuelve el stock");
+            assertEquals(0, new java.math.BigDecimal("50000").compareTo(jdbc.queryForObject("SELECT SUM(monto) FROM movimiento_caja "
+                    + "WHERE turno_id = ? AND medio_pago = 'EFECTIVO'", java.math.BigDecimal.class, turno)), "la caja vuelve a la base");
+            mvc.perform(post("/api/ventas/" + venta1 + "/anular").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(anular.formatted("x")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("VENTA_ANULADA"));
+
+            // 2) devolución parcial por el mismo medio (tarjeta); nunca más de lo vendido menos lo devuelto
+            com.fasterxml.jackson.databind.JsonNode v2 = vender.apply("dv-2", "{\"lineas\":[" + linea.formatted(3)
+                    + "],\"pagos\":[{\"medio\":\"TARJETA_CREDITO\",\"monto\":30000,\"ultimos4\":\"1111\",\"referencia\":\"Z9\"}]}");
+            assertEquals("D1-000002", v2.get("consecutivo").asText(), "el consecutivo de la anulada no se reutiliza");
+            long venta2 = v2.get("id").asLong();
+            long linea2 = v2.get("lineas").get(0).get("id").asLong();
+            String devolver = "{\"ventaId\":" + venta2 + ",\"motivo\":\"No le sirvió\",\"formaReembolso\":\"%s\",\"lineas\":[{"
+                    + "\"ventaLineaId\":" + linea2 + ",\"cantidad\":%s,\"estadoProducto\":\"%s\"}],\"autorizacion\":\"%s\"}";
+            mvc.perform(post("/api/devoluciones").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(devolver.formatted("MISMO_MEDIO", 1, "BUENO", permiso.apply("DEVOLUCION", venta2))))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.consecutivo").value(org.hamcrest.Matchers.startsWith("DV-")))
+                    .andExpect(jsonPath("$.medioReembolso").value("TARJETA_CREDITO"))
+                    .andExpect(jsonPath("$.totalReembolso").value(10000.0));
+            assertEquals(0, new java.math.BigDecimal("8").compareTo(stock.get()), "lo bueno vuelve a la bodega");
+            assertEquals(0, new java.math.BigDecimal("-10000").compareTo(jdbc.queryForObject("SELECT SUM(monto) FROM movimiento_caja "
+                    + "WHERE turno_id = ? AND tipo = 'DEVOLUCION' AND medio_pago = 'TARJETA_CREDITO'", java.math.BigDecimal.class, turno)));
+            mvc.perform(post("/api/devoluciones").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(devolver.formatted("EFECTIVO", 3, "BUENO", permiso.apply("DEVOLUCION", venta2))))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CANTIDAD_DEVOLUCION"));
+            // el consumidor final no puede quedar con saldo a favor
+            mvc.perform(post("/api/devoluciones").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(devolver.formatted("SALDO_A_FAVOR", 1, "BUENO", permiso.apply("DEVOLUCION", venta2))))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("SALDO_CONSUMIDOR_FINAL"));
+            // lo dañado sin bodega de averías no reingresa; la última devolución toma exactamente lo que faltaba
+            mvc.perform(post("/api/devoluciones").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(devolver.formatted("EFECTIVO", 2, "DANADO", permiso.apply("DEVOLUCION", venta2))))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.lineas[0].bodega").doesNotExist())
+                    .andExpect(jsonPath("$.totalReembolso").value(20000.0));
+            assertEquals(0, new java.math.BigDecimal("8").compareTo(stock.get()), "lo dañado no vuelve al stock de venta");
+            assertEquals(0, new java.math.BigDecimal("30000").compareTo(jdbc.queryForObject("SELECT SUM(l.valor) FROM "
+                    + "devolucion_venta_linea l JOIN devolucion_venta d ON d.id = l.devolucion_id WHERE d.venta_id = ?",
+                    java.math.BigDecimal.class, venta2)), "lo devuelto suma exactamente lo vendido");
+            mvc.perform(get("/api/ventas/" + venta2).header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$.lineas[0].cantidadDevuelta").value(3.0))
+                    .andExpect(jsonPath("$.totalDevuelto").value(30000.0));
+            mvc.perform(post("/api/ventas/" + venta2 + "/anular").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(anular.formatted("x")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("TIENE_DEVOLUCIONES"));
+
+            // 3) saldo a favor para un cliente registrado
+            long cliente = lector.readTree(mvc.perform(post("/api/clientes").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"tipoDocumento\":\"CC\",\"numeroDocumento\":\"10203040\",\"nombre\":\"Cliente devolución\","
+                                    + "\"aceptaDatos\":true}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            com.fasterxml.jackson.databind.JsonNode v3 = vender.apply("dv-3", "{\"clienteId\":" + cliente + ",\"lineas\":["
+                    + linea.formatted(1) + "],\"pagos\":[{\"medio\":\"EFECTIVO\",\"monto\":10000}]}");
+            long venta3 = v3.get("id").asLong();
+            String devolver3 = "{\"ventaId\":" + venta3 + ",\"motivo\":\"Cambio de opinión\",\"formaReembolso\":\"SALDO_A_FAVOR\","
+                    + "\"lineas\":[{\"ventaLineaId\":" + v3.get("lineas").get(0).get("id").asLong()
+                    + ",\"cantidad\":1,\"estadoProducto\":\"BUENO\"}],\"autorizacion\":\"%s\"}";
+            long devolucion3 = lector.readTree(mvc.perform(post("/api/devoluciones").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                            .contentType(json).content(devolver3.formatted(permiso.apply("DEVOLUCION", venta3))))
+                    .andExpect(status().isCreated()).andExpect(jsonPath("$.medioReembolso").doesNotExist())
+                    .andReturn().getResponse().getContentAsString()).get("id").asLong();
+            assertEquals(0, new java.math.BigDecimal("10000").compareTo(jdbc.queryForObject("SELECT SUM(monto) FROM saldo_favor_cliente "
+                    + "WHERE cliente_id = ?", java.math.BigDecimal.class, cliente)));
+
+            // 4) dos devoluciones a la vez de la última unidad: solo una pasa
+            com.fasterxml.jackson.databind.JsonNode v4 = vender.apply("dv-4", "{\"lineas\":[" + linea.formatted(1)
+                    + "],\"pagos\":[{\"medio\":\"EFECTIVO\",\"monto\":10000}]}");
+            long venta4 = v4.get("id").asLong();
+            String devolver4 = "{\"ventaId\":" + venta4 + ",\"motivo\":\"Duplicado\",\"formaReembolso\":\"EFECTIVO\",\"lineas\":[{"
+                    + "\"ventaLineaId\":" + v4.get("lineas").get(0).get("id").asLong()
+                    + ",\"cantidad\":1,\"estadoProducto\":\"BUENO\"}],\"autorizacion\":\"%s\"}";
+            List<String> permisos = List.of(permiso.apply("DEVOLUCION", venta4), permiso.apply("DEVOLUCION", venta4));
+            java.util.concurrent.CountDownLatch salida = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.ExecutorService hilos = java.util.concurrent.Executors.newFixedThreadPool(2);
+            List<java.util.concurrent.Future<Integer>> estados = new java.util.ArrayList<>();
+            for (String t : permisos) {
+                estados.add(hilos.submit(() -> {
+                    salida.await();
+                    return mvc.perform(post("/api/devoluciones").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(devolver4.formatted(t))).andReturn().getResponse().getStatus();
+                }));
+            }
+            salida.countDown();
+            List<Integer> resultado = new java.util.ArrayList<>();
+            for (var f : estados) {
+                resultado.add(f.get(30, java.util.concurrent.TimeUnit.SECONDS));
+            }
+            hilos.shutdown();
+            assertEquals(List.of(201, 409), resultado.stream().sorted().toList());
+            assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM devolucion_venta WHERE venta_id = ?", Integer.class, venta4));
+
+            // 5) la bodega de averías es de la empresa; nada de esto cruza a B
+            mvc.perform(put("/api/cajas/configuracion").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"toleranciaDiferencia\":2000,\"bodegaAveriasId\":" + bodegaB + "}"))
+                    .andExpect(status().isNotFound());
+            String duenoB = token(empresaB, usuarioB, "ADMIN_SISTEMA");
+            mvc.perform(get("/api/devoluciones/" + devolucion3).header(HttpHeaders.AUTHORIZATION, duenoB)).andExpect(status().isNotFound());
+            mvc.perform(get("/api/devoluciones").header(HttpHeaders.AUTHORIZATION, duenoB)).andExpect(jsonPath("$.totalElementos").value(0));
+            mvc.perform(get("/api/devoluciones?ventaId=" + venta2).header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$.totalElementos").value(2));
+
+            // 6) la caja cuadra: base + ventas en efectivo − anulación − devoluciones en efectivo
+            java.math.BigDecimal efectivo = jdbc.queryForObject("SELECT SUM(monto) FROM movimiento_caja WHERE turno_id = ? "
+                    + "AND medio_pago = 'EFECTIVO'", java.math.BigDecimal.class, turno);
+            assertEquals(0, new java.math.BigDecimal("50000").subtract(new java.math.BigDecimal("20000"))
+                    .add(new java.math.BigDecimal("10000")).add(new java.math.BigDecimal("10000"))
+                    .subtract(new java.math.BigDecimal("10000")).compareTo(efectivo));
+
+            // 7) en un turno cerrado no se anula: se devuelve
+            mvc.perform(post("/api/turnos/" + turno + "/cerrar").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                    .content("{\"contadoEfectivo\":" + efectivo + "}")).andExpect(status().isOk());
+            mvc.perform(post("/api/ventas/" + venta4 + "/anular").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(anular.formatted("x")))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("TURNO_CERRADO"));
+            assertTrue(jdbc.queryForObject("SELECT COUNT(*) FROM auditoria WHERE empresa_id = ? AND accion IN ('VENTA_ANULAR', "
+                    + "'VENTA_DEVOLVER')", Integer.class, empresaA) >= 5);
+        } finally {
+            jdbc.update("DELETE FROM saldo_favor_cliente WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE l FROM devolucion_venta_linea l JOIN devolucion_venta d ON d.id = l.devolucion_id "
+                    + "WHERE d.empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM devolucion_venta WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE p FROM venta_pago p JOIN venta v ON v.id = p.venta_id WHERE v.empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE l FROM venta_linea l JOIN venta v ON v.id = l.venta_id WHERE v.empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM venta WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM cliente WHERE empresa_id IN (?, ?) AND numero_documento = '10203040'", empresaA, empresaB);
+            jdbc.update("DELETE FROM movimiento_inventario WHERE empresa_id IN (?, ?) AND referencia_tipo IN ('VENTA', 'DEVOLUCION_VENTA')",
+                    empresaA, empresaB);
+            jdbc.update("DELETE FROM autorizacion_supervisor WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM movimiento_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM turno_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM precio_producto WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("UPDATE empresa SET bodega_averias_id = NULL WHERE id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("UPDATE stock_producto_bodega SET cantidad = ? WHERE producto_id = ? AND bodega_id = ?", stockAntes,
+                    productoA, bodegaA);
+            jdbc.update("UPDATE producto SET costo_referencia = NULL WHERE id = ?", productoA);
+            jdbc.update("UPDATE usuario SET pin_supervisor_hash = NULL, pin_intentos_fallidos = 0, pin_bloqueado_hasta = NULL "
+                    + "WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+        }
+    }
+
+    @Test
     void elCatalogoDelProveedorSeCruzaConElInventarioSinQueElProveedorVeaNadaNuestro() throws Exception {
         String portalA = tokenProveedor(empresaA, usuarioA, proveedorA);
         String comprasA = token(empresaA, usuarioA, "ADMIN_COMPRAS");

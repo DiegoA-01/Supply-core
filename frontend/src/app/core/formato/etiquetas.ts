@@ -70,6 +70,8 @@ const ETIQUETAS: Record<string, [string, Tono]> = {
   TRASLADO: ['Traslado entre bodegas', 'naranja'],
   SALIDA_VENTA: ['Salida por despacho', 'ambar'],
   ANULACION_DESPACHO: ['Despacho anulado', 'gris'],
+  ANULACION_VENTA: ['Venta anulada', 'gris'],
+  DEVOLUCION_CLIENTE: ['Devolución de cliente', 'verde'],
   // Pago a proveedores
   TRANSFERENCIA: ['Transferencia', 'gris'],
   CONSIGNACION: ['Consignación', 'gris'],

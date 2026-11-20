@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import {
-  CotizacionVenta, EstadoPedidoVenta, EstadoVenta, LimiteDescuento, LineaVentaRequest, PagoVentaRequest, Pagina, PedidoVenta,
+  CotizacionVenta, Devolucion, DevolucionRequest, EstadoPedidoVenta, EstadoVenta, LimiteDescuento, LineaVentaRequest, PagoVentaRequest, Pagina, PedidoVenta,
   PedidoVentaRequest, Tiquete, Venta, VentaRequest, VentaResumen,
 } from '../api/modelos';
 import { api, parametros } from '../http/api';
@@ -58,6 +58,27 @@ export class VentaService {
   /** @param id venta; la segunda vez y siguientes el tiquete dice COPIA */
   tiquete(id: number): Observable<Tiquete> {
     return this.http.get<Tiquete>(api(`/api/ventas/${id}/tiquete`));
+  }
+
+  /**
+   * Anula una venta del turno abierto (spec 006).
+   *
+   * @param id           venta
+   * @param motivo       por qué se anula
+   * @param autorizacion permiso de un solo uso del supervisor
+   */
+  anular(id: number, motivo: string, autorizacion: string): Observable<Venta> {
+    return this.http.post<Venta>(api(`/api/ventas/${id}/anular`), { motivo, autorizacion });
+  }
+
+  /** @param datos devolución de cliente con su autorización */
+  devolver(datos: DevolucionRequest): Observable<Devolucion> {
+    return this.http.post<Devolucion>(api('/api/devoluciones'), datos);
+  }
+
+  /** @param ventaId venta; sus devoluciones */
+  devoluciones(ventaId: number): Observable<Pagina<Devolucion>> {
+    return this.http.get<Pagina<Devolucion>>(api('/api/devoluciones'), { params: parametros({ ventaId, size: 50 }) });
   }
 
   /** Límite de descuento sin autorización de cada rol. */

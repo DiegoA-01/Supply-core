@@ -81,6 +81,10 @@ public class Empresa {
     @Column(name = "tolerancia_diferencia_caja", nullable = false, precision = 18, scale = 2)
     private BigDecimal toleranciaDiferenciaCaja = new BigDecimal("2000.00");
 
+    /** Bodega a la que va la mercancía devuelta en mal estado; {@code null} = no reingresa (spec 006, V35). */
+    @Column(name = "bodega_averias_id")
+    private Long bodegaAveriasId;
+
     @Column(name = "creado_en", nullable = false, updatable = false, insertable = false)
     private LocalDateTime creadoEn;
 }

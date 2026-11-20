@@ -254,5 +254,9 @@ public enum AccionAuditoria {
     /** Se imprimió el tiquete original de una venta (spec 005). */
     VENTA_IMPRIMIR,
     /** Se reimprimió el tiquete de una venta: sale con la marca COPIA. */
-    VENTA_REIMPRIMIR
+    VENTA_REIMPRIMIR,
+    /** Se anuló una venta de un turno abierto con autorización (spec 006). */
+    VENTA_ANULAR,
+    /** Un cliente devolvió mercancía de una venta (spec 006). */
+    VENTA_DEVOLVER
 }

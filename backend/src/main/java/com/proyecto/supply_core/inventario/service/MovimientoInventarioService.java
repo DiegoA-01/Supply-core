@@ -201,6 +201,39 @@ public class MovimientoInventarioService {
     }
 
     /**
+     * Entrada que devuelve al stock lo de una venta anulada en su turno (spec 006). Solo la llama la anulación.
+     *
+     * @param productoId producto
+     * @param bodegaId   bodega de la caja
+     * @param cantidad   cantidad en la unidad del producto (> 0)
+     * @param motivo     motivo de la anulación
+     * @param ventaId    venta anulada
+     * @return movimiento registrado
+     */
+    @Transactional
+    public RegistroMovimientoResponse registrarAnulacionVenta(Long productoId, Long bodegaId, BigDecimal cantidad,
+            String motivo, Long ventaId) {
+        return aplicar(TipoMovimiento.ANULACION_VENTA, productoId, null, bodegaId, cantidad, motivo, "VENTA", ventaId);
+    }
+
+    /**
+     * Entrada por la mercancía que devuelve un cliente (spec 006). Solo la llama la devolución.
+     *
+     * @param productoId   producto
+     * @param bodegaId     bodega de venta (buen estado) o de averías (dañado)
+     * @param cantidad     cantidad en la unidad del producto (> 0)
+     * @param motivo       motivo de la devolución
+     * @param devolucionId devolución
+     * @return movimiento registrado
+     */
+    @Transactional
+    public RegistroMovimientoResponse registrarDevolucionCliente(Long productoId, Long bodegaId, BigDecimal cantidad,
+            String motivo, Long devolucionId) {
+        return aplicar(TipoMovimiento.DEVOLUCION_CLIENTE, productoId, null, bodegaId, cantidad, motivo, "DEVOLUCION_VENTA",
+                devolucionId);
+    }
+
+    /**
      * Kardex con filtros, más recientes primero.
      *
      * @param filtro   filtros validados

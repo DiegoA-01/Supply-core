@@ -119,6 +119,9 @@ public class Venta {
     @Column(name = "motivo_anulacion", length = 300)
     private String motivoAnulacion;
 
+    @Column(name = "anulacion_autorizada_por_usuario_id")
+    private Long anulacionAutorizadaPorUsuarioId;
+
     @Version
     private int version;
 

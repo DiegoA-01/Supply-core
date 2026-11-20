@@ -6,11 +6,14 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.proyecto.supply_core.venta.entity.Venta;
 import com.proyecto.supply_core.venta.enums.EstadoVenta;
+
+import jakarta.persistence.LockModeType;
 
 /** Ventas de la empresa del contexto ({@code @TenantId}). */
 public interface VentaRepository extends JpaRepository<Venta, Long> {
@@ -20,6 +23,14 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
      * @return la venta ya creada con esa clave, si existe
      */
     Optional<Venta> findByClaveIdempotencia(String clave);
+
+    /**
+     * @param id venta
+     * @return la venta bloqueada para anularla o devolverla (dos devoluciones de la misma venta van en fila)
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select v from Venta v where v.id = :id")
+    Optional<Venta> bloquear(@Param("id") Long id);
 
     /**
      * Historial con filtros opcionales ({@code null} = sin filtro).

@@ -548,6 +548,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ventas/{id}/anular": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["anular"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/ventas/precios/carga": {
         parameters: {
             query?: never;
@@ -1293,7 +1309,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["anular"];
+        post: operations["anular_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1549,7 +1565,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["anular_1"];
+        post: operations["anular_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1636,7 +1652,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/despachos": {
+    "/api/devoluciones": {
         parameters: {
             query?: never;
             header?: never;
@@ -1644,6 +1660,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["buscar_8"];
+        put?: never;
+        post: operations["devolver"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/despachos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["buscar_9"];
         put?: never;
         post: operations["crear_12"];
         delete?: never;
@@ -1677,7 +1709,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["anular_2"];
+        post: operations["anular_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1723,7 +1755,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["buscar_9"];
+        get: operations["buscar_10"];
         put?: never;
         post: operations["crear_14"];
         delete?: never;
@@ -1755,7 +1787,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["buscar_10"];
+        get: operations["buscar_11"];
         put?: never;
         post: operations["crear_15"];
         delete?: never;
@@ -2385,7 +2417,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["anular_3"];
+        patch: operations["anular_4"];
         trace?: never;
     };
     "/api/config-notificaciones/{id}": {
@@ -2875,7 +2907,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["buscar_11"];
+        get: operations["buscar_12"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3163,7 +3195,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["buscar_12"];
+        get: operations["buscar_13"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3195,7 +3227,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["buscar_13"];
+        get: operations["buscar_14"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3323,7 +3355,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["buscar_14"];
+        get: operations["buscar_15"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3476,6 +3508,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/devoluciones/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["obtener_28"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/delegaciones/recibidas": {
         parameters: {
             query?: never;
@@ -3531,7 +3579,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_28"];
+        get: operations["obtener_29"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3547,7 +3595,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_29"];
+        get: operations["obtener_30"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3595,7 +3643,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["buscar_15"];
+        get: operations["buscar_16"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3659,7 +3707,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["buscar_16"];
+        get: operations["buscar_17"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3675,7 +3723,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_30"];
+        get: operations["obtener_31"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3691,7 +3739,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["obtener_31"];
+        get: operations["obtener_32"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4485,6 +4533,8 @@ export interface components {
         };
         ConfiguracionCaja: {
             toleranciaDiferencia: number;
+            /** Format: int64 */
+            bodegaAveriasId?: number;
         };
         BodegaRequest: {
             nombre: string;
@@ -4539,6 +4589,9 @@ export interface components {
             impuesto?: number;
             totalLinea?: number;
             autorizadoPor?: string;
+            /** Format: int64 */
+            id?: number;
+            cantidadDevuelta?: number;
         };
         VentaPagoResponse: {
             /** @enum {string} */
@@ -4584,6 +4637,12 @@ export interface components {
             motivoAnulacion?: string;
             lineas?: components["schemas"]["VentaLineaResponse"][];
             pagos?: components["schemas"]["VentaPagoResponse"][];
+            turnoAbierto?: boolean;
+            totalDevuelto?: number;
+        };
+        AnularVentaRequest: {
+            motivo: string;
+            autorizacion: string;
         };
         CargaPreciosResponse: {
             soloValidar?: boolean;
@@ -5126,16 +5185,16 @@ export interface components {
             /** @enum {string} */
             motivoRechazo?: "DANADO" | "NO_CUMPLE_ESPECIFICACION" | "VENCIDO" | "CANTIDAD_ERRADA" | "OTRO";
             observacionCalidad?: string;
-            rechazoNoSuperaRecibido?: boolean;
             motivoPresenteSiRechaza?: boolean;
+            rechazoNoSuperaRecibido?: boolean;
         };
         RegistrarRecepcionRequest: {
             /** Format: int64 */
             bodegaId?: number;
             observaciones?: string;
             lineas: components["schemas"]["LineaRecepcionRequest"][];
-            conMovimiento?: boolean;
             lineasSinRepetir?: boolean;
+            conMovimiento?: boolean;
         };
         RecepcionResponse: {
             /** Format: int64 */
@@ -5263,7 +5322,7 @@ export interface components {
             /** Format: int64 */
             productoId: number;
             /** @enum {string} */
-            tipo: "ENTRADA_COMPRA" | "SALIDA_CONSUMO" | "AJUSTE_POSITIVO" | "AJUSTE_NEGATIVO" | "DEVOLUCION_PROVEEDOR" | "TRASLADO" | "SALIDA_VENTA" | "ANULACION_DESPACHO";
+            tipo: "ENTRADA_COMPRA" | "SALIDA_CONSUMO" | "AJUSTE_POSITIVO" | "AJUSTE_NEGATIVO" | "DEVOLUCION_PROVEEDOR" | "TRASLADO" | "SALIDA_VENTA" | "ANULACION_DESPACHO" | "ANULACION_VENTA" | "DEVOLUCION_CLIENTE";
             /** Format: int64 */
             bodegaOrigenId?: number;
             /** Format: int64 */
@@ -5275,7 +5334,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             /** @enum {string} */
-            tipo?: "ENTRADA_COMPRA" | "SALIDA_CONSUMO" | "AJUSTE_POSITIVO" | "AJUSTE_NEGATIVO" | "DEVOLUCION_PROVEEDOR" | "TRASLADO" | "SALIDA_VENTA" | "ANULACION_DESPACHO";
+            tipo?: "ENTRADA_COMPRA" | "SALIDA_CONSUMO" | "AJUSTE_POSITIVO" | "AJUSTE_NEGATIVO" | "DEVOLUCION_PROVEEDOR" | "TRASLADO" | "SALIDA_VENTA" | "ANULACION_DESPACHO" | "ANULACION_VENTA" | "DEVOLUCION_CLIENTE";
             /** Format: int64 */
             productoId?: number;
             productoCodigo?: string;
@@ -5478,7 +5537,7 @@ export interface components {
             /** Format: int64 */
             bodegaId?: number;
             /** @enum {string} */
-            tipo?: "ENTRADA_COMPRA" | "SALIDA_CONSUMO" | "AJUSTE_POSITIVO" | "AJUSTE_NEGATIVO" | "DEVOLUCION_PROVEEDOR" | "TRASLADO" | "SALIDA_VENTA" | "ANULACION_DESPACHO";
+            tipo?: "ENTRADA_COMPRA" | "SALIDA_CONSUMO" | "AJUSTE_POSITIVO" | "AJUSTE_NEGATIVO" | "DEVOLUCION_PROVEEDOR" | "TRASLADO" | "SALIDA_VENTA" | "ANULACION_DESPACHO" | "ANULACION_VENTA" | "DEVOLUCION_CLIENTE";
             /** Format: date-time */
             desde?: string;
             /** Format: date-time */
@@ -5499,6 +5558,55 @@ export interface components {
             subidoPorUsuarioId?: number;
             /** Format: date-time */
             creadoEn?: string;
+        };
+        DevolucionLineaRequest: {
+            /** Format: int64 */
+            ventaLineaId: number;
+            cantidad: number;
+            /** @enum {string} */
+            estadoProducto: "BUENO" | "DANADO";
+        };
+        DevolucionRequest: {
+            /** Format: int64 */
+            ventaId: number;
+            motivo: string;
+            /** @enum {string} */
+            formaReembolso: "EFECTIVO" | "MISMO_MEDIO" | "SALDO_A_FAVOR";
+            lineas: components["schemas"]["DevolucionLineaRequest"][];
+            autorizacion: string;
+        };
+        DevolucionLineaResponse: {
+            /** Format: int64 */
+            ventaLineaId?: number;
+            /** Format: int64 */
+            productoId?: number;
+            nombre?: string;
+            unidad?: string;
+            cantidad?: number;
+            /** @enum {string} */
+            estadoProducto?: "BUENO" | "DANADO";
+            bodega?: string;
+            valor?: number;
+        };
+        DevolucionResponse: {
+            /** Format: int64 */
+            id?: number;
+            consecutivo?: string;
+            /** Format: int64 */
+            ventaId?: number;
+            venta?: string;
+            cliente?: string;
+            motivo?: string;
+            /** @enum {string} */
+            formaReembolso?: "EFECTIVO" | "MISMO_MEDIO" | "SALDO_A_FAVOR";
+            /** @enum {string} */
+            medioReembolso?: "EFECTIVO" | "TARJETA_DEBITO" | "TARJETA_CREDITO" | "TRANSFERENCIA" | "BILLETERA";
+            totalReembolso?: number;
+            usuario?: string;
+            autorizadoPor?: string;
+            /** Format: date-time */
+            creadoEn?: string;
+            lineas?: components["schemas"]["DevolucionLineaResponse"][];
         };
         AnulacionRequest: {
             motivo: string;
@@ -5545,8 +5653,8 @@ export interface components {
             /** Format: date */
             vigenteHasta: string;
             precios: components["schemas"]["PrecioRequest"][];
-            vigenciaEnOrden?: boolean;
             productosSinRepetir?: boolean;
+            vigenciaEnOrden?: boolean;
         };
         PrecioRequest: {
             /** Format: int64 */
@@ -6455,6 +6563,17 @@ export interface components {
             plan?: string;
             modulos?: string[];
         };
+        PageResponseDevolucionResponse: {
+            contenido?: components["schemas"]["DevolucionResponse"][];
+            /** Format: int32 */
+            pagina?: number;
+            /** Format: int32 */
+            tamano?: number;
+            /** Format: int64 */
+            totalElementos?: number;
+            /** Format: int32 */
+            totalPaginas?: number;
+        };
         DespachoResumenResponse: {
             /** Format: int64 */
             id?: number;
@@ -6595,11 +6714,11 @@ export interface components {
             /** Format: int64 */
             usuarioId?: number;
             /** @enum {string} */
-            entidad?: "USUARIO" | "PROVEEDOR" | "EMPRESA" | "SEDE" | "CENTRO_COSTO" | "DELEGACION" | "PRESUPUESTO" | "CONTRATO" | "POLITICA_APROBACION" | "CATEGORIA_PRODUCTO" | "UNIDAD_MEDIDA" | "PRODUCTO" | "BODEGA" | "MOVIMIENTO_INVENTARIO" | "DOCUMENTO" | "CONFIG_NOTIFICACION" | "SOLICITUD_COMPRA" | "RFQ" | "DESPACHO" | "COTIZACION" | "CONFIG_PESOS" | "ANALISIS" | "ADJUDICACION" | "ORDEN_COMPRA" | "PAGO" | "RECEPCION" | "FACTURA" | "EXPORTACION" | "INFORME_COMPRAS" | "PEDIDO_INTERNO" | "TARIFA_IMPUESTO" | "LISTA_PRECIO" | "PRECIO_PRODUCTO" | "CATALOGO_ITEM" | "CLIENTE" | "CAJA" | "TURNO_CAJA" | "AUTORIZACION" | "VENTA" | "PEDIDO_VENTA" | "LIMITE_DESCUENTO";
+            entidad?: "USUARIO" | "PROVEEDOR" | "EMPRESA" | "SEDE" | "CENTRO_COSTO" | "DELEGACION" | "PRESUPUESTO" | "CONTRATO" | "POLITICA_APROBACION" | "CATEGORIA_PRODUCTO" | "UNIDAD_MEDIDA" | "PRODUCTO" | "BODEGA" | "MOVIMIENTO_INVENTARIO" | "DOCUMENTO" | "CONFIG_NOTIFICACION" | "SOLICITUD_COMPRA" | "RFQ" | "DESPACHO" | "COTIZACION" | "CONFIG_PESOS" | "ANALISIS" | "ADJUDICACION" | "ORDEN_COMPRA" | "PAGO" | "RECEPCION" | "FACTURA" | "EXPORTACION" | "INFORME_COMPRAS" | "PEDIDO_INTERNO" | "TARIFA_IMPUESTO" | "LISTA_PRECIO" | "PRECIO_PRODUCTO" | "CATALOGO_ITEM" | "CLIENTE" | "CAJA" | "TURNO_CAJA" | "AUTORIZACION" | "VENTA" | "PEDIDO_VENTA" | "LIMITE_DESCUENTO" | "DEVOLUCION_VENTA";
             /** Format: int64 */
             entidadId?: number;
             /** @enum {string} */
-            accion?: "LOGIN" | "LOGOUT" | "REFRESH_REUTILIZADO" | "CUENTA_BLOQUEADA" | "USUARIO_CREAR" | "USUARIO_EDITAR" | "USUARIO_ACTIVAR" | "USUARIO_DESACTIVAR" | "USUARIO_RESTABLECER_PASSWORD" | "PASSWORD_CAMBIAR" | "PROVEEDOR_REGISTRAR" | "PROVEEDOR_HABILITAR" | "PROVEEDOR_RECHAZAR" | "PROVEEDOR_SUSPENDER" | "PROVEEDOR_EDITAR" | "EMPRESA_EDITAR" | "SEDE_CREAR" | "SEDE_EDITAR" | "SEDE_CAMBIAR_ESTADO" | "CENTRO_COSTO_CREAR" | "CENTRO_COSTO_EDITAR" | "CENTRO_COSTO_CAMBIAR_ESTADO" | "DELEGACION_CREAR" | "DELEGACION_REVOCAR" | "SOLICITUD_ESCALAR" | "REORDEN_GENERAR" | "PRODUCTO_CARGA_MASIVA" | "CONTRATO_CREAR" | "CONTRATO_EDITAR" | "CONTRATO_ANULAR" | "ORDEN_EMITIR_DIRECTA" | "PRESUPUESTO_CREAR" | "PRESUPUESTO_EDITAR" | "SOLICITUD_EXCEPCION" | "POLITICA_CREAR" | "POLITICA_EDITAR" | "POLITICA_CAMBIAR_ESTADO" | "CATEGORIA_CREAR" | "CATEGORIA_EDITAR" | "CATEGORIA_CAMBIAR_ESTADO" | "UNIDAD_CREAR" | "UNIDAD_EDITAR" | "UNIDAD_CAMBIAR_ESTADO" | "PRODUCTO_CREAR" | "PRODUCTO_EDITAR" | "PRODUCTO_CAMBIAR_ESTADO" | "BODEGA_CREAR" | "BODEGA_EDITAR" | "BODEGA_CAMBIAR_ESTADO" | "INVENTARIO_AJUSTE" | "DOCUMENTO_SUBIR" | "CONFIG_NOTIFICACION_CAMBIAR" | "SOLICITUD_CREAR" | "SOLICITUD_EDITAR" | "SOLICITUD_ENVIAR" | "SOLICITUD_CANCELAR" | "SOLICITUD_DECIDIR" | "RFQ_CREAR" | "RFQ_EDITAR" | "RFQ_ABRIR" | "RFQ_CERRAR" | "RFQ_CANCELAR" | "DESPACHO_CREAR" | "DESPACHO_EDITAR" | "DESPACHO_CONFIRMAR" | "DESPACHO_ANULAR" | "COTIZACION_GUARDAR" | "COTIZACION_ENVIAR" | "EXTRACCION_CONFIRMAR" | "COTIZACION_DIGITAR" | "PESOS_CAMBIAR" | "ANALISIS_GENERAR" | "ANALISIS_PUBLICAR" | "ADJUDICACION_CREAR" | "ADJUDICACION_DECIDIR" | "ORDEN_EMITIR" | "ORDEN_VERSIONAR" | "ORDEN_CANCELAR" | "ORDEN_PROVEEDOR" | "PAGO_REGISTRAR" | "PAGO_COMPROBANTE" | "PAGO_ANULAR" | "RECEPCION_REGISTRAR" | "RECEPCION_RESOLVER_EXCESO" | "RECEPCION_CERRAR" | "FACTURA_REGISTRAR" | "FACTURA_RECRUZAR" | "FACTURA_APROBAR" | "FACTURA_ANULAR" | "FACTURA_ARCHIVO" | "EXPORTAR_ARCHIVO" | "EXPORTAR_CORREO" | "PASSWORD_RECUPERAR_PEDIR" | "PASSWORD_RECUPERAR_USAR" | "MFA_ACTIVAR" | "MFA_DESACTIVAR" | "MFA_FALLO" | "INFORME_PEDIR" | "INFORME_ENVIAR" | "PEDIDO_INTERNO_CREAR" | "PEDIDO_INTERNO_GESTIONAR" | "PRECIO_CONFIGURAR" | "PRECIO_CAMBIAR" | "CATALOGO_CARGAR" | "CATALOGO_EQUIVALENCIA" | "CLIENTE_CREAR" | "CLIENTE_EDITAR" | "CLIENTE_CUPO_CAMBIAR" | "CAJA_CREAR" | "CAJA_EDITAR" | "CAJA_CONFIGURAR" | "TURNO_ABRIR" | "TURNO_MOVIMIENTO" | "TURNO_CERRAR" | "TURNO_APROBAR" | "AUTORIZACION_OTORGAR" | "AUTORIZACION_FALLO" | "PIN_CAMBIAR" | "VENTA_CONFIRMAR" | "PEDIDO_VENTA_CREAR" | "PEDIDO_VENTA_EDITAR" | "PEDIDO_VENTA_DESCARTAR" | "LIMITE_DESCUENTO_CAMBIAR" | "VENTA_IMPRIMIR" | "VENTA_REIMPRIMIR";
+            accion?: "LOGIN" | "LOGOUT" | "REFRESH_REUTILIZADO" | "CUENTA_BLOQUEADA" | "USUARIO_CREAR" | "USUARIO_EDITAR" | "USUARIO_ACTIVAR" | "USUARIO_DESACTIVAR" | "USUARIO_RESTABLECER_PASSWORD" | "PASSWORD_CAMBIAR" | "PROVEEDOR_REGISTRAR" | "PROVEEDOR_HABILITAR" | "PROVEEDOR_RECHAZAR" | "PROVEEDOR_SUSPENDER" | "PROVEEDOR_EDITAR" | "EMPRESA_EDITAR" | "SEDE_CREAR" | "SEDE_EDITAR" | "SEDE_CAMBIAR_ESTADO" | "CENTRO_COSTO_CREAR" | "CENTRO_COSTO_EDITAR" | "CENTRO_COSTO_CAMBIAR_ESTADO" | "DELEGACION_CREAR" | "DELEGACION_REVOCAR" | "SOLICITUD_ESCALAR" | "REORDEN_GENERAR" | "PRODUCTO_CARGA_MASIVA" | "CONTRATO_CREAR" | "CONTRATO_EDITAR" | "CONTRATO_ANULAR" | "ORDEN_EMITIR_DIRECTA" | "PRESUPUESTO_CREAR" | "PRESUPUESTO_EDITAR" | "SOLICITUD_EXCEPCION" | "POLITICA_CREAR" | "POLITICA_EDITAR" | "POLITICA_CAMBIAR_ESTADO" | "CATEGORIA_CREAR" | "CATEGORIA_EDITAR" | "CATEGORIA_CAMBIAR_ESTADO" | "UNIDAD_CREAR" | "UNIDAD_EDITAR" | "UNIDAD_CAMBIAR_ESTADO" | "PRODUCTO_CREAR" | "PRODUCTO_EDITAR" | "PRODUCTO_CAMBIAR_ESTADO" | "BODEGA_CREAR" | "BODEGA_EDITAR" | "BODEGA_CAMBIAR_ESTADO" | "INVENTARIO_AJUSTE" | "DOCUMENTO_SUBIR" | "CONFIG_NOTIFICACION_CAMBIAR" | "SOLICITUD_CREAR" | "SOLICITUD_EDITAR" | "SOLICITUD_ENVIAR" | "SOLICITUD_CANCELAR" | "SOLICITUD_DECIDIR" | "RFQ_CREAR" | "RFQ_EDITAR" | "RFQ_ABRIR" | "RFQ_CERRAR" | "RFQ_CANCELAR" | "DESPACHO_CREAR" | "DESPACHO_EDITAR" | "DESPACHO_CONFIRMAR" | "DESPACHO_ANULAR" | "COTIZACION_GUARDAR" | "COTIZACION_ENVIAR" | "EXTRACCION_CONFIRMAR" | "COTIZACION_DIGITAR" | "PESOS_CAMBIAR" | "ANALISIS_GENERAR" | "ANALISIS_PUBLICAR" | "ADJUDICACION_CREAR" | "ADJUDICACION_DECIDIR" | "ORDEN_EMITIR" | "ORDEN_VERSIONAR" | "ORDEN_CANCELAR" | "ORDEN_PROVEEDOR" | "PAGO_REGISTRAR" | "PAGO_COMPROBANTE" | "PAGO_ANULAR" | "RECEPCION_REGISTRAR" | "RECEPCION_RESOLVER_EXCESO" | "RECEPCION_CERRAR" | "FACTURA_REGISTRAR" | "FACTURA_RECRUZAR" | "FACTURA_APROBAR" | "FACTURA_ANULAR" | "FACTURA_ARCHIVO" | "EXPORTAR_ARCHIVO" | "EXPORTAR_CORREO" | "PASSWORD_RECUPERAR_PEDIR" | "PASSWORD_RECUPERAR_USAR" | "MFA_ACTIVAR" | "MFA_DESACTIVAR" | "MFA_FALLO" | "INFORME_PEDIR" | "INFORME_ENVIAR" | "PEDIDO_INTERNO_CREAR" | "PEDIDO_INTERNO_GESTIONAR" | "PRECIO_CONFIGURAR" | "PRECIO_CAMBIAR" | "CATALOGO_CARGAR" | "CATALOGO_EQUIVALENCIA" | "CLIENTE_CREAR" | "CLIENTE_EDITAR" | "CLIENTE_CUPO_CAMBIAR" | "CAJA_CREAR" | "CAJA_EDITAR" | "CAJA_CONFIGURAR" | "TURNO_ABRIR" | "TURNO_MOVIMIENTO" | "TURNO_CERRAR" | "TURNO_APROBAR" | "AUTORIZACION_OTORGAR" | "AUTORIZACION_FALLO" | "PIN_CAMBIAR" | "VENTA_CONFIRMAR" | "PEDIDO_VENTA_CREAR" | "PEDIDO_VENTA_EDITAR" | "PEDIDO_VENTA_DESCARTAR" | "LIMITE_DESCUENTO_CAMBIAR" | "VENTA_IMPRIMIR" | "VENTA_REIMPRIMIR" | "VENTA_ANULAR" | "VENTA_DEVOLVER";
             /** @enum {string} */
             resultado?: "EXITO" | "FALLO";
             /** Format: date-time */
@@ -8032,6 +8151,32 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["VentaRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["VentaResponse"];
+                };
+            };
+        };
+    };
+    anular: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnularVentaRequest"];
             };
         };
         responses: {
@@ -9575,7 +9720,7 @@ export interface operations {
             };
         };
     };
-    anular: {
+    anular_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -10112,7 +10257,7 @@ export interface operations {
             };
         };
     };
-    anular_1: {
+    anular_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -10291,6 +10436,53 @@ export interface operations {
     buscar_8: {
         parameters: {
             query: {
+                ventaId?: number;
+                pageable: components["schemas"]["Pageable"];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PageResponseDevolucionResponse"];
+                };
+            };
+        };
+    };
+    devolver: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DevolucionRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DevolucionResponse"];
+                };
+            };
+        };
+    };
+    buscar_9: {
+        parameters: {
+            query: {
                 texto?: string;
                 estado?: "BORRADOR" | "CONFIRMADO" | "ANULADO";
                 bodegaId?: number;
@@ -10359,7 +10551,7 @@ export interface operations {
             };
         };
     };
-    anular_2: {
+    anular_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -10431,7 +10623,7 @@ export interface operations {
             };
         };
     };
-    buscar_9: {
+    buscar_10: {
         parameters: {
             query: {
                 proveedorId?: number;
@@ -10524,7 +10716,7 @@ export interface operations {
             };
         };
     };
-    buscar_10: {
+    buscar_11: {
         parameters: {
             query: {
                 q?: string;
@@ -11541,7 +11733,7 @@ export interface operations {
             };
         };
     };
-    anular_3: {
+    anular_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -12246,7 +12438,7 @@ export interface operations {
             };
         };
     };
-    buscar_11: {
+    buscar_12: {
         parameters: {
             query: {
                 texto?: string;
@@ -12641,7 +12833,7 @@ export interface operations {
             };
         };
     };
-    buscar_12: {
+    buscar_13: {
         parameters: {
             query: {
                 empresaId?: number;
@@ -12684,7 +12876,7 @@ export interface operations {
             };
         };
     };
-    buscar_13: {
+    buscar_14: {
         parameters: {
             query: {
                 estado?: "PENDIENTE" | "REGISTRADO" | "ANULADO";
@@ -12866,7 +13058,7 @@ export interface operations {
             };
         };
     };
-    buscar_14: {
+    buscar_15: {
         parameters: {
             query: {
                 estado?: "CUADRADA" | "EN_REVISION" | "APROBADA" | "ANULADA";
@@ -13096,6 +13288,28 @@ export interface operations {
             };
         };
     };
+    obtener_28: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DevolucionResponse"];
+                };
+            };
+        };
+    };
     recibidas: {
         parameters: {
             query?: never;
@@ -13156,7 +13370,7 @@ export interface operations {
             };
         };
     };
-    obtener_28: {
+    obtener_29: {
         parameters: {
             query?: never;
             header?: never;
@@ -13178,7 +13392,7 @@ export interface operations {
             };
         };
     };
-    obtener_29: {
+    obtener_30: {
         parameters: {
             query?: never;
             header?: never;
@@ -13242,7 +13456,7 @@ export interface operations {
             };
         };
     };
-    buscar_15: {
+    buscar_16: {
         parameters: {
             query: {
                 proveedorId?: number;
@@ -13329,7 +13543,7 @@ export interface operations {
             };
         };
     };
-    buscar_16: {
+    buscar_17: {
         parameters: {
             query: {
                 filtro: components["schemas"]["AuditoriaFiltro"];
@@ -13352,7 +13566,7 @@ export interface operations {
             };
         };
     };
-    obtener_30: {
+    obtener_31: {
         parameters: {
             query?: never;
             header?: never;
@@ -13374,7 +13588,7 @@ export interface operations {
             };
         };
     };
-    obtener_31: {
+    obtener_32: {
         parameters: {
             query?: never;
             header?: never;

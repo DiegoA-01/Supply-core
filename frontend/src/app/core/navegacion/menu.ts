@@ -39,8 +39,8 @@ export const ROLES_CLIENTES = ['CAJERO', 'VENDEDOR', 'SUPERVISOR_VENTAS', 'ADMIN
 export const ROLES_POS = ['CAJERO', 'SUPERVISOR_VENTAS', 'VENDEDOR'];
 /** Roles que abren y cierran su propio turno de caja (mismos que {@code /api/turnos}). */
 export const ROLES_MI_TURNO = ['CAJERO', 'SUPERVISOR_VENTAS'];
-/** Roles que ven el historial de ventas (mismos que {@code GET /api/ventas}, sin el cajero, que busca por consecutivo). */
-export const ROLES_VENTAS = ['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR', 'VENDEDOR'];
+/** Roles que entran a Ventas (mismos que {@code GET /api/ventas}; el cajero solo busca por consecutivo para anular o devolver). */
+export const ROLES_VENTAS = ['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR', 'VENDEDOR', 'CAJERO'];
 /** Roles que ven los pedidos de venta (mismos que {@code /api/pedidos-venta}). */
 export const ROLES_PEDIDOS_VENTA = ['VENDEDOR', 'CAJERO', 'SUPERVISOR_VENTAS', 'ADMIN_SISTEMA'];
 /** Roles que ven cajas y turnos (mismos que {@code GET /api/turnos}). */

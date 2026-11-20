@@ -29,6 +29,7 @@ import com.proyecto.supply_core.security.annotation.UsuarioInterno;
 import com.proyecto.supply_core.security.context.Modulos;
 import com.proyecto.supply_core.security.context.Roles;
 import com.proyecto.supply_core.security.context.SesionActual;
+import com.proyecto.supply_core.venta.dto.AnularVentaRequest;
 import com.proyecto.supply_core.venta.dto.CotizacionVenta;
 import com.proyecto.supply_core.venta.dto.CotizarRequest;
 import com.proyecto.supply_core.venta.dto.LimiteDescuento;
@@ -37,6 +38,7 @@ import com.proyecto.supply_core.venta.dto.VentaRequest;
 import com.proyecto.supply_core.venta.dto.VentaResponse;
 import com.proyecto.supply_core.venta.dto.VentaResumen;
 import com.proyecto.supply_core.venta.enums.EstadoVenta;
+import com.proyecto.supply_core.venta.service.AnulacionVentaService;
 import com.proyecto.supply_core.venta.service.LimiteDescuentoService;
 import com.proyecto.supply_core.venta.service.VentaService;
 
@@ -59,17 +61,20 @@ public class VentaController {
     private final VentaService ventaService;
     private final LimiteDescuentoService limiteService;
     private final AccesoEmpresaService accesoEmpresa;
+    private final AnulacionVentaService anulacionService;
 
     /**
      * @param ventaService  lógica de la venta
      * @param limiteService límites de descuento
      * @param accesoEmpresa módulo de caja de la empresa
+     * @param anulacionService anulación de ventas del turno (spec 006)
      */
     public VentaController(VentaService ventaService, LimiteDescuentoService limiteService,
-            AccesoEmpresaService accesoEmpresa) {
+            AccesoEmpresaService accesoEmpresa, AnulacionVentaService anulacionService) {
         this.ventaService = ventaService;
         this.limiteService = limiteService;
         this.accesoEmpresa = accesoEmpresa;
+        this.anulacionService = anulacionService;
     }
 
     /**
@@ -147,6 +152,21 @@ public class VentaController {
     @RequiereRol({ Roles.CAJERO, Roles.VENDEDOR, Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR })
     public TiqueteResponse tiquete(@PathVariable @Positive(message = "debe ser un id válido") Long id) {
         return ventaService.tiquete(id);
+    }
+
+    /**
+     * Anula una venta del turno abierto (spec 006): devuelve el stock y saca el dinero de la caja.
+     *
+     * @param id      venta
+     * @param request motivo y autorización del supervisor
+     * @return la venta anulada
+     */
+    @PostMapping("/{id:\\d+}/anular")
+    @RequiereRol({ Roles.CAJERO, Roles.SUPERVISOR_VENTAS })
+    public VentaResponse anular(@PathVariable @Positive(message = "debe ser un id válido") Long id,
+            @Valid @RequestBody AnularVentaRequest request) {
+        accesoEmpresa.exigirModulo(SesionActual.usuario().empresaId(), Modulos.CAJA);
+        return anulacionService.anular(id, request);
     }
 
     /**

@@ -30,7 +30,9 @@ public class ConsecutivoGenerator {
     public static final String PEDIDO_INTERNO = "PED";
     /** Pedido de venta sin cobrar (spec 004). */
     public static final String PEDIDO_VENTA = "PV";
-    private static final Set<String> PREFIJOS = Set.of(SOLICITUD, RFQ, ORDEN_COMPRA, DESPACHO, PEDIDO_INTERNO, PEDIDO_VENTA);
+    /** Devolución de cliente (spec 006). */
+    public static final String DEVOLUCION_VENTA = "DV";
+    private static final Set<String> PREFIJOS = Set.of(SOLICITUD, RFQ, ORDEN_COMPRA, DESPACHO, PEDIDO_INTERNO, PEDIDO_VENTA, DEVOLUCION_VENTA);
 
     private final JdbcTemplate jdbc;
 

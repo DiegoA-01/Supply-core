@@ -72,6 +72,7 @@ import com.proyecto.supply_core.venta.entity.VentaPago;
 import com.proyecto.supply_core.venta.enums.EstadoPedidoVenta;
 import com.proyecto.supply_core.venta.enums.EstadoVenta;
 import com.proyecto.supply_core.venta.enums.MedioPagoVenta;
+import com.proyecto.supply_core.venta.repository.DevolucionVentaRepository;
 import com.proyecto.supply_core.venta.repository.ListaPrecioRepository;
 import com.proyecto.supply_core.venta.repository.PedidoVentaRepository;
 import com.proyecto.supply_core.venta.repository.PrecioProductoRepository;
@@ -120,6 +121,7 @@ public class VentaService {
     private final AuditoriaService auditoriaService;
     private final JdbcTemplate jdbc;
     private final EmpresaRepository empresaRepository;
+    private final DevolucionVentaRepository devolucionRepository;
 
     /**
      * Línea lista para cobrar: el producto, su precio del día y el resultado del cálculo.
@@ -169,6 +171,7 @@ public class VentaService {
      * @param auditoriaService            registro de la venta
      * @param jdbc                        consecutivo por caja (misma transacción)
      * @param empresaRepository           datos de la empresa para el tiquete
+     * @param devolucionRepository        lo ya devuelto de cada línea
      */
     public VentaService(VentaRepository ventaRepository, PedidoVentaRepository pedidoRepository,
             TurnoCajaRepository turnoRepository, CajaRepository cajaRepository,
@@ -179,7 +182,7 @@ public class VentaService {
             PreciosService preciosService, MovimientoInventarioService movimientoInventarioService,
             AutorizacionService autorizacionService, LimiteDescuentoService limiteService,
             UsuarioRepository usuarioRepository, AuditoriaService auditoriaService, JdbcTemplate jdbc,
-            EmpresaRepository empresaRepository) {
+            EmpresaRepository empresaRepository, DevolucionVentaRepository devolucionRepository) {
         this.ventaRepository = ventaRepository;
         this.pedidoRepository = pedidoRepository;
         this.turnoRepository = turnoRepository;
@@ -200,6 +203,7 @@ public class VentaService {
         this.auditoriaService = auditoriaService;
         this.jdbc = jdbc;
         this.empresaRepository = empresaRepository;
+        this.devolucionRepository = devolucionRepository;
     }
 
     /**
@@ -344,7 +348,8 @@ public class VentaService {
 
     /**
      * Historial de ventas según quién mira: supervisor, dueño y auditor ven todas; el vendedor, las suyas; el cajero
-     * solo busca una venta suya por su consecutivo (el cierre es ciego: no ve cuánto lleva vendido).
+     * solo busca una venta por su consecutivo (para reimprimirla, anularla o devolverla), nunca la lista: el cierre es
+     * ciego y no debe ver cuánto lleva vendido.
      *
      * @param cajaId      caja
      * @param turnoId     turno
@@ -362,7 +367,6 @@ public class VentaService {
             String consecutivo, LocalDateTime desde, LocalDateTime hasta, Pageable pageable) {
         Set<String> roles = SesionActual.usuario().roles();
         Long yo = SesionActual.usuario().id();
-        Long cajero = null;
         Long vendedor = null;
         String exacto = consecutivo == null || consecutivo.isBlank() ? null : consecutivo.trim().toUpperCase();
         if (!veTodas(roles)) {
@@ -372,10 +376,9 @@ public class VentaService {
                 if (exacto == null) {
                     throw new AccesoDenegadoException("El cajero busca sus ventas por consecutivo");
                 }
-                cajero = yo;
             }
         }
-        var pagina = ventaRepository.buscar(cajero, vendedor, cajaId, turnoId, clienteId, estado, exacto, desde, hasta,
+        var pagina = ventaRepository.buscar(null, vendedor, cajaId, turnoId, clienteId, estado, exacto, desde, hasta,
                 pageable);
         List<Venta> ventas = pagina.getContent();
         Map<Long, String> cajas = cajaRepository.findAllById(ventas.stream().map(Venta::getCajaId).collect(Collectors.toSet()))
@@ -694,12 +697,12 @@ public class VentaService {
 
     /**
      * @param v venta
-     * @throws NoEncontradoException si la sesión no puede verla (no se dice que existe)
+     * @throws NoEncontradoException si la sesión no puede verla (no se dice que existe): el vendedor solo ve las suyas
      */
     private static void verificarAcceso(Venta v) {
         Set<String> roles = SesionActual.usuario().roles();
         Long yo = SesionActual.usuario().id();
-        if (veTodas(roles) || yo.equals(v.getCajeroUsuarioId())
+        if (veTodas(roles) || roles.contains(Roles.CAJERO) || yo.equals(v.getCajeroUsuarioId())
                 || (roles.contains(Roles.VENDEDOR) && yo.equals(v.getVendedorUsuarioId()))) {
             return;
         }
@@ -734,12 +737,19 @@ public class VentaService {
         Cliente cliente = clienteRepository.findById(v.getClienteId()).orElse(null);
         String caja = cajaRepository.findById(v.getCajaId()).map(Caja::getNombre).orElse(null);
         String lista = listaRepository.findById(v.getListaPrecioId()).map(ListaPrecio::getNombre).orElse(null);
+        Map<Long, DevolucionVentaRepository.Devuelto> devuelto = devolucionRepository.devueltoPorLinea(v.getId()).stream()
+                .collect(Collectors.toMap(DevolucionVentaRepository.Devuelto::ventaLineaId, Function.identity()));
+        BigDecimal totalDevuelto = devuelto.values().stream().map(DevolucionVentaRepository.Devuelto::valor)
+                .reduce(BigDecimal.ZERO.setScale(2), BigDecimal::add);
+        boolean turnoAbierto = turnoRepository.findById(v.getTurnoId()).map(t -> t.getEstado() == EstadoTurno.ABIERTO)
+                .orElse(false);
         List<VentaLineaResponse> lineas = v.getLineas().stream().map(l -> {
             Producto p = productos.get(l.getProductoId());
             return new VentaLineaResponse(l.getProductoId(), p == null ? null : p.getCodigo(), p == null ? null : p.getNombre(),
                     unidades.get(l.getUnidadMedidaId()), l.getCantidad(), l.getPrecioLista(), l.getPrecioUnitario(),
                     l.getDescuentoPct(), l.getDescuentoValor(), l.getTarifaImpuestoPct(), l.getBaseGravable(),
-                    l.getImpuesto(), l.getTotalLinea(), nombres.get(l.getAutorizadoPorUsuarioId()));
+                    l.getImpuesto(), l.getTotalLinea(), nombres.get(l.getAutorizadoPorUsuarioId()), l.getId(),
+                    devuelto.containsKey(l.getId()) ? devuelto.get(l.getId()).cantidad() : BigDecimal.ZERO);
         }).toList();
         List<VentaPagoResponse> pagos = v.getPagos().stream().map(p -> new VentaPagoResponse(p.getMedio(), p.getMonto(),
                 p.getRecibido(), p.getReferencia(), p.getUltimos4())).toList();
@@ -749,6 +759,6 @@ public class VentaService {
                 nombres.get(v.getCajeroUsuarioId()), nombres.get(v.getVendedorUsuarioId()), lista, v.getPedidoVentaId(),
                 v.getSubtotal(), v.getDescuentoTotal(), v.getBaseGravable(), v.getImpuestos(), v.getTotal(), v.getRedondeo(),
                 v.totalAPagar(), v.getCambio(), v.getConfirmadaEn(), nombres.get(v.getAutorizadaPorUsuarioId()),
-                v.getAnuladaEn(), v.getMotivoAnulacion(), lineas, pagos);
+                v.getAnuladaEn(), v.getMotivoAnulacion(), lineas, pagos, turnoAbierto, totalDevuelto);
     }
 }

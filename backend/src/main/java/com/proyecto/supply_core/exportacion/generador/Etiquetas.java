@@ -33,6 +33,8 @@ public final class Etiquetas {
             entry(TipoMovimiento.TRASLADO, "Traslado"),
             entry(TipoMovimiento.SALIDA_VENTA, "Salida por venta"),
             entry(TipoMovimiento.ANULACION_DESPACHO, "Anulación de despacho"),
+            entry(TipoMovimiento.ANULACION_VENTA, "Anulación de venta"),
+            entry(TipoMovimiento.DEVOLUCION_CLIENTE, "Devolución de cliente"),
             entry(EstadoOrden.EMITIDA, "Emitida"),
             entry(EstadoOrden.ACEPTADA_PROVEEDOR, "Aceptada por el proveedor"),
             entry(EstadoOrden.RECHAZADA_PROVEEDOR, "Rechazada por el proveedor"),
