@@ -72,11 +72,25 @@
       </section>
 
       <aside class="lateral">
-        <section class="tarjeta">
-          <div class="fila entre">
-            <div><span class="sub">Cliente</span><strong>{{ cliente()?.nombre ?? consumidorFinal()?.nombre ?? 'Consumidor final' }}</strong></div>
-            <button type="button" class="boton chico" (click)="abrirClientes()">Cambiar (F4)</button>
-          </div>
+        <section class="tarjeta panel-cliente">
+          <span class="sub">¿A quién le vende?</span>
+          @if (cliente(); as cl) {
+            <strong class="nombre-cliente">{{ cl.nombre }}</strong>
+            @if (cl.numeroDocumento) { <span class="sub">{{ cl.tipoDocumento }} {{ cl.numeroDocumento }}</span> }
+            <div class="acciones-cliente">
+              <button type="button" class="boton chico" (click)="abrirClientes()">Cambiar cliente (F4)</button>
+              <button type="button" class="boton chico" (click)="elegirCliente(null)">Vender como consumidor final</button>
+            </div>
+          } @else {
+            <strong class="nombre-cliente">Consumidor final</strong>
+            <p class="ayuda">La venta sale sin datos del cliente. Es lo normal en el mostrador: no tiene que hacer nada.</p>
+            <p class="ayuda">Identifique al cliente solo si <strong>pide la factura a su nombre</strong>, <strong>compra a crédito</strong>,
+              <strong>usa su saldo a favor</strong> o tiene <strong>precios especiales</strong>.</p>
+            <div class="acciones-cliente">
+              <button type="button" class="boton chico" (click)="abrirClientes()">Buscar cliente (F4)</button>
+              <button type="button" class="boton chico" (click)="crearCliente()">Crear cliente nuevo</button>
+            </div>
+          }
           @if (cliente() && cotizacion(); as c) {
             <div class="credito">
               @if (c.creditoDisponible != null) { <span class="sub">Crédito disponible: {{ c.creditoDisponible | pesos }}</span> }
@@ -120,22 +134,36 @@
   @if (panelCliente()) {
     <div class="velo" (click)="panelCliente.set(false)"></div>
     <section class="tarjeta dialogo" role="dialog" aria-modal="true" aria-labelledby="t-cliente">
-      <h2 id="t-cliente">Cliente de la venta</h2>
       @if (creandoCliente()) {
+        <h2 id="t-cliente">Crear cliente nuevo</h2>
+        <p class="ayuda">Escriba el tipo y número de documento (cédula o NIT) y el nombre. Teléfono, correo y dirección solo
+          si el cliente autoriza guardar sus datos. Al guardar queda elegido para esta venta.</p>
         <sc-cliente-formulario (guardado)="elegirCliente($event)" (cancelado)="creandoCliente.set(false)" />
       } @else {
+        <h2 id="t-cliente">¿A quién le vende?</h2>
+        <ol class="pasos">
+          <li>Busque al cliente por su <strong>cédula, NIT o nombre</strong>.</li>
+          <li>Si no aparece, <strong>créelo</strong> con su documento.</li>
+          <li>Si no quiere dar datos, siga como <strong>consumidor final</strong>.</li>
+        </ol>
         <div class="fila">
-          <input class="entrada" placeholder="Documento o nombre" aria-label="Buscar cliente" [ngModel]="buscarCliente()"
+          <input class="entrada" placeholder="Cédula, NIT o nombre" aria-label="Buscar cliente" [ngModel]="buscarCliente()"
             (ngModelChange)="buscarCliente.set($event)" (keydown.enter)="buscarClientes()">
           <button type="button" class="boton" (click)="buscarClientes()">Buscar</button>
         </div>
-        <ul class="opciones">
-          <li><button type="button" (click)="elegirCliente(null)"><strong>Consumidor final</strong><span class="sub">Venta sin datos del cliente</span></button></li>
-          @for (c of clientesEncontrados(); track c.id) {
-            <li><button type="button" (click)="elegirCliente(c)"><strong>{{ c.nombre }}</strong><span class="sub">{{ c.tipoDocumento }} {{ c.numeroDocumento }}</span></button></li>
-          }
-        </ul>
-        <button type="button" class="boton chico" (click)="creandoCliente.set(true)">Crear cliente</button>
+        @if (clientesEncontrados().length) {
+          <ul class="opciones">
+            @for (c of clientesEncontrados(); track c.id) {
+              <li><button type="button" (click)="elegirCliente(c)"><strong>{{ c.nombre }}</strong><span class="sub">{{ c.tipoDocumento }} {{ c.numeroDocumento }}</span></button></li>
+            }
+          </ul>
+        } @else if (buscado()) {
+          <p class="ayuda">No hay ningún cliente con «{{ buscado() }}». Revise el número o créelo como cliente nuevo.</p>
+        }
+        <div class="acciones-cliente">
+          <button type="button" class="boton chico" (click)="creandoCliente.set(true)">Crear cliente nuevo</button>
+          <button type="button" class="boton chico" (click)="elegirCliente(null)">Seguir como consumidor final</button>
+        </div>
       }
     </section>
   }

@@ -99,6 +99,8 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
   protected readonly buscarCliente = signal('');
   protected readonly clientesEncontrados = signal<Cliente[]>([]);
   protected readonly creandoCliente = signal(false);
+  /** Texto de la última búsqueda de cliente sin resultados (para decir qué hacer). */
+  protected readonly buscado = signal('');
 
   protected readonly cobrando = signal(false);
   protected readonly pagos = signal<PagoEscrito[]>([]);
@@ -291,7 +293,14 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
     this.panelCliente.set(true);
     this.creandoCliente.set(false);
     this.buscarCliente.set('');
+    this.buscado.set('');
     this.clientesEncontrados.set([]);
+  }
+
+  /** Abre el panel directamente en el formulario de cliente nuevo. */
+  protected crearCliente(): void {
+    this.abrirClientes();
+    this.creandoCliente.set(true);
   }
 
   protected buscarClientes(): void {
@@ -299,7 +308,13 @@ export class PuntoDeVenta implements OnInit, OnDestroy {
     if (!q) {
       return;
     }
-    this.clientes.buscar(q, true).subscribe({ next: p => this.clientesEncontrados.set(p.contenido ?? []), error: e => this.avisos.error(e) });
+    this.clientes.buscar(q, true).subscribe({
+      next: p => {
+        this.clientesEncontrados.set(p.contenido ?? []);
+        this.buscado.set((p.contenido ?? []).length ? '' : q);
+      },
+      error: e => this.avisos.error(e),
+    });
   }
 
   /** @param c cliente elegido o recién creado */
