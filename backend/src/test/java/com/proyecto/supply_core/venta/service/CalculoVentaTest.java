@@ -84,7 +84,7 @@ class CalculoVentaTest {
         assertEquals(n("10000.00"), r.porMedio().get(MedioPagoVenta.TARJETA_DEBITO));
     }
 
-    /** Pagos que no alcanzan, una tarjeta que se pasa o crédito: se rechazan. */
+    /** Pagos que no alcanzan o un medio distinto del efectivo que se pasa: se rechazan. */
     @Test
     void losPagosQueNoCuadranSeRechazan() {
         assertEquals("PAGO_INSUFICIENTE", assertThrows(NegocioException.class, () -> CalculoVenta.pagos(n("10000"),
@@ -94,8 +94,14 @@ class CalculoVentaTest {
         assertEquals("PAGO_EXCEDE", assertThrows(NegocioException.class, () -> CalculoVenta.pagos(n("10000"), List.of(
                 new CalculoVenta.Pago(MedioPagoVenta.TRANSFERENCIA, n("10000")),
                 new CalculoVenta.Pago(MedioPagoVenta.EFECTIVO, n("5000"))))).getCodigo());
-        assertEquals("CREDITO_NO_DISPONIBLE", assertThrows(NegocioException.class, () -> CalculoVenta.pagos(n("10000"),
-                List.of(new CalculoVenta.Pago(MedioPagoVenta.CREDITO, n("10000"))))).getCodigo());
+        // el crédito (spec 007) y el saldo a favor nunca se pasan del total ni dan cambio
+        assertEquals("PAGO_EXCEDE", assertThrows(NegocioException.class, () -> CalculoVenta.pagos(n("10000"),
+                List.of(new CalculoVenta.Pago(MedioPagoVenta.CREDITO, n("10001"))))).getCodigo());
+        CalculoVenta.ResultadoPagos mixto = CalculoVenta.pagos(n("10000"), List.of(
+                new CalculoVenta.Pago(MedioPagoVenta.CREDITO, n("6000")), new CalculoVenta.Pago(MedioPagoVenta.SALDO_FAVOR, n("1000")),
+                new CalculoVenta.Pago(MedioPagoVenta.EFECTIVO, n("5000"))));
+        assertEquals(n("2000.00"), mixto.cambio());
+        assertEquals(n("3000.00"), mixto.porMedio().get(MedioPagoVenta.EFECTIVO));
     }
 
     /**

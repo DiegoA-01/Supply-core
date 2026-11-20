@@ -111,3 +111,5 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 - `/app/caja/mi-turno`: el cierre es ciego, el esperado solo se ve después de guardar. `/app/caja` sigue siendo la vista del supervisor.
 - `/app/ventas` (supervisor, dueño, auditor, vendedor): historial, detalle y reimpresión; límites de descuento (los cambia el dueño). El cajero no tiene historial (cierre ciego).
 - Tiquete: `htmlTiquete` + `imprimirTiquete` en `features/pos/tiquete.ts`. Servicio: `core/servicios/venta.service.ts` (distinto de `ventas.service.ts`, que es el catálogo de precios).
+- `/app/cartera` (cajero, supervisor, dueño, auditor; módulo CARTERA): edades, clientes en mora o bloqueados, cuentas y abonos con su recibo; el supervisor o el dueño habilita a un cliente en mora hasta una fecha. El cupo se fija en Clientes.
+- Mi turno recibe abonos (con el módulo CARTERA) e imprime el recibo (`htmlRecibo` en `features/pos/tiquete.ts`). En el POS, Crédito y Saldo a favor aparecen solo con un cliente registrado; la tarjeta del cliente muestra crédito disponible, saldo a favor y si está bloqueado.

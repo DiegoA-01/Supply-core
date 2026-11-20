@@ -11,6 +11,7 @@
 .corta { width: 100px; }
 tr.alerta td { background: #fff8eb; }
 .pedido { margin: 0; }
+.credito { display: grid; gap: 4px; margin-top: 8px; }
 .lateral { display: grid; gap: 12px; position: sticky; top: 12px; }
 .entre { justify-content: space-between; align-items: center; gap: 8px; }
 .totales { display: grid; gap: 12px;

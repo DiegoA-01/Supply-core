@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 
-import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REABASTECIMIENTO, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS, ROLES_TABLERO, ROLES_PRECIOS, ROLES_CATALOGOS, ROLES_CLIENTES, ROLES_CAJA, ROLES_POS, ROLES_MI_TURNO, ROLES_VENTAS, ROLES_PEDIDOS_VENTA } from './core/navegacion/menu';
+import { INTERNOS, ROLES_ORDENES, ROLES_PROVEEDORES, ROLES_REABASTECIMIENTO, ROLES_REPORTES, ROLES_RFQ, ROLES_ROTACION, ROLES_PAGOS, ROLES_DESPACHOS, ROLES_TABLERO, ROLES_PRECIOS, ROLES_CATALOGOS, ROLES_CLIENTES, ROLES_CAJA, ROLES_POS, ROLES_MI_TURNO, ROLES_VENTAS, ROLES_PEDIDOS_VENTA, ROLES_CARTERA } from './core/navegacion/menu';
 import { empresaGuard, invitadoGuard, permisoGuard, plataformaGuard, proveedorGuard } from './core/sesion/guards';
 
 /**
@@ -173,6 +173,13 @@ export const routes: Routes = [
         canActivate: [permisoGuard],
         data: { roles: ROLES_POS, modulo: 'VENTAS' },
         loadComponent: () => import('./features/pos/pos').then(m => m.PuntoDeVenta),
+      },
+      {
+        path: 'cartera',
+        title: 'Cartera · Supply-Core',
+        canActivate: [permisoGuard],
+        data: { roles: ROLES_CARTERA, modulo: 'CARTERA' },
+        loadComponent: () => import('./features/cartera/cartera').then(m => m.Cartera),
       },
       {
         path: 'caja/mi-turno',

@@ -1,4 +1,4 @@
-import { Tiquete } from '../../core/api/modelos';
+import { Abono, Tiquete } from '../../core/api/modelos';
 
 /** Nombre corto de cada medio de pago en el tiquete. */
 const MEDIOS_TIQUETE: Record<string, string> = {
@@ -85,11 +85,45 @@ export function htmlTiquete(t: Tiquete): string {
 }
 
 /**
+ * Recibo de abono de cartera en 80 mm (spec 007): consecutivo, cliente, valor, a qué ventas se aplicó y lo que queda.
+ *
+ * @param a abono con sus aplicaciones (todo calculado por el backend)
+ * @returns documento HTML completo
+ */
+export function htmlRecibo(a: Abono): string {
+  const filas = (a.aplicaciones ?? []).map(x => `<tr><td>Venta ${escapar(x.venta)}</td><td class="d">${pesos(x.valor)}</td></tr>`).join('');
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>${escapar(a.consecutivo)}</title>
+<style>
+  @page { size: 80mm auto; margin: 3mm; }
+  body { font: 12px/1.35 'Courier New', monospace; width: 74mm; margin: 0; color: #000; }
+  h1 { font-size: 14px; margin: 0; text-align: center; } .d { text-align: right; white-space: nowrap; }
+  table { width: 100%; border-collapse: collapse; } hr { border: 0; border-top: 1px dashed #000; margin: 4px 0; }
+  .total td { font-weight: bold; font-size: 14px; }
+</style></head><body>
+  <h1>Recibo de abono</h1>
+  <div>${escapar(a.consecutivo)} · ${escapar(new Date(a.creadoEn!).toLocaleString('es-CO'))}</div>
+  <div>Cliente: ${escapar(a.cliente)} (${escapar(a.documento)})</div>
+  <div>Recibió: ${escapar(a.usuario)} · ${MEDIOS_TIQUETE[a.medioPago ?? ''] ?? escapar(a.medioPago)}</div>
+  <hr><table>${filas}<tr class="total"><td>ABONO</td><td class="d">${pesos(a.valor)}</td></tr></table>
+  <hr><table><tr><td>Saldo pendiente</td><td class="d">${pesos(a.saldoPendiente)}</td></tr></table>
+</body></html>`;
+}
+
+/**
  * Imprime el tiquete desde un marco oculto, sin abrir ventanas que el navegador pueda bloquear.
  *
  * @param t datos del tiquete
  */
 export function imprimirTiquete(t: Tiquete): void {
+  imprimirHtml(htmlTiquete(t));
+}
+
+/**
+ * Imprime un documento de 80 mm desde un marco oculto.
+ *
+ * @param html documento completo
+ */
+export function imprimirHtml(html: string): void {
   const marco = document.createElement('iframe');
   marco.setAttribute('aria-hidden', 'true');
   marco.style.cssText = 'position:fixed;width:0;height:0;border:0;right:0;bottom:0';
@@ -100,7 +134,7 @@ export function imprimirTiquete(t: Tiquete): void {
     return;
   }
   doc.open();
-  doc.write(htmlTiquete(t));
+  doc.write(html);
   doc.close();
   marco.contentWindow.focus();
   marco.contentWindow.print();

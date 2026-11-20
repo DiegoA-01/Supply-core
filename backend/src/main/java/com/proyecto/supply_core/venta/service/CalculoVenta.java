@@ -158,15 +158,11 @@ public final class CalculoVenta {
      * @param pagos  pagos que manda la pantalla
      * @return cambio y lo que queda en la caja por medio
      * @throws NegocioException {@code PAGO_INSUFICIENTE} si no alcanzan; {@code PAGO_EXCEDE} si lo que se pasa no
-     *                          es efectivo o el efectivo sobra completo; {@code CREDITO_NO_DISPONIBLE} si hay crédito
+     *                          es efectivo o el efectivo sobra completo (el crédito y el saldo a favor nunca se pasan)
      */
     public static ResultadoPagos pagos(BigDecimal aPagar, List<Pago> pagos) {
         Map<MedioPagoVenta, BigDecimal> porMedio = new EnumMap<>(MedioPagoVenta.class);
         for (Pago p : pagos) {
-            if (p.medio() == MedioPagoVenta.CREDITO) {
-                throw new NegocioException("CREDITO_NO_DISPONIBLE",
-                        "La venta a crédito todavía no está disponible: cobre de contado");
-            }
             porMedio.merge(p.medio(), dinero(p.monto()), BigDecimal::add);
         }
         BigDecimal efectivo = porMedio.getOrDefault(MedioPagoVenta.EFECTIVO, BigDecimal.ZERO);

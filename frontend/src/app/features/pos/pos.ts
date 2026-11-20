@@ -37,10 +37,10 @@ export interface PagoEscrito {
   referencia: string;
 }
 
-/** Texto de cada medio de pago. */
-export const MEDIOS_VENTA: Record<Exclude<MedioPagoVenta, 'CREDITO'>, string> = {
+/** Texto de cada medio de pago. Crédito y saldo a favor solo para clientes registrados (spec 007). */
+export const MEDIOS_VENTA: Record<MedioPagoVenta, string> = {
   EFECTIVO: 'Efectivo', TARJETA_DEBITO: 'Tarjeta débito', TARJETA_CREDITO: 'Tarjeta crédito',
-  TRANSFERENCIA: 'Transferencia', BILLETERA: 'Billetera digital',
+  TRANSFERENCIA: 'Transferencia', BILLETERA: 'Billetera digital', CREDITO: 'Crédito del cliente', SALDO_FAVOR: 'Saldo a favor',
 };
 
 /** Acción que espera el PIN del supervisor. */
@@ -73,7 +73,9 @@ export class PuntoDeVenta implements OnInit {
   private pedidoPendiente: number | null = null;
 
   protected readonly medios = MEDIOS_VENTA;
-  protected readonly ordenMedios = Object.keys(MEDIOS_VENTA) as MedioPagoVenta[];
+  /** Medios que se ofrecen: el crédito (con módulo de cartera) y el saldo a favor solo con un cliente registrado. */
+  protected readonly ordenMedios = computed(() => (Object.keys(MEDIOS_VENTA) as MedioPagoVenta[]).filter(m =>
+    (m !== 'CREDITO' || (!!this.cliente() && this.sesion.tieneModulo('CARTERA'))) && (m !== 'SALDO_FAVOR' || !!this.cliente())));
 
   /** Cobra quien tiene caja; el vendedor solo arma pedidos. */
   protected readonly cobra = computed(() => this.sesion.tieneRol(['CAJERO', 'SUPERVISOR_VENTAS']) && !this.sesion.soloLectura());

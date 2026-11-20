@@ -59,6 +59,23 @@ describe('Mi turno', () => {
     r.flush({ ...abierto, debeRetirar: false });
   });
 
+  it('el abono de un cliente va al servidor y refresca el turno', () => {
+    crear(abierto);
+    c()['buscarCliente'].set('5566');
+    c()['buscarClientes']();
+    backend.expectOne(r => r.url === '/api/clientes').flush({ contenido: [{ id: 4, nombre: 'Ferretería cliente', numeroDocumento: '5566' }] });
+    c()['clienteAbono'].set({ id: 4, nombre: 'Ferretería cliente' });
+    c()['valorAbono'].set(5000);
+    const imprimir = window.print;
+    c()['abonar']();
+    const r = backend.expectOne('/api/abonos');
+    expect(r.request.body).toEqual({ clienteId: 4, valor: 5000, medioPago: 'EFECTIVO', referencia: null });
+    r.flush({ id: 1, consecutivo: 'AB-000001', valor: 5000, saldoPendiente: 20000, aplicaciones: [], creadoEn: '2026-11-20T10:00:00' });
+    backend.expectOne('/api/turnos/actual').flush(abierto);
+    expect(c()['clienteAbono']()).toBeNull();
+    window.print = imprimir;
+  });
+
   it('el cierre es ciego: el esperado solo aparece después de guardar', () => {
     crear(abierto);
     expect(texto()).not.toContain('Esperado');

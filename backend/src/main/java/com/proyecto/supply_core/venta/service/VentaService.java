@@ -30,6 +30,7 @@ import com.proyecto.supply_core.caja.repository.CajaRepository;
 import com.proyecto.supply_core.caja.repository.MovimientoCajaRepository;
 import com.proyecto.supply_core.caja.repository.TurnoCajaRepository;
 import com.proyecto.supply_core.caja.service.AutorizacionService;
+import com.proyecto.supply_core.cartera.service.CarteraService;
 import com.proyecto.supply_core.catalogo.entity.UnidadMedida;
 import com.proyecto.supply_core.catalogo.repository.UnidadMedidaRepository;
 import com.proyecto.supply_core.catalogo.service.UnidadMedidaService;
@@ -125,6 +126,7 @@ public class VentaService {
     private final EmpresaRepository empresaRepository;
     private final DevolucionVentaRepository devolucionRepository;
     private final NotificacionService notificacionService;
+    private final CarteraService carteraService;
 
     /**
      * Línea lista para cobrar: el producto, su precio del día y el resultado del cálculo.
@@ -176,6 +178,7 @@ public class VentaService {
      * @param empresaRepository           datos de la empresa para el tiquete
      * @param devolucionRepository        lo ya devuelto de cada línea
      * @param notificacionService         aviso de venta por debajo del costo (spec 008)
+     * @param carteraService              crédito, cupo, mora y saldo a favor (spec 007)
      */
     public VentaService(VentaRepository ventaRepository, PedidoVentaRepository pedidoRepository,
             TurnoCajaRepository turnoRepository, CajaRepository cajaRepository,
@@ -187,7 +190,7 @@ public class VentaService {
             AutorizacionService autorizacionService, LimiteDescuentoService limiteService,
             UsuarioRepository usuarioRepository, AuditoriaService auditoriaService, JdbcTemplate jdbc,
             EmpresaRepository empresaRepository, DevolucionVentaRepository devolucionRepository,
-            NotificacionService notificacionService) {
+            NotificacionService notificacionService, CarteraService carteraService) {
         this.ventaRepository = ventaRepository;
         this.pedidoRepository = pedidoRepository;
         this.turnoRepository = turnoRepository;
@@ -210,6 +213,7 @@ public class VentaService {
         this.empresaRepository = empresaRepository;
         this.devolucionRepository = devolucionRepository;
         this.notificacionService = notificacionService;
+        this.carteraService = carteraService;
     }
 
     /**
@@ -272,6 +276,15 @@ public class VentaService {
         BigDecimal redondeo = CalculoVenta.redondeo(totales.total(), soloEfectivo);
         validarTarjetas(req.pagos());
         CalculoVenta.ResultadoPagos cobro = CalculoVenta.pagos(totales.total().add(redondeo), pagos);
+        // Spec 007: el crédito exige cliente identificado, cupo y no estar en mora; el saldo a favor, que alcance
+        BigDecimal credito = cobro.porMedio().getOrDefault(MedioPagoVenta.CREDITO, BigDecimal.ZERO);
+        BigDecimal saldoFavor = cobro.porMedio().getOrDefault(MedioPagoVenta.SALDO_FAVOR, BigDecimal.ZERO);
+        if (credito.signum() > 0) {
+            carteraService.validarCredito(cliente, credito);
+        }
+        if (saldoFavor.signum() > 0) {
+            carteraService.validarSaldoFavor(cliente, saldoFavor);
+        }
 
         Caja caja = turno.getCaja();
         Venta v = new Venta();
@@ -291,6 +304,7 @@ public class VentaService {
         v.setTotal(totales.total());
         v.setRedondeo(redondeo);
         v.setCambio(cobro.cambio());
+        v.setEsCredito(credito.signum() > 0);
         v.setClaveIdempotencia(llave);
         v.setConfirmadaEn(LocalDateTime.now());
         v.setAutorizadaPorUsuarioId(autorizaDescuento != null ? autorizaDescuento : autorizaPrecio);
@@ -308,9 +322,16 @@ public class VentaService {
         porProducto.forEach((productoId, cantidad) -> movimientoInventarioService.registrarSalidaVenta(productoId,
                 v.getBodegaId(), cantidad, REFERENCIA, v.getId()));
 
-        // Caja: un movimiento por medio de pago con lo que queda en ella
+        if (credito.signum() > 0) {
+            carteraService.crearCuenta(v, cliente, credito);
+        }
+        if (saldoFavor.signum() > 0) {
+            carteraService.usarSaldoFavor(v, cliente, saldoFavor);
+        }
+
+        // Caja: un movimiento por medio de pago con lo que queda en ella (el crédito y el saldo a favor no entran)
         cobro.porMedio().forEach((medio, monto) -> {
-            if (monto.signum() > 0) {
+            if (monto.signum() > 0 && medio.entraACaja()) {
                 MovimientoCaja m = new MovimientoCaja();
                 m.setTurnoId(turno.getId());
                 m.setTipo(TipoMovimientoCaja.VENTA);
@@ -480,9 +501,11 @@ public class VentaService {
                 l.precio().getPrecio(), l.resultado().precioUnitario(), l.descuentoPct(), l.resultado().descuento(),
                 l.producto().getTarifaImpuesto() == null ? BigDecimal.ZERO : l.producto().getTarifaImpuesto().getPorcentaje(),
                 l.resultado().total(), l.pasaLimite(), l.bajoMinimo())).toList();
+        var credito = cliente.isEsConsumidorFinal() ? null : carteraService.estado(cliente);
         return new CotizacionVenta(salida, t.subtotal(), t.descuento(), t.base(), t.impuestos(), t.total(), redondeo, aPagar,
                 pagado, cambio, mensaje, limite, lineas.stream().anyMatch(LineaPreparada::pasaLimite),
-                lineas.stream().anyMatch(LineaPreparada::bajoMinimo));
+                lineas.stream().anyMatch(LineaPreparada::bajoMinimo), credito == null ? null : credito.disponible(),
+                credito == null ? BigDecimal.ZERO : credito.saldoFavor(), credito != null && credito.bloqueado());
     }
 
     /**

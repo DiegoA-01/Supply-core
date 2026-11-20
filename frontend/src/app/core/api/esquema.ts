@@ -468,6 +468,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cartera/clientes/{id}/excepcion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["fijarExcepcion"];
+        post?: never;
+        delete: operations["quitarExcepcion"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/cajas/{id}": {
         parameters: {
             query?: never;
@@ -2030,6 +2046,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["decidir_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/abonos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["abonar"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3684,6 +3716,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cartera": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["resumen"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/cartera/clientes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["detalle"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/me": {
         parameters: {
             query?: never;
@@ -3756,6 +3820,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["pendientes_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/abonos/{id}/recibo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["recibo"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4439,7 +4519,7 @@ export interface components {
         };
         ConfigNotificacionCambioRequest: {
             /** @enum {string} */
-            evento: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA";
+            evento: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA";
             /** @enum {string} */
             canal: "EMAIL" | "INTERNA";
             activo: boolean;
@@ -4448,7 +4528,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             /** @enum {string} */
-            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA";
+            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA";
             /** @enum {string} */
             canal?: "EMAIL" | "INTERNA";
             activo?: boolean;
@@ -4507,6 +4587,34 @@ export interface components {
         CategoriaUpdateRequest: {
             nombre: string;
         };
+        ExcepcionCreditoRequest: {
+            /** Format: date */
+            hasta: string;
+            motivo: string;
+        };
+        ClienteCartera: {
+            /** Format: int64 */
+            clienteId?: number;
+            nombre?: string;
+            documento?: string;
+            cupo?: number;
+            /** Format: int32 */
+            plazoDias?: number;
+            saldo?: number;
+            disponible?: number;
+            saldoFavor?: number;
+            alDia?: number;
+            d1a30?: number;
+            d31a60?: number;
+            d61a90?: number;
+            mas90?: number;
+            enMora?: boolean;
+            bloqueado?: boolean;
+            /** Format: date */
+            excepcionHasta?: string;
+            excepcionMotivo?: string;
+            excepcionPor?: string;
+        };
         CajaRequest: {
             nombre: string;
             /** Format: int64 */
@@ -4559,7 +4667,7 @@ export interface components {
         };
         PagoVentaRequest: {
             /** @enum {string} */
-            medio: "EFECTIVO" | "TARJETA_DEBITO" | "TARJETA_CREDITO" | "TRANSFERENCIA" | "BILLETERA" | "CREDITO";
+            medio: "EFECTIVO" | "TARJETA_DEBITO" | "TARJETA_CREDITO" | "TRANSFERENCIA" | "BILLETERA" | "CREDITO" | "SALDO_FAVOR";
             monto: number;
             referencia?: string;
             ultimos4?: string;
@@ -4596,7 +4704,7 @@ export interface components {
         };
         VentaPagoResponse: {
             /** @enum {string} */
-            medio?: "EFECTIVO" | "TARJETA_DEBITO" | "TARJETA_CREDITO" | "TRANSFERENCIA" | "BILLETERA" | "CREDITO";
+            medio?: "EFECTIVO" | "TARJETA_DEBITO" | "TARJETA_CREDITO" | "TRANSFERENCIA" | "BILLETERA" | "CREDITO" | "SALDO_FAVOR";
             monto?: number;
             recibido?: number;
             referencia?: string;
@@ -4693,6 +4801,9 @@ export interface components {
             limiteDescuentoPct?: number;
             requiereAutorizacionDescuento?: boolean;
             requiereAutorizacionPrecio?: boolean;
+            creditoDisponible?: number;
+            saldoFavor?: number;
+            creditoBloqueado?: boolean;
         };
         LineaCotizada: {
             /** Format: int64 */
@@ -5186,8 +5297,8 @@ export interface components {
             /** @enum {string} */
             motivoRechazo?: "DANADO" | "NO_CUMPLE_ESPECIFICACION" | "VENCIDO" | "CANTIDAD_ERRADA" | "OTRO";
             observacionCalidad?: string;
-            motivoPresenteSiRechaza?: boolean;
             rechazoNoSuperaRecibido?: boolean;
+            motivoPresenteSiRechaza?: boolean;
         };
         RegistrarRecepcionRequest: {
             /** Format: int64 */
@@ -5654,8 +5765,8 @@ export interface components {
             /** Format: date */
             vigenteHasta: string;
             precios: components["schemas"]["PrecioRequest"][];
-            vigenciaEnOrden?: boolean;
             productosSinRepetir?: boolean;
+            vigenciaEnOrden?: boolean;
         };
         PrecioRequest: {
             /** Format: int64 */
@@ -5800,6 +5911,38 @@ export interface components {
             observaciones?: string;
             observacionesPresentes?: boolean;
         };
+        AbonoRequest: {
+            /** Format: int64 */
+            clienteId: number;
+            valor: number;
+            /** @enum {string} */
+            medioPago: "EFECTIVO" | "TARJETA_DEBITO" | "TARJETA_CREDITO" | "TRANSFERENCIA" | "BILLETERA";
+            referencia?: string;
+        };
+        AbonoResponse: {
+            /** Format: int64 */
+            id?: number;
+            consecutivo?: string;
+            /** Format: int64 */
+            clienteId?: number;
+            cliente?: string;
+            documento?: string;
+            valor?: number;
+            /** @enum {string} */
+            medioPago?: "EFECTIVO" | "TARJETA_DEBITO" | "TARJETA_CREDITO" | "TRANSFERENCIA" | "BILLETERA";
+            referencia?: string;
+            usuario?: string;
+            /** Format: date-time */
+            creadoEn?: string;
+            aplicaciones?: components["schemas"]["Aplicacion"][];
+            saldoPendiente?: number;
+        };
+        Aplicacion: {
+            /** Format: int64 */
+            cuentaId?: number;
+            venta?: string;
+            valor?: number;
+        };
         MotivoRequest: {
             motivo: string;
         };
@@ -5823,7 +5966,7 @@ export interface components {
             /** Format: int64 */
             id?: number;
             /** @enum {string} */
-            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA";
+            evento?: "PROVEEDOR_PENDIENTE" | "STOCK_BAJO_MINIMO" | "STOCK_BAJO_SEDE" | "REABASTECIMIENTO_DIARIO" | "SOLICITUD_PENDIENTE_APROBACION" | "SOLICITUD_DECIDIDA" | "SOLICITUD_APROBADA" | "RFQ_INVITACION" | "RFQ_CERRADA" | "RFQ_CANCELADA" | "COTIZACION_RECIBIDA" | "EXTRACCION_REQUIERE_REVISION" | "ADJUDICACION_PENDIENTE_APROBACION" | "ADJUDICACION_DECIDIDA" | "COTIZACION_SELECCIONADA" | "ORDEN_EMITIDA" | "ORDEN_ACTUALIZADA" | "ORDEN_RESPUESTA_PROVEEDOR" | "ORDEN_DESPACHADA" | "PAGO_REGISTRADO" | "PAGO_ANULADO" | "RECEPCION_REGISTRADA" | "RECEPCION_EXCEDENTE" | "RECEPCION_CERRADA" | "FACTURA_EN_REVISION" | "FACTURA_DECIDIDA" | "SOLICITUD_SLA_POR_VENCER" | "SOLICITUD_ESCALADA" | "DELEGACION_ASIGNADA" | "INFORME_PEDIDO" | "PEDIDO_INTERNO" | "PEDIDO_INTERNO_RESPONDIDO" | "CATALOGO_ACTUALIZADO" | "PRECIO_BAJO_COSTO" | "CREDITO_BLOQUEADO" | "INFORME_RECIBIDO" | "TURNO_DIFERENCIA";
             mensaje?: string;
             leida?: boolean;
             /** Format: date-time */
@@ -6711,15 +6854,46 @@ export interface components {
             pedirAntesDe?: string;
             motivo?: string;
         };
+        ResumenCartera: {
+            clientes?: components["schemas"]["ClienteCartera"][];
+            saldo?: number;
+            alDia?: number;
+            d1a30?: number;
+            d31a60?: number;
+            d61a90?: number;
+            mas90?: number;
+            /** Format: int32 */
+            enMora?: number;
+        };
+        CuentaResponse: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            ventaId?: number;
+            venta?: string;
+            valor?: number;
+            saldo?: number;
+            /** Format: date */
+            venceEn?: string;
+            /** @enum {string} */
+            estado?: "ABIERTA" | "PAGADA" | "ANULADA";
+            /** Format: int64 */
+            diasVencida?: number;
+        };
+        DetalleCartera: {
+            cliente?: components["schemas"]["ClienteCartera"];
+            cuentas?: components["schemas"]["CuentaResponse"][];
+            abonos?: components["schemas"]["AbonoResponse"][];
+        };
         AuditoriaFiltro: {
             /** Format: int64 */
             usuarioId?: number;
             /** @enum {string} */
-            entidad?: "USUARIO" | "PROVEEDOR" | "EMPRESA" | "SEDE" | "CENTRO_COSTO" | "DELEGACION" | "PRESUPUESTO" | "CONTRATO" | "POLITICA_APROBACION" | "CATEGORIA_PRODUCTO" | "UNIDAD_MEDIDA" | "PRODUCTO" | "BODEGA" | "MOVIMIENTO_INVENTARIO" | "DOCUMENTO" | "CONFIG_NOTIFICACION" | "SOLICITUD_COMPRA" | "RFQ" | "DESPACHO" | "COTIZACION" | "CONFIG_PESOS" | "ANALISIS" | "ADJUDICACION" | "ORDEN_COMPRA" | "PAGO" | "RECEPCION" | "FACTURA" | "EXPORTACION" | "INFORME_COMPRAS" | "PEDIDO_INTERNO" | "TARIFA_IMPUESTO" | "LISTA_PRECIO" | "PRECIO_PRODUCTO" | "CATALOGO_ITEM" | "CLIENTE" | "CAJA" | "TURNO_CAJA" | "AUTORIZACION" | "VENTA" | "PEDIDO_VENTA" | "LIMITE_DESCUENTO" | "DEVOLUCION_VENTA";
+            entidad?: "USUARIO" | "PROVEEDOR" | "EMPRESA" | "SEDE" | "CENTRO_COSTO" | "DELEGACION" | "PRESUPUESTO" | "CONTRATO" | "POLITICA_APROBACION" | "CATEGORIA_PRODUCTO" | "UNIDAD_MEDIDA" | "PRODUCTO" | "BODEGA" | "MOVIMIENTO_INVENTARIO" | "DOCUMENTO" | "CONFIG_NOTIFICACION" | "SOLICITUD_COMPRA" | "RFQ" | "DESPACHO" | "COTIZACION" | "CONFIG_PESOS" | "ANALISIS" | "ADJUDICACION" | "ORDEN_COMPRA" | "PAGO" | "RECEPCION" | "FACTURA" | "EXPORTACION" | "INFORME_COMPRAS" | "PEDIDO_INTERNO" | "TARIFA_IMPUESTO" | "LISTA_PRECIO" | "PRECIO_PRODUCTO" | "CATALOGO_ITEM" | "CLIENTE" | "CAJA" | "TURNO_CAJA" | "AUTORIZACION" | "VENTA" | "PEDIDO_VENTA" | "LIMITE_DESCUENTO" | "DEVOLUCION_VENTA" | "ABONO_CLIENTE";
             /** Format: int64 */
             entidadId?: number;
             /** @enum {string} */
-            accion?: "LOGIN" | "LOGOUT" | "REFRESH_REUTILIZADO" | "CUENTA_BLOQUEADA" | "USUARIO_CREAR" | "USUARIO_EDITAR" | "USUARIO_ACTIVAR" | "USUARIO_DESACTIVAR" | "USUARIO_RESTABLECER_PASSWORD" | "PASSWORD_CAMBIAR" | "PROVEEDOR_REGISTRAR" | "PROVEEDOR_HABILITAR" | "PROVEEDOR_RECHAZAR" | "PROVEEDOR_SUSPENDER" | "PROVEEDOR_EDITAR" | "EMPRESA_EDITAR" | "SEDE_CREAR" | "SEDE_EDITAR" | "SEDE_CAMBIAR_ESTADO" | "CENTRO_COSTO_CREAR" | "CENTRO_COSTO_EDITAR" | "CENTRO_COSTO_CAMBIAR_ESTADO" | "DELEGACION_CREAR" | "DELEGACION_REVOCAR" | "SOLICITUD_ESCALAR" | "REORDEN_GENERAR" | "PRODUCTO_CARGA_MASIVA" | "CONTRATO_CREAR" | "CONTRATO_EDITAR" | "CONTRATO_ANULAR" | "ORDEN_EMITIR_DIRECTA" | "PRESUPUESTO_CREAR" | "PRESUPUESTO_EDITAR" | "SOLICITUD_EXCEPCION" | "POLITICA_CREAR" | "POLITICA_EDITAR" | "POLITICA_CAMBIAR_ESTADO" | "CATEGORIA_CREAR" | "CATEGORIA_EDITAR" | "CATEGORIA_CAMBIAR_ESTADO" | "UNIDAD_CREAR" | "UNIDAD_EDITAR" | "UNIDAD_CAMBIAR_ESTADO" | "PRODUCTO_CREAR" | "PRODUCTO_EDITAR" | "PRODUCTO_CAMBIAR_ESTADO" | "BODEGA_CREAR" | "BODEGA_EDITAR" | "BODEGA_CAMBIAR_ESTADO" | "INVENTARIO_AJUSTE" | "DOCUMENTO_SUBIR" | "CONFIG_NOTIFICACION_CAMBIAR" | "SOLICITUD_CREAR" | "SOLICITUD_EDITAR" | "SOLICITUD_ENVIAR" | "SOLICITUD_CANCELAR" | "SOLICITUD_DECIDIR" | "RFQ_CREAR" | "RFQ_EDITAR" | "RFQ_ABRIR" | "RFQ_CERRAR" | "RFQ_CANCELAR" | "DESPACHO_CREAR" | "DESPACHO_EDITAR" | "DESPACHO_CONFIRMAR" | "DESPACHO_ANULAR" | "COTIZACION_GUARDAR" | "COTIZACION_ENVIAR" | "EXTRACCION_CONFIRMAR" | "COTIZACION_DIGITAR" | "PESOS_CAMBIAR" | "ANALISIS_GENERAR" | "ANALISIS_PUBLICAR" | "ADJUDICACION_CREAR" | "ADJUDICACION_DECIDIR" | "ORDEN_EMITIR" | "ORDEN_VERSIONAR" | "ORDEN_CANCELAR" | "ORDEN_PROVEEDOR" | "PAGO_REGISTRAR" | "PAGO_COMPROBANTE" | "PAGO_ANULAR" | "RECEPCION_REGISTRAR" | "RECEPCION_RESOLVER_EXCESO" | "RECEPCION_CERRAR" | "FACTURA_REGISTRAR" | "FACTURA_RECRUZAR" | "FACTURA_APROBAR" | "FACTURA_ANULAR" | "FACTURA_ARCHIVO" | "EXPORTAR_ARCHIVO" | "EXPORTAR_CORREO" | "PASSWORD_RECUPERAR_PEDIR" | "PASSWORD_RECUPERAR_USAR" | "MFA_ACTIVAR" | "MFA_DESACTIVAR" | "MFA_FALLO" | "INFORME_PEDIR" | "INFORME_ENVIAR" | "PEDIDO_INTERNO_CREAR" | "PEDIDO_INTERNO_GESTIONAR" | "PRECIO_CONFIGURAR" | "PRECIO_CAMBIAR" | "CATALOGO_CARGAR" | "CATALOGO_EQUIVALENCIA" | "CLIENTE_CREAR" | "CLIENTE_EDITAR" | "CLIENTE_CUPO_CAMBIAR" | "CAJA_CREAR" | "CAJA_EDITAR" | "CAJA_CONFIGURAR" | "TURNO_ABRIR" | "TURNO_MOVIMIENTO" | "TURNO_CERRAR" | "TURNO_APROBAR" | "AUTORIZACION_OTORGAR" | "AUTORIZACION_FALLO" | "PIN_CAMBIAR" | "VENTA_CONFIRMAR" | "PEDIDO_VENTA_CREAR" | "PEDIDO_VENTA_EDITAR" | "PEDIDO_VENTA_DESCARTAR" | "LIMITE_DESCUENTO_CAMBIAR" | "VENTA_IMPRIMIR" | "VENTA_REIMPRIMIR" | "VENTA_ANULAR" | "VENTA_DEVOLVER";
+            accion?: "LOGIN" | "LOGOUT" | "REFRESH_REUTILIZADO" | "CUENTA_BLOQUEADA" | "USUARIO_CREAR" | "USUARIO_EDITAR" | "USUARIO_ACTIVAR" | "USUARIO_DESACTIVAR" | "USUARIO_RESTABLECER_PASSWORD" | "PASSWORD_CAMBIAR" | "PROVEEDOR_REGISTRAR" | "PROVEEDOR_HABILITAR" | "PROVEEDOR_RECHAZAR" | "PROVEEDOR_SUSPENDER" | "PROVEEDOR_EDITAR" | "EMPRESA_EDITAR" | "SEDE_CREAR" | "SEDE_EDITAR" | "SEDE_CAMBIAR_ESTADO" | "CENTRO_COSTO_CREAR" | "CENTRO_COSTO_EDITAR" | "CENTRO_COSTO_CAMBIAR_ESTADO" | "DELEGACION_CREAR" | "DELEGACION_REVOCAR" | "SOLICITUD_ESCALAR" | "REORDEN_GENERAR" | "PRODUCTO_CARGA_MASIVA" | "CONTRATO_CREAR" | "CONTRATO_EDITAR" | "CONTRATO_ANULAR" | "ORDEN_EMITIR_DIRECTA" | "PRESUPUESTO_CREAR" | "PRESUPUESTO_EDITAR" | "SOLICITUD_EXCEPCION" | "POLITICA_CREAR" | "POLITICA_EDITAR" | "POLITICA_CAMBIAR_ESTADO" | "CATEGORIA_CREAR" | "CATEGORIA_EDITAR" | "CATEGORIA_CAMBIAR_ESTADO" | "UNIDAD_CREAR" | "UNIDAD_EDITAR" | "UNIDAD_CAMBIAR_ESTADO" | "PRODUCTO_CREAR" | "PRODUCTO_EDITAR" | "PRODUCTO_CAMBIAR_ESTADO" | "BODEGA_CREAR" | "BODEGA_EDITAR" | "BODEGA_CAMBIAR_ESTADO" | "INVENTARIO_AJUSTE" | "DOCUMENTO_SUBIR" | "CONFIG_NOTIFICACION_CAMBIAR" | "SOLICITUD_CREAR" | "SOLICITUD_EDITAR" | "SOLICITUD_ENVIAR" | "SOLICITUD_CANCELAR" | "SOLICITUD_DECIDIR" | "RFQ_CREAR" | "RFQ_EDITAR" | "RFQ_ABRIR" | "RFQ_CERRAR" | "RFQ_CANCELAR" | "DESPACHO_CREAR" | "DESPACHO_EDITAR" | "DESPACHO_CONFIRMAR" | "DESPACHO_ANULAR" | "COTIZACION_GUARDAR" | "COTIZACION_ENVIAR" | "EXTRACCION_CONFIRMAR" | "COTIZACION_DIGITAR" | "PESOS_CAMBIAR" | "ANALISIS_GENERAR" | "ANALISIS_PUBLICAR" | "ADJUDICACION_CREAR" | "ADJUDICACION_DECIDIR" | "ORDEN_EMITIR" | "ORDEN_VERSIONAR" | "ORDEN_CANCELAR" | "ORDEN_PROVEEDOR" | "PAGO_REGISTRAR" | "PAGO_COMPROBANTE" | "PAGO_ANULAR" | "RECEPCION_REGISTRAR" | "RECEPCION_RESOLVER_EXCESO" | "RECEPCION_CERRAR" | "FACTURA_REGISTRAR" | "FACTURA_RECRUZAR" | "FACTURA_APROBAR" | "FACTURA_ANULAR" | "FACTURA_ARCHIVO" | "EXPORTAR_ARCHIVO" | "EXPORTAR_CORREO" | "PASSWORD_RECUPERAR_PEDIR" | "PASSWORD_RECUPERAR_USAR" | "MFA_ACTIVAR" | "MFA_DESACTIVAR" | "MFA_FALLO" | "INFORME_PEDIR" | "INFORME_ENVIAR" | "PEDIDO_INTERNO_CREAR" | "PEDIDO_INTERNO_GESTIONAR" | "PRECIO_CONFIGURAR" | "PRECIO_CAMBIAR" | "CATALOGO_CARGAR" | "CATALOGO_EQUIVALENCIA" | "CLIENTE_CREAR" | "CLIENTE_EDITAR" | "CLIENTE_CUPO_CAMBIAR" | "CAJA_CREAR" | "CAJA_EDITAR" | "CAJA_CONFIGURAR" | "TURNO_ABRIR" | "TURNO_MOVIMIENTO" | "TURNO_CERRAR" | "TURNO_APROBAR" | "AUTORIZACION_OTORGAR" | "AUTORIZACION_FALLO" | "PIN_CAMBIAR" | "VENTA_CONFIRMAR" | "PEDIDO_VENTA_CREAR" | "PEDIDO_VENTA_EDITAR" | "PEDIDO_VENTA_DESCARTAR" | "LIMITE_DESCUENTO_CAMBIAR" | "VENTA_IMPRIMIR" | "VENTA_REIMPRIMIR" | "VENTA_ANULAR" | "VENTA_DEVOLVER" | "CREDITO_EXCEPCION" | "ABONO_REGISTRAR";
             /** @enum {string} */
             resultado?: "EXITO" | "FALLO";
             /** Format: date-time */
@@ -7945,6 +8119,54 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["CategoriaResponse"];
+                };
+            };
+        };
+    };
+    fijarExcepcion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExcepcionCreditoRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ClienteCartera"];
+                };
+            };
+        };
+    };
+    quitarExcepcion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ClienteCartera"];
                 };
             };
         };
@@ -11201,6 +11423,30 @@ export interface operations {
             };
         };
     };
+    abonar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AbonoRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AbonoResponse"];
+                };
+            };
+        };
+    };
     estadoImpuesto: {
         parameters: {
             query: {
@@ -13524,6 +13770,48 @@ export interface operations {
             };
         };
     };
+    resumen: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ResumenCartera"];
+                };
+            };
+        };
+    };
+    detalle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["DetalleCartera"];
+                };
+            };
+        };
+    };
     me: {
         parameters: {
             query?: never;
@@ -13629,6 +13917,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PageResponseAdjudicacionResponse"];
+                };
+            };
+        };
+    };
+    recibo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AbonoResponse"];
                 };
             };
         };

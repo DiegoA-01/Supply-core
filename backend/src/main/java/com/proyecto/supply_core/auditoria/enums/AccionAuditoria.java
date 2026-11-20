@@ -258,5 +258,9 @@ public enum AccionAuditoria {
     /** Se anuló una venta de un turno abierto con autorización (spec 006). */
     VENTA_ANULAR,
     /** Un cliente devolvió mercancía de una venta (spec 006). */
-    VENTA_DEVOLVER
+    VENTA_DEVOLVER,
+    /** Se habilitó o se retiró la excepción de crédito de un cliente en mora (spec 007). */
+    CREDITO_EXCEPCION,
+    /** Un cliente abonó a su cartera en la caja. */
+    ABONO_REGISTRAR
 }

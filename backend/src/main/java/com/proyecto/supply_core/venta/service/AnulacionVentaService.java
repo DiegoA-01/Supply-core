@@ -21,6 +21,7 @@ import com.proyecto.supply_core.caja.enums.TipoMovimientoCaja;
 import com.proyecto.supply_core.caja.repository.MovimientoCajaRepository;
 import com.proyecto.supply_core.caja.repository.TurnoCajaRepository;
 import com.proyecto.supply_core.caja.service.AutorizacionService;
+import com.proyecto.supply_core.cartera.service.CarteraService;
 import com.proyecto.supply_core.common.exception.AccesoDenegadoException;
 import com.proyecto.supply_core.common.exception.NegocioException;
 import com.proyecto.supply_core.common.exception.NoEncontradoException;
@@ -50,6 +51,7 @@ public class AnulacionVentaService {
     private final AutorizacionService autorizacionService;
     private final AuditoriaService auditoriaService;
     private final VentaService ventaService;
+    private final CarteraService carteraService;
 
     /**
      * @param ventaRepository             ventas
@@ -60,11 +62,12 @@ public class AnulacionVentaService {
      * @param autorizacionService         permiso del supervisor
      * @param auditoriaService            registro de la anulación
      * @param ventaService                detalle de la venta
+     * @param carteraService              anula la cuenta y devuelve el saldo a favor (spec 007)
      */
     public AnulacionVentaService(VentaRepository ventaRepository, TurnoCajaRepository turnoRepository,
             MovimientoCajaRepository movimientoCajaRepository, DevolucionVentaRepository devolucionRepository,
             MovimientoInventarioService movimientoInventarioService, AutorizacionService autorizacionService,
-            AuditoriaService auditoriaService, VentaService ventaService) {
+            AuditoriaService auditoriaService, VentaService ventaService, CarteraService carteraService) {
         this.ventaRepository = ventaRepository;
         this.turnoRepository = turnoRepository;
         this.movimientoCajaRepository = movimientoCajaRepository;
@@ -73,6 +76,7 @@ public class AnulacionVentaService {
         this.autorizacionService = autorizacionService;
         this.auditoriaService = auditoriaService;
         this.ventaService = ventaService;
+        this.carteraService = carteraService;
     }
 
     /**
@@ -117,6 +121,7 @@ public class AnulacionVentaService {
         }
         Long supervisor = autorizacionService.consumir(req.autorizacion(), AccionAutorizada.ANULAR_VENTA, turno.getId(),
                 v.getId());
+        carteraService.revertirVenta(v);
 
         // Stock: vuelve a la bodega de la caja, por producto en orden de id
         Map<Long, BigDecimal> porProducto = new TreeMap<>();

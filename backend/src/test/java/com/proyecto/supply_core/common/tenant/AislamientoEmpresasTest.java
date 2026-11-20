@@ -2992,6 +2992,203 @@ class AislamientoEmpresasTest {
     }
 
     @Test
+    void laVentaACreditoRespetaCupoYMoraYLosAbonosEntranALaCajaSinCruzarEmpresas() throws Exception {
+        String json = MediaType.APPLICATION_JSON_VALUE;
+        com.fasterxml.jackson.databind.ObjectMapper lector = new com.fasterxml.jackson.databind.ObjectMapper();
+        String duenoA = token(empresaA, usuarioA, "ADMIN_SISTEMA");
+        String cajeroA = token(empresaA, usuarioA2, "CAJERO");
+        String cajero2 = token(empresaA, usuarioA, "CAJERO");
+        Long sedeA = jdbc.queryForObject("SELECT sede_id FROM bodega WHERE id = ?", Long.class, bodegaA);
+        java.math.BigDecimal stockAntes = jdbc.queryForObject("SELECT COALESCE(SUM(cantidad), 0) FROM stock_producto_bodega "
+                + "WHERE producto_id = ? AND bodega_id = ?", java.math.BigDecimal.class, productoA, bodegaA);
+        try {
+            long generalA = lector.readTree(mvc.perform(get("/api/ventas/listas").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andReturn().getResponse().getContentAsString()).get(0).get("id").asLong();
+            jdbc.update("UPDATE producto SET costo_referencia = 6000, costo_promedio = 6000, vendible = 1 WHERE id = ?", productoA);
+            mvc.perform(put("/api/ventas/precios").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                    .content("{\"listaId\":" + generalA + ",\"productoId\":" + productoA + ",\"precio\":10000}"))
+                    .andExpect(status().isOk());
+            jdbc.update("INSERT INTO stock_producto_bodega (empresa_id, producto_id, bodega_id, cantidad) VALUES (?, ?, ?, 20) "
+                    + "ON DUPLICATE KEY UPDATE cantidad = 20", empresaA, productoA, bodegaA);
+            List<Long> cajas = new java.util.ArrayList<>();
+            for (String prefijo : List.of("K1", "K2")) {
+                cajas.add(lector.readTree(mvc.perform(post("/api/cajas").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                                .content("{\"nombre\":\"Caja " + prefijo + "\",\"sedeId\":" + sedeA + ",\"bodegaId\":" + bodegaA
+                                        + ",\"prefijoConsecutivo\":\"" + prefijo + "\",\"topeEfectivo\":0}"))
+                        .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong());
+            }
+            long turno = lector.readTree(mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"cajaId\":" + cajas.get(0) + ",\"baseApertura\":0}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            mvc.perform(post("/api/turnos").header(HttpHeaders.AUTHORIZATION, cajero2).contentType(json)
+                    .content("{\"cajaId\":" + cajas.get(1) + ",\"baseApertura\":0}")).andExpect(status().isCreated());
+            // cliente con cupo de 30.000 a 30 días (el cupo lo fija el dueño)
+            long cliente = lector.readTree(mvc.perform(post("/api/clientes").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                            .content("{\"tipoDocumento\":\"CC\",\"numeroDocumento\":\"55667788\",\"nombre\":\"Ferretería cliente\","
+                                    + "\"aceptaDatos\":true,\"cupoCredito\":30000,\"plazoDias\":30}"))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            String credito = "{\"clienteId\":%s,\"lineas\":[{\"productoId\":" + productoA + ",\"cantidad\":%s}],"
+                    + "\"pagos\":[{\"medio\":\"CREDITO\",\"monto\":%s}]}";
+            java.util.function.BiFunction<String, String, org.springframework.test.web.servlet.ResultActions> vender = (clave, cuerpo) -> {
+                try {
+                    return mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, cajeroA).header("Idempotency-Key", clave)
+                            .contentType(json).content(cuerpo));
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+            };
+
+            // 1) nunca al consumidor final; con cliente crea su cuenta y no entra a la caja
+            vender.apply("cr-0", "{\"lineas\":[{\"productoId\":" + productoA + ",\"cantidad\":1}],\"pagos\":[{\"medio\":\"CREDITO\","
+                    + "\"monto\":10000}]}").andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CREDITO_SIN_CLIENTE"));
+            long venta1 = lector.readTree(vender.apply("cr-1", credito.formatted(cliente, 2, 20000))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+            assertEquals(0, new java.math.BigDecimal("20000").compareTo(jdbc.queryForObject("SELECT saldo FROM cuenta_por_cobrar "
+                    + "WHERE venta_id = ?", java.math.BigDecimal.class, venta1)));
+            assertEquals(java.time.LocalDate.now().plusDays(30), jdbc.queryForObject("SELECT vence_en FROM cuenta_por_cobrar "
+                    + "WHERE venta_id = ?", java.time.LocalDate.class, venta1));
+            assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM movimiento_caja WHERE turno_id = ? AND tipo = 'VENTA'",
+                    Integer.class, turno));
+            // 2) el cupo no se pasa: quedan 10.000
+            vender.apply("cr-2", credito.formatted(cliente, 2, 20000))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CUPO_INSUFICIENTE"));
+            mvc.perform(post("/api/ventas/cotizar").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"clienteId\":" + cliente + ",\"lineas\":[{\"productoId\":" + productoA + ",\"cantidad\":1}]}"))
+                    .andExpect(jsonPath("$.creditoDisponible").value(10000.0))
+                    .andExpect(jsonPath("$.creditoBloqueado").value(false));
+
+            // 3) dos cajas venden a crédito a la vez y juntas pasarían el cupo: una se rechaza
+            java.util.concurrent.CountDownLatch salida = new java.util.concurrent.CountDownLatch(1);
+            java.util.concurrent.ExecutorService hilos = java.util.concurrent.Executors.newFixedThreadPool(2);
+            List<java.util.concurrent.Future<Integer>> estados = new java.util.ArrayList<>();
+            for (String t : List.of(cajeroA, cajero2)) {
+                estados.add(hilos.submit(() -> {
+                    salida.await();
+                    return mvc.perform(post("/api/ventas").header(HttpHeaders.AUTHORIZATION, t).header("Idempotency-Key", "cr-par-" + t.hashCode())
+                            .contentType(json).content(credito.formatted(cliente, 1, 10000))).andReturn().getResponse().getStatus();
+                }));
+            }
+            salida.countDown();
+            List<Integer> resultado = new java.util.ArrayList<>();
+            for (var f : estados) {
+                resultado.add(f.get(30, java.util.concurrent.TimeUnit.SECONDS));
+            }
+            hilos.shutdown();
+            assertEquals(List.of(201, 409), resultado.stream().sorted().toList());
+            assertEquals(0, new java.math.BigDecimal("30000").compareTo(jdbc.queryForObject("SELECT SUM(saldo) FROM cuenta_por_cobrar "
+                    + "WHERE cliente_id = ? AND estado = 'ABIERTA'", java.math.BigDecimal.class, cliente)));
+
+            // 4) abono: entra a la caja, se aplica a la cuenta más antigua y no puede pasar lo que debe
+            mvc.perform(post("/api/abonos").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"clienteId\":" + cliente + ",\"valor\":30001,\"medioPago\":\"EFECTIVO\"}"))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("ABONO_EXCEDE"));
+            long abono = lector.readTree(mvc.perform(post("/api/abonos").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content("{\"clienteId\":" + cliente + ",\"valor\":5000,\"medioPago\":\"EFECTIVO\"}"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.consecutivo").value(org.hamcrest.Matchers.startsWith("AB-")))
+                    .andExpect(jsonPath("$.aplicaciones[0].cuentaId").value(jdbc.queryForObject("SELECT id FROM cuenta_por_cobrar "
+                            + "WHERE venta_id = ?", Long.class, venta1)))
+                    .andExpect(jsonPath("$.saldoPendiente").value(25000.0))
+                    .andReturn().getResponse().getContentAsString()).get("id").asLong();
+            assertEquals(0, new java.math.BigDecimal("5000").compareTo(jdbc.queryForObject("SELECT SUM(monto) FROM movimiento_caja "
+                    + "WHERE turno_id = ? AND tipo = 'ABONO_CARTERA'", java.math.BigDecimal.class, turno)));
+            mvc.perform(get("/api/abonos/" + abono + "/recibo").header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(jsonPath("$.valor").value(5000.0));
+
+            // 5) mora: una cuenta vencida bloquea el crédito y avisa; el dueño lo habilita hasta una fecha
+            jdbc.update("UPDATE cuenta_por_cobrar SET vence_en = ? WHERE venta_id = ?", java.time.LocalDate.now().minusDays(3), venta1);
+            int avisos = jdbc.queryForObject("SELECT COUNT(*) FROM notificacion WHERE evento = 'CREDITO_BLOQUEADO' AND usuario_id = ?",
+                    Integer.class, usuarioA);
+            vender.apply("cr-3", credito.formatted(cliente, "0.5", 5000))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CLIENTE_EN_MORA"));
+            assertEquals(avisos + 1, jdbc.queryForObject("SELECT COUNT(*) FROM notificacion WHERE evento = 'CREDITO_BLOQUEADO' "
+                    + "AND usuario_id = ?", Integer.class, usuarioA), "el aviso queda aunque la venta se rechace");
+            String excepcion = "{\"hasta\":\"" + java.time.LocalDate.now() + "\",\"motivo\":\"Paga el viernes, cliente de años\"}";
+            mvc.perform(put("/api/cartera/clientes/" + cliente + "/excepcion").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                    .contentType(json).content(excepcion)).andExpect(status().isForbidden());
+            mvc.perform(put("/api/cartera/clientes/" + cliente + "/excepcion").header(HttpHeaders.AUTHORIZATION, duenoA)
+                            .contentType(json).content(excepcion))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.enMora").value(true)).andExpect(jsonPath("$.bloqueado").value(false));
+            long venta3 = lector.readTree(vender.apply("cr-3", credito.formatted(cliente, "0.5", 5000))
+                    .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asLong();
+
+            // 6) edades: la cartera suma lo mismo por tramos que el saldo total
+            mvc.perform(get("/api/cartera").header(HttpHeaders.AUTHORIZATION, duenoA))
+                    .andExpect(jsonPath("$.saldo").value(30000.0))
+                    .andExpect(jsonPath("$.d1a30").value(15000.0))
+                    .andExpect(jsonPath("$.alDia").value(15000.0))
+                    .andExpect(jsonPath("$.enMora").value(1))
+                    .andExpect(jsonPath("$.clientes[?(@.clienteId==" + cliente + ")].excepcionPor").isNotEmpty());
+            mvc.perform(get("/api/cartera/clientes/" + cliente).header(HttpHeaders.AUTHORIZATION, cajeroA))
+                    .andExpect(jsonPath("$.cuentas.length()").value(3))
+                    .andExpect(jsonPath("$.abonos.length()").value(1));
+
+            // 7) anular: la venta sin abonos anula su cuenta; la que ya recibió abonos no se anula
+            mvc.perform(put("/api/autorizaciones/mi-pin").header(HttpHeaders.AUTHORIZATION, duenoA).contentType(json)
+                    .content("{\"passwordActual\":\"" + CLAVE + "\",\"pin\":\"123456\"}")).andExpect(status().isNoContent());
+            java.util.function.Function<Long, String> permiso = ventaId -> {
+                try {
+                    return lector.readTree(mvc.perform(post("/api/autorizaciones").header(HttpHeaders.AUTHORIZATION, cajeroA)
+                                    .contentType(json).content("{\"correo\":\"admin@mismo.com\",\"pin\":\"123456\",\"accion\":"
+                                            + "\"ANULAR_VENTA\",\"turnoId\":" + turno + ",\"referenciaId\":" + ventaId + "}"))
+                            .andReturn().getResponse().getContentAsString()).get("token").asText();
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+            };
+            String anular = "{\"motivo\":\"Se cobró a quien no era\",\"autorizacion\":\"%s\"}";
+            mvc.perform(post("/api/ventas/" + venta1 + "/anular").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(anular.formatted(permiso.apply(venta1))))
+                    .andExpect(status().isConflict()).andExpect(jsonPath("$.codigo").value("CUENTA_CON_ABONOS"));
+            mvc.perform(post("/api/ventas/" + venta3 + "/anular").header(HttpHeaders.AUTHORIZATION, cajeroA).contentType(json)
+                            .content(anular.formatted(permiso.apply(venta3))))
+                    .andExpect(status().isOk());
+            assertEquals("ANULADA", jdbc.queryForObject("SELECT estado FROM cuenta_por_cobrar WHERE venta_id = ?", String.class, venta3));
+
+            // 8) el saldo a favor se usa como medio de pago y no se gasta dos veces
+            jdbc.update("INSERT INTO saldo_favor_cliente (empresa_id, cliente_id, monto, motivo) VALUES (?, ?, 3000, 'Prueba')",
+                    empresaA, cliente);
+            String conSaldo = "{\"clienteId\":" + cliente + ",\"lineas\":[{\"productoId\":" + productoA + ",\"cantidad\":1}],"
+                    + "\"pagos\":[{\"medio\":\"SALDO_FAVOR\",\"monto\":3000},{\"medio\":\"EFECTIVO\",\"monto\":7000}]}";
+            vender.apply("sf-1", conSaldo).andExpect(status().isCreated());
+            assertEquals(0, java.math.BigDecimal.ZERO.compareTo(jdbc.queryForObject("SELECT SUM(monto) FROM saldo_favor_cliente "
+                    + "WHERE cliente_id = ?", java.math.BigDecimal.class, cliente)));
+            vender.apply("sf-2", conSaldo).andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.codigo").value("SALDO_FAVOR_INSUFICIENTE"));
+
+            // 9) nada de la cartera cruza a B
+            String duenoB = token(empresaB, usuarioB, "ADMIN_SISTEMA");
+            mvc.perform(get("/api/cartera/clientes/" + cliente).header(HttpHeaders.AUTHORIZATION, duenoB)).andExpect(status().isNotFound());
+            mvc.perform(get("/api/abonos/" + abono + "/recibo").header(HttpHeaders.AUTHORIZATION, duenoB)).andExpect(status().isNotFound());
+            mvc.perform(get("/api/cartera").header(HttpHeaders.AUTHORIZATION, duenoB))
+                    .andExpect(jsonPath("$.clientes[?(@.clienteId==" + cliente + ")]").isEmpty());
+            mvc.perform(put("/api/cartera/clientes/" + cliente + "/excepcion").header(HttpHeaders.AUTHORIZATION, duenoB)
+                    .contentType(json).content(excepcion)).andExpect(status().isNotFound());
+        } finally {
+            jdbc.update("DELETE a FROM abono_aplicacion a JOIN abono_cliente b ON b.id = a.abono_id WHERE b.empresa_id IN (?, ?)",
+                    empresaA, empresaB);
+            jdbc.update("DELETE FROM abono_cliente WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM cuenta_por_cobrar WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM saldo_favor_cliente WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE p FROM venta_pago p JOIN venta v ON v.id = p.venta_id WHERE v.empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE l FROM venta_linea l JOIN venta v ON v.id = l.venta_id WHERE v.empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM venta WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM cliente WHERE empresa_id IN (?, ?) AND numero_documento = '55667788'", empresaA, empresaB);
+            jdbc.update("DELETE FROM movimiento_inventario WHERE empresa_id IN (?, ?) AND referencia_tipo = 'VENTA'", empresaA, empresaB);
+            jdbc.update("DELETE FROM autorizacion_supervisor WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM movimiento_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM turno_caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM caja WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("DELETE FROM precio_producto WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+            jdbc.update("UPDATE stock_producto_bodega SET cantidad = ? WHERE producto_id = ? AND bodega_id = ?", stockAntes,
+                    productoA, bodegaA);
+            jdbc.update("UPDATE producto SET costo_referencia = NULL, costo_promedio = NULL WHERE id = ?", productoA);
+            jdbc.update("UPDATE usuario SET pin_supervisor_hash = NULL, pin_intentos_fallidos = 0, pin_bloqueado_hasta = NULL "
+                    + "WHERE empresa_id IN (?, ?)", empresaA, empresaB);
+        }
+    }
+
+    @Test
     void elCatalogoDelProveedorSeCruzaConElInventarioSinQueElProveedorVeaNadaNuestro() throws Exception {
         String portalA = tokenProveedor(empresaA, usuarioA, proveedorA);
         String comprasA = token(empresaA, usuarioA, "ADMIN_COMPRAS");

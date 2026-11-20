@@ -43,6 +43,8 @@ export const ROLES_MI_TURNO = ['CAJERO', 'SUPERVISOR_VENTAS'];
 export const ROLES_VENTAS = ['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR', 'VENDEDOR', 'CAJERO'];
 /** Roles que ven los pedidos de venta (mismos que {@code /api/pedidos-venta}). */
 export const ROLES_PEDIDOS_VENTA = ['VENDEDOR', 'CAJERO', 'SUPERVISOR_VENTAS', 'ADMIN_SISTEMA'];
+/** Roles que ven la cartera (mismos que {@code GET /api/cartera}). */
+export const ROLES_CARTERA = ['CAJERO', 'SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR'];
 /** Roles que ven cajas y turnos (mismos que {@code GET /api/turnos}). */
 export const ROLES_CAJA = ['SUPERVISOR_VENTAS', 'ADMIN_SISTEMA', 'AUDITOR'];
 /** Roles que ven el tablero del dueño (mismos que {@code GET /api/reportes/tablero}). */
@@ -89,6 +91,7 @@ export const MENU: SeccionMenu[] = [
       { texto: 'Pedidos de venta', icono: 'receipt_long', ruta: '/app/pedidos-venta', roles: ROLES_PEDIDOS_VENTA, modulo: 'VENTAS' },
       { texto: 'Ventas', icono: 'point_of_sale', ruta: '/app/ventas', roles: ROLES_VENTAS, modulo: 'VENTAS' },
       { texto: 'Clientes', icono: 'groups', ruta: '/app/clientes', roles: ROLES_CLIENTES, modulo: 'VENTAS' },
+      { texto: 'Cartera', icono: 'account_balance_wallet', ruta: '/app/cartera', roles: ROLES_CARTERA, modulo: 'CARTERA' },
       { texto: 'Cajas y turnos', icono: 'storefront', ruta: '/app/caja', roles: ROLES_CAJA, modulo: 'CAJA', exacta: true },
     ],
   },

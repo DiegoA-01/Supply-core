@@ -2,7 +2,7 @@ package com.proyecto.supply_core.venta.enums;
 
 import com.proyecto.supply_core.caja.enums.MedioPago;
 
-/** Medio con que se paga una venta. {@link #CREDITO} se rechaza hasta la spec 007 (decisión D4). */
+/** Medio con que se paga una venta. El crédito y el saldo a favor no entran a la caja (spec 007). */
 public enum MedioPagoVenta {
     /** Efectivo: el único que puede pasarse del total; el exceso es el cambio. */
     EFECTIVO,
@@ -14,8 +14,10 @@ public enum MedioPagoVenta {
     TRANSFERENCIA,
     /** Billetera digital (Nequi, Daviplata...). */
     BILLETERA,
-    /** Venta a crédito del cliente (spec 007). */
-    CREDITO;
+    /** Venta a crédito del cliente: crea una cuenta por cobrar (spec 007). */
+    CREDITO,
+    /** Saldo a favor del cliente, que sale de sus devoluciones (spec 007). */
+    SALDO_FAVOR;
 
     /**
      * @return {@code true} si es una tarjeta (guarda últimos 4 dígitos y autorización)
@@ -25,8 +27,15 @@ public enum MedioPagoVenta {
     }
 
     /**
+     * @return {@code true} si el dinero entra a la caja del turno
+     */
+    public boolean entraACaja() {
+        return this != CREDITO && this != SALDO_FAVOR;
+    }
+
+    /**
      * @return medio del libro de caja que le corresponde
-     * @throws IllegalStateException si es crédito (no entra dinero a la caja)
+     * @throws IllegalStateException si es crédito o saldo a favor (no entra dinero a la caja)
      */
     public MedioPago enCaja() {
         return switch (this) {
@@ -35,7 +44,7 @@ public enum MedioPagoVenta {
             case TARJETA_CREDITO -> MedioPago.TARJETA_CREDITO;
             case TRANSFERENCIA -> MedioPago.TRANSFERENCIA;
             case BILLETERA -> MedioPago.BILLETERA;
-            case CREDITO -> throw new IllegalStateException("El crédito no entra a la caja");
+            case CREDITO, SALDO_FAVOR -> throw new IllegalStateException("El crédito y el saldo a favor no entran a la caja");
         };
     }
 }

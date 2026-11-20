@@ -28,6 +28,7 @@ import com.proyecto.supply_core.caja.enums.TipoMovimientoCaja;
 import com.proyecto.supply_core.caja.repository.MovimientoCajaRepository;
 import com.proyecto.supply_core.caja.repository.TurnoCajaRepository;
 import com.proyecto.supply_core.caja.service.AutorizacionService;
+import com.proyecto.supply_core.cartera.service.CarteraService;
 import com.proyecto.supply_core.catalogo.entity.UnidadMedida;
 import com.proyecto.supply_core.catalogo.repository.UnidadMedidaRepository;
 import com.proyecto.supply_core.cliente.entity.Cliente;
@@ -98,6 +99,7 @@ public class DevolucionService {
     private final AutorizacionService autorizacionService;
     private final ConsecutivoGenerator consecutivos;
     private final AuditoriaService auditoriaService;
+    private final CarteraService carteraService;
 
     /**
      * @param devolucionRepository        devoluciones
@@ -115,6 +117,7 @@ public class DevolucionService {
      * @param autorizacionService         permiso del supervisor
      * @param consecutivos                consecutivo {@code DV}
      * @param auditoriaService            registro de la devolución
+     * @param carteraService              devoluciones de ventas a crédito (spec 007)
      */
     public DevolucionService(DevolucionVentaRepository devolucionRepository, VentaRepository ventaRepository,
             TurnoCajaRepository turnoRepository, MovimientoCajaRepository movimientoCajaRepository,
@@ -122,7 +125,7 @@ public class DevolucionService {
             ProductoRepository productoRepository, UnidadMedidaRepository unidadRepository,
             BodegaRepository bodegaRepository, EmpresaRepository empresaRepository, UsuarioRepository usuarioRepository,
             MovimientoInventarioService movimientoInventarioService, AutorizacionService autorizacionService,
-            ConsecutivoGenerator consecutivos, AuditoriaService auditoriaService) {
+            ConsecutivoGenerator consecutivos, AuditoriaService auditoriaService, CarteraService carteraService) {
         this.devolucionRepository = devolucionRepository;
         this.ventaRepository = ventaRepository;
         this.turnoRepository = turnoRepository;
@@ -138,6 +141,7 @@ public class DevolucionService {
         this.autorizacionService = autorizacionService;
         this.consecutivos = consecutivos;
         this.auditoriaService = auditoriaService;
+        this.carteraService = carteraService;
     }
 
     /**
@@ -208,13 +212,18 @@ public class DevolucionService {
             total = total.add(valor);
         }
 
-        MedioPago medio = medioDeReembolso(req.formaReembolso(), v);
+        MedioPagoVenta original = medioUnico(v);
+        // Mismo medio en una venta a crédito o con saldo a favor: vuelve a la cuenta o al saldo, no a la caja
+        boolean aCuenta = req.formaReembolso() == FormaReembolso.MISMO_MEDIO && original == MedioPagoVenta.CREDITO;
+        boolean aSaldo = req.formaReembolso() == FormaReembolso.SALDO_A_FAVOR
+                || (req.formaReembolso() == FormaReembolso.MISMO_MEDIO && original == MedioPagoVenta.SALDO_FAVOR);
+        MedioPago medio = aCuenta || aSaldo ? null : medioDeReembolso(req.formaReembolso(), v);
         if (medio == MedioPago.EFECTIVO && total.signum() > 0
                 && movimientoCajaRepository.saldo(turno.getId(), MedioPago.EFECTIVO).compareTo(total) < 0) {
             throw new NegocioException("EFECTIVO_INSUFICIENTE", "No hay efectivo suficiente en la caja para devolver "
                     + total.toPlainString() + ": elija otro medio o saldo a favor");
         }
-        if (req.formaReembolso() == FormaReembolso.SALDO_A_FAVOR) {
+        if (aSaldo) {
             Cliente c = clienteRepository.findById(v.getClienteId()).orElseThrow(() -> new NoEncontradoException("Cliente no encontrado"));
             if (c.isEsConsumidorFinal()) {
                 throw new NegocioException("SALDO_CONSUMIDOR_FINAL",
@@ -249,7 +258,9 @@ public class DevolucionService {
                         "Devolución " + d.getConsecutivo() + " de " + v.getConsecutivo() + ": " + motivo, d.getId())));
 
         if (total.signum() > 0) {
-            if (medio != null) {
+            if (aCuenta) {
+                carteraService.acreditarDevolucion(v, total, d.getId());
+            } else if (medio != null) {
                 MovimientoCaja m = new MovimientoCaja();
                 m.setTurnoId(turno.getId());
                 m.setTipo(TipoMovimientoCaja.DEVOLUCION);
@@ -299,9 +310,18 @@ public class DevolucionService {
     }
 
     /**
+     * @param v venta
+     * @return el único medio con que se pagó ({@code null} si fueron varios)
+     */
+    static MedioPagoVenta medioUnico(Venta v) {
+        Set<MedioPagoVenta> medios = v.getPagos().stream().map(p -> p.getMedio()).collect(Collectors.toSet());
+        return medios.size() == 1 ? medios.iterator().next() : null;
+    }
+
+    /**
      * @param forma forma pedida
      * @param v     venta original
-     * @return medio por el que sale el dinero ({@code null} si queda como saldo a favor)
+     * @return medio de caja por el que sale el dinero ({@code null} si queda como saldo a favor)
      * @throws NegocioException si se pide el mismo medio y la venta se pagó con varios
      */
     static MedioPago medioDeReembolso(FormaReembolso forma, Venta v) {
@@ -310,7 +330,7 @@ public class DevolucionService {
             case SALDO_A_FAVOR -> null;
             case MISMO_MEDIO -> {
                 Set<MedioPagoVenta> medios = v.getPagos().stream().map(p -> p.getMedio()).collect(Collectors.toSet());
-                if (medios.size() != 1 || medios.contains(MedioPagoVenta.CREDITO)) {
+                if (medios.size() != 1 || !medios.iterator().next().entraACaja()) {
                     throw new NegocioException("MEDIO_AMBIGUO",
                             "La venta se pagó con varios medios: devuelva en efectivo o como saldo a favor");
                 }

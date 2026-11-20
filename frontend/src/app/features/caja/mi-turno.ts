@@ -3,11 +3,15 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 
-import { AccionAutorizada, Caja, MedioPago, Turno } from '../../core/api/modelos';
+import { AccionAutorizada, Caja, Cliente, MedioPago, Turno } from '../../core/api/modelos';
 import { FechaPipe, PesosPipe } from '../../core/formato/formato';
 import { CajaService } from '../../core/servicios/caja.service';
+import { CarteraService } from '../../core/servicios/cartera.service';
+import { ClientesService } from '../../core/servicios/clientes.service';
+import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 import { AutorizacionPin } from './autorizacion-pin';
+import { htmlRecibo, imprimirHtml } from '../pos/tiquete';
 import { MEDIOS } from './caja';
 
 /** Movimiento de efectivo que registra el cajero. */
@@ -19,7 +23,8 @@ const TIPOS: Record<TipoMovimiento, string> = { RETIRO: 'Retiro a la bóveda', G
 /**
  * Mi turno (spec 005): el cajero abre su turno con una base, registra retiros, gastos e ingresos con la autorización
  * del supervisor y cierra a ciegas: escribe lo que contó sin ver lo esperado; el esperado y las diferencias aparecen
- * solo después de guardar el cierre.
+ * solo después de guardar el cierre. Con el módulo de cartera, aquí también se reciben los abonos de los clientes
+ * (spec 007): entran a la caja del turno y dejan recibo.
  */
 @Component({
   selector: 'sc-mi-turno',
@@ -83,6 +88,33 @@ const TIPOS: Record<TipoMovimiento, string> = { RETIRO: 'Retiro a la bóveda', G
           }
         </section>
 
+        @if (conCartera()) {
+          <section class="tarjeta">
+            <h2>Abono de cliente</h2>
+            <div class="formulario">
+              <div class="campo ancho"><label for="ab-cliente">Cliente</label>
+                <div class="fila"><input id="ab-cliente" class="entrada" placeholder="Documento o nombre" [ngModel]="buscarCliente()" (ngModelChange)="buscarCliente.set($event)" (keydown.enter)="buscarClientes()">
+                  <button type="button" class="boton" (click)="buscarClientes()">Buscar</button></div>
+                @if (clientes().length && !clienteAbono()) {
+                  <ul class="lista">@for (c of clientes(); track c.id) {
+                    <li><button type="button" class="boton chico" (click)="clienteAbono.set(c)">{{ c.nombre }} · {{ c.numeroDocumento }}</button></li>
+                  }</ul>
+                }
+                @if (clienteAbono(); as c) { <span class="sub">Abona: <strong>{{ c.nombre }}</strong> <button type="button" class="boton chico" (click)="clienteAbono.set(null)">Cambiar</button></span> }
+              </div>
+              <div class="campo"><label for="ab-valor">Valor</label>
+                <input id="ab-valor" type="number" min="0" step="any" class="entrada" [ngModel]="valorAbono()" (ngModelChange)="valorAbono.set($event)"></div>
+              <div class="campo"><label for="ab-medio">Medio</label>
+                <select id="ab-medio" class="entrada" [ngModel]="medioAbono()" (ngModelChange)="medioAbono.set($event)">
+                  @for (m of medios; track m) { <option [ngValue]="m">{{ textoMedio(m) }}</option> }
+                </select></div>
+              <div class="campo"><label for="ab-ref">Referencia</label>
+                <input id="ab-ref" class="entrada" maxlength="40" placeholder="Opcional" [ngModel]="referenciaAbono()" (ngModelChange)="referenciaAbono.set($event)"></div>
+            </div>
+            <button type="button" class="boton primario" [disabled]="!clienteAbono() || (valorAbono() ?? 0) <= 0 || enviando()" (click)="abonar()">Registrar abono e imprimir recibo</button>
+          </section>
+        }
+
         <section class="tarjeta">
           <h2>Cierre ciego</h2>
           <p class="sub">Cuente el efectivo y los comprobantes y escriba lo que hay. El esperado aparece después de guardar.</p>
@@ -124,6 +156,9 @@ const TIPOS: Record<TipoMovimiento, string> = { RETIRO: 'Retiro a la bóveda', G
 })
 export class MiTurno implements OnInit {
   private readonly caja = inject(CajaService);
+  private readonly cartera = inject(CarteraService);
+  private readonly clientesService = inject(ClientesService);
+  private readonly sesion = inject(SesionService);
   private readonly avisos = inject(Avisos);
 
   protected readonly medios = Object.keys(MEDIOS) as MedioPago[];
@@ -144,6 +179,15 @@ export class MiTurno implements OnInit {
 
   protected readonly contado = signal<Partial<Record<MedioPago, number>>>({});
   protected readonly observacion = signal('');
+
+  /** Abonos de cartera (spec 007): solo con el módulo de cartera. */
+  protected readonly conCartera = computed(() => this.sesion.tieneModulo('CARTERA'));
+  protected readonly buscarCliente = signal('');
+  protected readonly clientes = signal<Cliente[]>([]);
+  protected readonly clienteAbono = signal<Cliente | null>(null);
+  protected readonly valorAbono = signal<number | null>(null);
+  protected readonly medioAbono = signal<MedioPago>('EFECTIVO');
+  protected readonly referenciaAbono = signal('');
 
   protected readonly movimientos = computed(() => (this.turno()?.movimientos ?? []).filter(m => m.tipo !== 'BASE'));
   protected readonly movimientoValido = computed(() => (this.monto() ?? 0) > 0 && this.motivo().trim().length > 2);
@@ -195,6 +239,35 @@ export class MiTurno implements OnInit {
         },
         error: e => this.avisos.error(e),
       });
+  }
+
+  protected buscarClientes(): void {
+    const q = this.buscarCliente().trim();
+    if (q) {
+      this.clienteAbono.set(null);
+      this.clientesService.buscar(q, true).subscribe({ next: p => this.clientes.set(p.contenido ?? []), error: e => this.avisos.error(e) });
+    }
+  }
+
+  /** Registra el abono, imprime el recibo y refresca el turno. */
+  protected abonar(): void {
+    this.enviando.set(true);
+    this.cartera.abonar(this.clienteAbono()!.id!, this.valorAbono()!, this.medioAbono(), this.referenciaAbono().trim() || null).subscribe({
+      next: ab => {
+        this.enviando.set(false);
+        this.avisos.ok(`Abono ${ab.consecutivo} registrado. Le quedan ${ab.saldoPendiente} por pagar.`);
+        imprimirHtml(htmlRecibo(ab));
+        this.clienteAbono.set(null);
+        this.valorAbono.set(null);
+        this.referenciaAbono.set('');
+        this.clientes.set([]);
+        this.caja.actual().subscribe({ next: t => this.turno.set(t), error: () => undefined });
+      },
+      error: e => {
+        this.enviando.set(false);
+        this.avisos.error(e);
+      },
+    });
   }
 
   /** @param m medio; @param valor contado */

@@ -38,6 +38,10 @@ public class SaldoFavorCliente {
     @Column(name = "devolucion_id", updatable = false)
     private Long devolucionId;
 
+    /** Venta que consumió el saldo (movimiento negativo) o cuya anulación lo devolvió (spec 007). */
+    @Column(name = "venta_id", updatable = false)
+    private Long ventaId;
+
     /** Positivo = abono; negativo = consumo (spec 007). */
     @Column(nullable = false, updatable = false, precision = 18, scale = 2)
     private BigDecimal monto;

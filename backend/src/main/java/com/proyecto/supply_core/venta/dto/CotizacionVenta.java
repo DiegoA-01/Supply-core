@@ -20,9 +20,13 @@ import java.util.List;
  * @param limiteDescuentoPct              descuento máximo de la sesión sin autorización
  * @param requiereAutorizacionDescuento   {@code true} si algún descuento pasa el límite
  * @param requiereAutorizacionPrecio      {@code true} si algún precio queda bajo el mínimo
+ * @param creditoDisponible               cupo disponible del cliente ({@code null} = consumidor final)
+ * @param saldoFavor                      saldo a favor del cliente
+ * @param creditoBloqueado                {@code true} si está en mora sin excepción (no compra a crédito)
  */
 public record CotizacionVenta(List<LineaCotizada> lineas, BigDecimal subtotal, BigDecimal descuentoTotal,
         BigDecimal baseGravable, BigDecimal impuestos, BigDecimal total, BigDecimal redondeo, BigDecimal totalAPagar,
         BigDecimal pagado, BigDecimal cambio, String mensajePago, BigDecimal limiteDescuentoPct,
-        boolean requiereAutorizacionDescuento, boolean requiereAutorizacionPrecio) {
+        boolean requiereAutorizacionDescuento, boolean requiereAutorizacionPrecio, BigDecimal creditoDisponible,
+        BigDecimal saldoFavor, boolean creditoBloqueado) {
 }

@@ -75,6 +75,13 @@
             <div><span class="sub">Cliente</span><strong>{{ cliente()?.nombre ?? consumidorFinal()?.nombre ?? 'Consumidor final' }}</strong></div>
             <button type="button" class="boton chico" (click)="abrirClientes()">Cambiar (F4)</button>
           </div>
+          @if (cliente() && cotizacion(); as c) {
+            <div class="credito">
+              @if (c.creditoDisponible != null) { <span class="sub">Crédito disponible: {{ c.creditoDisponible | pesos }}</span> }
+              @if ((c.saldoFavor ?? 0) > 0) { <span class="sub">Saldo a favor: {{ c.saldoFavor | pesos }}</span> }
+              @if (c.creditoBloqueado) { <span class="chip rojo">En mora: no compra a crédito</span> }
+            </div>
+          }
         </section>
 
         <section class="tarjeta totales" aria-live="polite">
@@ -138,7 +145,7 @@
       @for (p of pagos(); track $index; let i = $index) {
         <div class="pago">
           <select class="entrada" [attr.aria-label]="'Medio del pago ' + (i + 1)" [ngModel]="p.medio" (ngModelChange)="cambiarPago(i, 'medio', $event)">
-            @for (m of ordenMedios; track m) { <option [ngValue]="m">{{ textoMedio(m) }}</option> }
+            @for (m of ordenMedios(); track m) { <option [ngValue]="m">{{ textoMedio(m) }}</option> }
           </select>
           <input class="entrada" type="number" min="0" step="any" [attr.aria-label]="'Valor del pago ' + (i + 1)" placeholder="Valor"
             [ngModel]="p.monto" (ngModelChange)="cambiarPago(i, 'monto', $event)">
