@@ -145,6 +145,17 @@
             [ngModel]="tolerancia()" (ngModelChange)="tolerancia.set($event === '' ? null : +$event)">
           @if (esDueno()) { <button type="button" class="boton" (click)="guardarTolerancia()">Guardar</button> }
         </div>
+        <h2>Bodega de averías</h2>
+        <p class="texto-chico texto-2">A dónde va la mercancía que un cliente devuelve dañada. Sin bodega, lo dañado no vuelve al stock.</p>
+        <div class="fila tolerancia">
+          <select class="entrada" aria-label="Bodega de averías" [disabled]="!esDueno()" (focus)="cargarBodegas()" (mousedown)="cargarBodegas()"
+            [ngModel]="averias()" (ngModelChange)="averias.set($event)">
+            <option [ngValue]="null">Sin bodega de averías (no reingresa)</option>
+            @if (averias() && !bodegas().length) { <option [ngValue]="averias()">Bodega actual</option> }
+            @for (b of bodegas(); track b.id) { <option [ngValue]="b.id">{{ b.nombre }}</option> }
+          </select>
+          @if (esDueno()) { <button type="button" class="boton" (click)="guardarTolerancia()">Guardar</button> }
+        </div>
       </section>
     }
 

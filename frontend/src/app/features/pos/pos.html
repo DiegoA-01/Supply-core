@@ -1,0 +1,184 @@
+<div class="pagina pos">
+  <div class="encabezado">
+    <div>
+      <h1>{{ cobra() ? 'Punto de venta' : 'Armar pedido de venta' }}</h1>
+      @if (turno(); as t) {
+        <p>{{ t.caja }} · {{ t.bodega }} · turno de {{ t.cajero }}</p>
+      } @else if (!cobra()) {
+        <p>Arme el pedido con el cliente; el cajero lo cobra después desde <a routerLink="/app/pedidos-venta">Pedidos de venta</a>.</p>
+      }
+    </div>
+    <div class="fila atajos" aria-label="Atajos de teclado">
+      <span class="chip">F2 buscar</span><span class="chip">F4 cliente</span><span class="chip">F9 {{ cobra() ? 'cobrar' : 'guardar' }}</span><span class="chip">Esc cancelar</span>
+      @if (cobra()) { <a class="boton chico" routerLink="/app/caja/mi-turno">Mi turno</a> }
+    </div>
+  </div>
+
+  @if (turno()?.debeRetirar) {
+    <div class="aviso ambar" role="alert"><span class="material-symbols-outlined">savings</span>
+      La caja pasó su tope de efectivo: haga un retiro a la bóveda desde «Mi turno».</div>
+  }
+  @if (reintento()) {
+    <div class="aviso ambar" role="alert"><span class="material-symbols-outlined">wifi_off</span>
+      Se perdió la conexión al cobrar. Vuelva a confirmar sin cambiar nada: la venta lleva la misma clave y no se cobrará
+      dos veces. El carrito queda fijo hasta que se confirme o se descarte.
+      <button type="button" class="boton secundario" (click)="descartar()">Descartar</button></div>
+  }
+
+  @if (listo()) {
+    <div class="pos-cuerpo">
+      <section class="tarjeta carrito">
+        <div class="lector">
+          <label class="sr-only" for="lector">Código de barras, código o nombre</label>
+          <span class="material-symbols-outlined">barcode_scanner</span>
+          <input #lector id="lector" class="entrada" autocomplete="off" placeholder="Escanee o escriba el código o el nombre y presione Enter"
+            [ngModel]="texto()" (ngModelChange)="texto.set($event)" (keydown.enter)="leer()">
+        </div>
+        @if (opciones().length) {
+          <ul class="opciones" role="listbox" aria-label="Productos encontrados">
+            @for (p of opciones(); track p.productoId) {
+              <li><button type="button" (click)="agregar(p)">
+                <strong>{{ p.nombre }}</strong><span class="sub">{{ p.codigo }} · {{ p.precio != null ? (p.precio | pesos) : 'sin precio' }} · stock {{ p.stock | numero }} {{ p.unidad }}</span>
+              </button></li>
+            }
+          </ul>
+        }
+        @if (pedidoConsecutivo()) { <p class="chip azul pedido">Cobrando el pedido {{ pedidoConsecutivo() }}</p> }
+
+        <div class="tabla-contenedor">
+          <table class="tabla">
+            <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Desc. %</th><th class="num">Precio</th><th class="num">Total</th><th></th></tr></thead>
+            <tbody>
+              @for (x of carrito(); track x.productoId + '-' + x.unidadMedidaId; let i = $index) {
+                <tr [class.alerta]="calculada(i)?.pasaLimite || calculada(i)?.bajoMinimo">
+                  <td><strong>{{ x.nombre }}</strong><span class="sub">{{ x.codigo }}@if (x.stock != null) { · stock {{ x.stock | numero }} }</span>
+                    @if (calculada(i)?.pasaLimite) { <span class="sub ambar">Pasa su límite de descuento: pedirá el PIN del supervisor</span> }
+                    @if (calculada(i)?.bajoMinimo) { <span class="sub ambar">Queda bajo el precio mínimo: pedirá el PIN del supervisor</span> }</td>
+                  <td class="num"><input class="entrada mini" type="number" min="0" step="any" [attr.aria-label]="'Cantidad de ' + x.nombre"
+                    [ngModel]="x.cantidad" (ngModelChange)="cambiarCantidad(i, $event)"> {{ x.unidad }}</td>
+                  <td class="num"><input class="entrada mini" type="number" min="0" max="100" step="any" [attr.aria-label]="'Descuento de ' + x.nombre"
+                    [ngModel]="x.descuentoPct" (ngModelChange)="cambiarDescuento(i, $event)"></td>
+                  <td class="num">{{ calculada(i) ? (calculada(i)!.precioUnitario | pesos) : '…' }}</td>
+                  <td class="num">{{ calculada(i) ? (calculada(i)!.totalLinea | pesos) : '…' }}</td>
+                  <td class="num"><button type="button" class="boton chico icono" [attr.aria-label]="'Quitar ' + x.nombre" (click)="quitar(i)">
+                    <span class="material-symbols-outlined">delete</span></button></td>
+                </tr>
+              } @empty {
+                <tr><td colspan="6" class="vacio">Escanee un producto para empezar.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <aside class="lateral">
+        <section class="tarjeta">
+          <div class="fila entre">
+            <div><span class="sub">Cliente</span><strong>{{ cliente()?.nombre ?? consumidorFinal()?.nombre ?? 'Consumidor final' }}</strong></div>
+            <button type="button" class="boton chico" (click)="abrirClientes()">Cambiar (F4)</button>
+          </div>
+          @if (cliente() && cotizacion(); as c) {
+            <div class="credito">
+              @if (c.creditoDisponible != null) { <span class="sub">Crédito disponible: {{ c.creditoDisponible | pesos }}</span> }
+              @if ((c.saldoFavor ?? 0) > 0) { <span class="sub">Saldo a favor: {{ c.saldoFavor | pesos }}</span> }
+              @if (c.creditoBloqueado) { <span class="chip rojo">En mora: no compra a crédito</span> }
+            </div>
+          }
+        </section>
+
+        <section class="tarjeta totales" aria-live="polite">
+          @if (cotizacion(); as c) {
+            <dl>
+              <div><dt>Subtotal</dt><dd>{{ c.subtotal | pesos }}</dd></div>
+              @if ((c.descuentoTotal ?? 0) > 0) { <div><dt>Descuentos</dt><dd>−{{ c.descuentoTotal | pesos }}</dd></div> }
+              <div><dt>Impuestos</dt><dd>{{ c.impuestos | pesos }}</dd></div>
+              @if ((c.redondeo ?? 0) !== 0) { <div><dt>Redondeo a $50</dt><dd>{{ c.redondeo | pesos }}</dd></div> }
+              <div class="grande"><dt>Total</dt><dd>{{ c.totalAPagar | pesos }}</dd></div>
+            </dl>
+            @if (calculando()) { <p class="sub">Actualizando…</p> }
+          } @else {
+            <p class="sub">Los totales los calcula el sistema al agregar productos.</p>
+          }
+          <button type="button" class="boton primario ancho" [disabled]="vacio() || enviando()" (click)="abrirCobro()">
+            <span class="material-symbols-outlined">{{ cobra() ? 'payments' : 'save' }}</span> {{ cobra() ? 'Cobrar (F9)' : 'Guardar pedido (F9)' }}</button>
+        </section>
+
+        @if (ultima(); as u) {
+          <section class="tarjeta ultima">
+            <span class="sub">Última venta</span>
+            <div class="fila entre"><strong>{{ u.consecutivo }} · {{ u.totalAPagar | pesos }}</strong>
+              <button type="button" class="boton chico" (click)="imprimir(u.id!)">Reimprimir</button></div>
+            @if ((u.cambio ?? 0) > 0) { <p class="cambio">Cambio: {{ u.cambio | pesos }}</p> }
+          </section>
+        }
+      </aside>
+    </div>
+  } @else {
+    <p class="cargando">Abriendo el punto de venta…</p>
+  }
+
+  @if (panelCliente()) {
+    <div class="velo" (click)="panelCliente.set(false)"></div>
+    <section class="tarjeta dialogo" role="dialog" aria-modal="true" aria-labelledby="t-cliente">
+      <h2 id="t-cliente">Cliente de la venta</h2>
+      @if (creandoCliente()) {
+        <sc-cliente-formulario (guardado)="elegirCliente($event)" (cancelado)="creandoCliente.set(false)" />
+      } @else {
+        <div class="fila">
+          <input class="entrada" placeholder="Documento o nombre" aria-label="Buscar cliente" [ngModel]="buscarCliente()"
+            (ngModelChange)="buscarCliente.set($event)" (keydown.enter)="buscarClientes()">
+          <button type="button" class="boton" (click)="buscarClientes()">Buscar</button>
+        </div>
+        <ul class="opciones">
+          <li><button type="button" (click)="elegirCliente(null)"><strong>Consumidor final</strong><span class="sub">Venta sin datos del cliente</span></button></li>
+          @for (c of clientesEncontrados(); track c.id) {
+            <li><button type="button" (click)="elegirCliente(c)"><strong>{{ c.nombre }}</strong><span class="sub">{{ c.tipoDocumento }} {{ c.numeroDocumento }}</span></button></li>
+          }
+        </ul>
+        <button type="button" class="boton chico" (click)="creandoCliente.set(true)">Crear cliente</button>
+      }
+    </section>
+  }
+
+  @if (cobrando()) {
+    <div class="velo" (click)="cancelar()"></div>
+    <section class="tarjeta dialogo cobro" role="dialog" aria-modal="true" aria-labelledby="t-cobro">
+      <h2 id="t-cobro">Cobrar {{ cotizacion()?.totalAPagar | pesos }}</h2>
+      @for (p of pagos(); track $index; let i = $index) {
+        <div class="pago">
+          <select class="entrada" [attr.aria-label]="'Medio del pago ' + (i + 1)" [ngModel]="p.medio" (ngModelChange)="cambiarPago(i, 'medio', $event)">
+            @for (m of ordenMedios(); track m) { <option [ngValue]="m">{{ textoMedio(m) }}</option> }
+          </select>
+          <input class="entrada" type="number" min="0" step="any" [attr.aria-label]="'Valor del pago ' + (i + 1)" placeholder="Valor"
+            [ngModel]="p.monto" (ngModelChange)="cambiarPago(i, 'monto', $event)">
+          @if (esTarjeta(p)) {
+            <input class="entrada corta" inputmode="numeric" maxlength="4" placeholder="Últimos 4" [attr.aria-label]="'Últimos 4 dígitos del pago ' + (i + 1)"
+              [ngModel]="p.ultimos4" (ngModelChange)="cambiarPago(i, 'ultimos4', $event)">
+          }
+          @if (p.medio !== 'EFECTIVO') {
+            <input class="entrada" placeholder="N.º de autorización" [attr.aria-label]="'Autorización del pago ' + (i + 1)"
+              [ngModel]="p.referencia" (ngModelChange)="cambiarPago(i, 'referencia', $event)">
+          }
+          @if (pagos().length > 1) {
+            <button type="button" class="boton chico icono" [attr.aria-label]="'Quitar pago ' + (i + 1)" (click)="quitarPago(i)">
+              <span class="material-symbols-outlined">close</span></button>
+          }
+        </div>
+      }
+      <button type="button" class="boton chico" (click)="agregarPago()">Agregar otro medio</button>
+      <p class="sub">Nunca escriba el número completo de la tarjeta: solo los últimos 4 dígitos y la autorización del datáfono.</p>
+      @if (cotizacion(); as c) {
+        @if (c.mensajePago) { <p class="aviso ambar" role="status">{{ c.mensajePago }}</p> }
+        @else if (c.cambio != null) { <p class="cambio grande" role="status">Cambio: {{ c.cambio | pesos }}</p> }
+      }
+      @if (pin(); as accion) {
+        <sc-autorizacion-pin [accion]="accion" [turnoId]="turno()!.id!" (autorizado)="autorizado($event.token)" (cancelado)="pin.set(null)" />
+      }
+      <div class="fila">
+        <button type="button" class="boton primario" [disabled]="!puedeConfirmar()" (click)="confirmar()">
+          {{ enviando() ? 'Cobrando…' : 'Confirmar venta' }}</button>
+        <button type="button" class="boton" (click)="cancelar()">Volver (Esc)</button>
+      </div>
+    </section>
+  }
+</div>

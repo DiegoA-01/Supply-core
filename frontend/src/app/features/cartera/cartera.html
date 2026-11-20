@@ -1,0 +1,98 @@
+<div class="pagina">
+  <div class="encabezado"><div><h1>Cartera</h1>
+    <p>Clientes que compran a crédito: cuánto deben y desde cuándo. Con una cuenta vencida el cliente queda bloqueado para crédito hasta que pague o lo habiliten.</p></div>
+    <a class="boton" routerLink="/app/clientes">Cupos en Clientes</a></div>
+
+  @if (resumen(); as r) {
+    <div class="kpis">
+      <div class="tarjeta kpi"><div class="etiqueta">Por cobrar</div><div class="valor">{{ r.saldo | pesos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Al día</div><div class="valor">{{ r.alDia | pesos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">1 a 30 días</div><div class="valor">{{ r.d1a30 | pesos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">31 a 60</div><div class="valor">{{ r.d31a60 | pesos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">61 a 90</div><div class="valor">{{ r.d61a90 | pesos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Más de 90</div><div class="valor" [class.peligro]="(r.mas90 ?? 0) > 0">{{ r.mas90 | pesos }}</div></div>
+      <div class="tarjeta kpi"><div class="etiqueta">Clientes en mora</div><div class="valor" [class.peligro]="(r.enMora ?? 0) > 0">{{ r.enMora }}</div></div>
+    </div>
+
+    <section class="tarjeta sin-relleno">
+      <div class="filtros">
+        <input class="entrada" type="search" placeholder="Buscar cliente" aria-label="Buscar cliente" [ngModel]="texto()" (ngModelChange)="texto.set($event)">
+        <select class="entrada" aria-label="Filtrar clientes" [ngModel]="filtro()" (ngModelChange)="filtro.set($event)">
+          <option ngValue="todos">Todos con crédito</option><option ngValue="mora">En mora</option><option ngValue="bloqueados">Bloqueados</option>
+        </select>
+      </div>
+      <div class="tabla-contenedor"><table class="tabla">
+        <thead><tr><th>Cliente</th><th class="num">Cupo</th><th class="num">Debe</th><th class="num">Disponible</th><th class="num">Vencido</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+          @for (c of clientes(); track c.clienteId) {
+            <tr>
+              <td><strong>{{ c.nombre }}</strong><span class="sub">{{ c.documento }} · {{ c.plazoDias }} días</span></td>
+              <td class="num">{{ c.cupo | pesos }}</td><td class="num">{{ c.saldo | pesos }}</td><td class="num">{{ c.disponible | pesos }}</td>
+              <td class="num">{{ c.vencido | pesos }}</td>
+              <td>
+                @if (c.bloqueado) { <span class="chip rojo">Bloqueado por mora</span> }
+                @else if (c.enMora) { <span class="chip ambar">En mora, habilitado hasta {{ c.excepcionHasta | fecha }}</span> }
+                @else { <span class="chip verde">Al día</span> }
+                @if ((c.saldoFavor ?? 0) > 0) { <span class="sub">Saldo a favor {{ c.saldoFavor | pesos }}</span> }
+              </td>
+              <td class="num"><button type="button" class="boton chico" (click)="ver(c)">Detalle</button></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="vacio">No hay clientes con crédito con este filtro. El cupo de cada cliente se fija en Clientes.</td></tr>
+          }
+        </tbody>
+      </table></div>
+    </section>
+  } @else { <p class="cargando">Cargando la cartera…</p> }
+
+  @if (detalle(); as d) {
+    <section class="tarjeta detalle" aria-labelledby="t-cartera">
+      <div class="fila entre"><h2 id="t-cartera">{{ d.cliente?.nombre }}</h2><button type="button" class="boton chico" (click)="detalle.set(null)">Cerrar</button></div>
+      <dl class="cifras">
+        <div><dt>Debe</dt><dd>{{ d.cliente?.saldo | pesos }}</dd></div>
+        <div><dt>Disponible</dt><dd>{{ d.cliente?.disponible | pesos }}</dd></div>
+        <div><dt>1–30</dt><dd>{{ d.cliente?.d1a30 | pesos }}</dd></div>
+        <div><dt>31–60</dt><dd>{{ d.cliente?.d31a60 | pesos }}</dd></div>
+        <div><dt>61–90</dt><dd>{{ d.cliente?.d61a90 | pesos }}</dd></div>
+        <div><dt>+90</dt><dd>{{ d.cliente?.mas90 | pesos }}</dd></div>
+      </dl>
+
+      @if (d.cliente?.excepcionHasta) {
+        <p class="aviso ambar" role="status">Habilitado para crédito hasta el {{ d.cliente?.excepcionHasta | fecha }} por {{ d.cliente?.excepcionPor }}: {{ d.cliente?.excepcionMotivo }}
+          @if (decide()) { <button type="button" class="boton chico" (click)="quitar()">Quitar</button> }</p>
+      }
+      @if (decide() && d.cliente?.enMora) {
+        @if (habilitando()) {
+          <div class="habilitar">
+            <div class="campo"><label for="ex-hasta">Puede comprar a crédito hasta</label>
+              <input id="ex-hasta" type="date" class="entrada" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)"></div>
+            <div class="campo ancho"><label for="ex-motivo">Motivo</label>
+              <input id="ex-motivo" class="entrada" maxlength="300" placeholder="Acordó pagar el viernes, cliente de años…" [ngModel]="motivo()" (ngModelChange)="motivo.set($event)"></div>
+            <div class="fila"><button type="button" class="boton primario" [disabled]="motivo().trim().length < 5 || !hasta()" (click)="habilitar()">Habilitar</button>
+              <button type="button" class="boton" (click)="habilitando.set(false)">Cancelar</button></div>
+            <p class="sub">La excepción deja comprar aunque esté en mora, pero no pasa su cupo: para eso súbale el cupo en Clientes.</p>
+          </div>
+        } @else {
+          <button type="button" class="boton" (click)="habilitando.set(true)">Habilitar crédito aunque esté en mora</button>
+        }
+      }
+
+      <h3>Cuentas</h3>
+      <div class="tabla-contenedor"><table class="tabla">
+        <thead><tr><th>Venta</th><th>Vence</th><th class="num">Valor</th><th class="num">Saldo</th><th>Estado</th></tr></thead>
+        <tbody>@for (x of d.cuentas ?? []; track x.id) {
+          <tr><td>{{ x.venta }}</td><td>{{ x.venceEn | fecha }}@if ((x.diasVencida ?? 0) > 0) { <span class="sub rojo">vencida hace {{ x.diasVencida }} días</span> }</td>
+            <td class="num">{{ x.valor | pesos }}</td><td class="num">{{ x.saldo | pesos }}</td><td>{{ x.estado }}</td></tr>
+        } @empty { <tr><td colspan="5" class="vacio">Sin cuentas.</td></tr> }</tbody>
+      </table></div>
+      <h3>Abonos</h3>
+      <div class="tabla-contenedor"><table class="tabla">
+        <thead><tr><th>Abono</th><th>Fecha</th><th>Recibió</th><th class="num">Valor</th><th></th></tr></thead>
+        <tbody>@for (a of d.abonos ?? []; track a.id) {
+          <tr><td>{{ a.consecutivo }}</td><td>{{ a.creadoEn | fecha: 'hora' }}</td><td>{{ a.usuario }}</td><td class="num">{{ a.valor | pesos }}</td>
+            <td class="num"><button type="button" class="boton chico" (click)="recibo(a)">Recibo</button></td></tr>
+        } @empty { <tr><td colspan="5" class="vacio">Sin abonos. Los abonos se reciben en Mi turno.</td></tr> }</tbody>
+      </table></div>
+    </section>
+  }
+</div>

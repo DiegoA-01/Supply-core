@@ -31,9 +31,12 @@ export class CajaService {
     return this.http.get<ConfiguracionCaja>(api('/api/cajas/configuracion'));
   }
 
-  /** @param toleranciaDiferencia diferencia aceptada sin aprobación */
-  configurar(toleranciaDiferencia: number): Observable<ConfiguracionCaja> {
-    return this.http.put<ConfiguracionCaja>(api('/api/cajas/configuracion'), { toleranciaDiferencia });
+  /**
+   * @param toleranciaDiferencia diferencia aceptada sin aprobación
+   * @param bodegaAveriasId      bodega para lo devuelto en mal estado (null = no reingresa)
+   */
+  configurar(toleranciaDiferencia: number, bodegaAveriasId: number | null = null): Observable<ConfiguracionCaja> {
+    return this.http.put<ConfiguracionCaja>(api('/api/cajas/configuracion'), { toleranciaDiferencia, bodegaAveriasId });
   }
 
   /** @param filtros estado, solo pendientes de aprobación, caja y página */

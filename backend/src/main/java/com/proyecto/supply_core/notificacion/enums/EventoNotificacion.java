@@ -74,6 +74,10 @@ public enum EventoNotificacion {
     PEDIDO_INTERNO_RESPONDIDO("Respuesta a tu pedido interno"),
     /** Un proveedor subió o actualizó su catálogo (destino: COMPRADOR y ADMIN_COMPRAS). */
     CATALOGO_ACTUALIZADO("Un proveedor actualizó su catálogo"),
+    /** Se vendió un producto por debajo de su costo promedio (destino: ADMIN_SISTEMA y SUPERVISOR_VENTAS, spec 008). */
+    PRECIO_BAJO_COSTO("Venta por debajo del costo"),
+    /** Se intentó vender a crédito a un cliente en mora (destino: SUPERVISOR_VENTAS y ADMIN_SISTEMA, spec 007). */
+    CREDITO_BLOQUEADO("Crédito bloqueado por mora"),
     /** El área de compras envió un informe de compras al administrador de la empresa. */
     INFORME_RECIBIDO("Informe de compras recibido"),
     /** Un turno cerró con una diferencia de caja que pasa la tolerancia y espera la aprobación de un supervisor. */

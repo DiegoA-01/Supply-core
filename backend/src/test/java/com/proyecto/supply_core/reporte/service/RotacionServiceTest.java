@@ -182,6 +182,18 @@ class RotacionServiceTest {
     }
 
     @Test
+    void lasVentasAnuladasYLoQueDevuelveElClienteNoCuentanComoSalida() {
+        dado(List.of(producto(1, "Cable", "50", null)),
+                List.of(mov(1, TipoMovimiento.SALIDA_VENTA, "10"), mov(1, TipoMovimiento.ANULACION_VENTA, "4"),
+                        mov(1, TipoMovimiento.DEVOLUCION_CLIENTE, "1")),
+                List.of());
+
+        RotacionItem i = item(service.rotacion(LocalDate.of(2026, 10, 19), LocalDate.of(2026, 11, 17), null), 1);
+
+        assertEquals(0, d("5").compareTo(i.salidas()));
+    }
+
+    @Test
     void unaSalidaMinimaNoDividePorCero() {
         dado(List.of(producto(1, "Arandela", "5", null)), List.of(mov(1, TipoMovimiento.SALIDA_CONSUMO, "0.0001")), List.of());
 

@@ -118,21 +118,28 @@ public class CajaService {
      */
     @Transactional(readOnly = true)
     public ConfiguracionCaja configuracion() {
-        return new ConfiguracionCaja(empresa().getToleranciaDiferenciaCaja());
+        Empresa e = empresa();
+        return new ConfiguracionCaja(e.getToleranciaDiferenciaCaja(), e.getBodegaAveriasId());
     }
 
     /**
-     * @param req tolerancia nueva
+     * @param req tolerancia y bodega de averías nuevas
      * @return configuración guardada
+     * @throws NoEncontradoException si la bodega de averías no es de la empresa
      */
     @Transactional
     public ConfiguracionCaja configurar(ConfiguracionCaja req) {
         Empresa e = empresa();
-        String antes = e.getToleranciaDiferenciaCaja().toPlainString();
+        String antes = e.getToleranciaDiferenciaCaja().toPlainString() + "; averías=" + e.getBodegaAveriasId();
+        if (req.bodegaAveriasId() != null) {
+            bodegaRepository.findById(req.bodegaAveriasId()).orElseThrow(() -> new NoEncontradoException("Bodega no encontrada"));
+        }
         e.setToleranciaDiferenciaCaja(req.toleranciaDiferencia().setScale(2, RoundingMode.HALF_UP));
+        e.setBodegaAveriasId(req.bodegaAveriasId());
         auditoriaService.exito(AccionAuditoria.CAJA_CONFIGURAR, EntidadAuditada.EMPRESA, e.getId(),
-                "toleranciaDiferenciaCaja: " + antes + " -> " + e.getToleranciaDiferenciaCaja().toPlainString());
-        return new ConfiguracionCaja(e.getToleranciaDiferenciaCaja());
+                "antes: " + antes + " | después: " + e.getToleranciaDiferenciaCaja().toPlainString() + "; averías="
+                        + e.getBodegaAveriasId());
+        return new ConfiguracionCaja(e.getToleranciaDiferenciaCaja(), e.getBodegaAveriasId());
     }
 
     // ----------------------------------------------------------------- apoyo

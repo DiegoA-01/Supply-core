@@ -41,6 +41,20 @@ public interface TurnoCajaRepository extends JpaRepository<TurnoCaja, Long> {
     Optional<TurnoCaja> bloquear(@Param("id") Long id);
 
     /**
+     * Turno abierto del cajero, bloqueado en la misma lectura. Debe ser la primera lectura de la transacción: en MySQL
+     * (lectura repetible) la foto se toma en la primera lectura normal, así que lo que se lea después de esperar el
+     * bloqueo ya incluye lo que otra petición del mismo cajero confirmó mientras tanto (por ejemplo, un reenvío de la
+     * misma venta). Si el turno se cerró durante la espera, no lo devuelve.
+     *
+     * @param cajeroId cajero
+     * @return el turno abierto, bloqueado
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select t from TurnoCaja t join fetch t.caja "
+            + "where t.cajeroUsuarioId = :cajeroId and t.estado = com.proyecto.supply_core.caja.enums.EstadoTurno.ABIERTO")
+    Optional<TurnoCaja> abiertoDeBloqueado(@Param("cajeroId") Long cajeroId);
+
+    /**
      * @param id turno
      * @return el turno con su caja
      */

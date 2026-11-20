@@ -240,5 +240,27 @@ public enum AccionAuditoria {
     /** Intento de autorización con un correo o PIN que no sirven, o con el PIN bloqueado. */
     AUTORIZACION_FALLO,
     /** Un supervisor fijó o cambió su PIN. */
-    PIN_CAMBIAR
+    PIN_CAMBIAR,
+    /** Se confirmó una venta (spec 004). */
+    VENTA_CONFIRMAR,
+    /** Un vendedor creó un pedido de venta. */
+    PEDIDO_VENTA_CREAR,
+    /** Se editó un pedido de venta pendiente. */
+    PEDIDO_VENTA_EDITAR,
+    /** Se descartó un pedido de venta sin cobrar. */
+    PEDIDO_VENTA_DESCARTAR,
+    /** El dueño cambió el límite de descuento de un rol. */
+    LIMITE_DESCUENTO_CAMBIAR,
+    /** Se imprimió el tiquete original de una venta (spec 005). */
+    VENTA_IMPRIMIR,
+    /** Se reimprimió el tiquete de una venta: sale con la marca COPIA. */
+    VENTA_REIMPRIMIR,
+    /** Se anuló una venta de un turno abierto con autorización (spec 006). */
+    VENTA_ANULAR,
+    /** Un cliente devolvió mercancía de una venta (spec 006). */
+    VENTA_DEVOLVER,
+    /** Se habilitó o se retiró la excepción de crédito de un cliente en mora (spec 007). */
+    CREDITO_EXCEPCION,
+    /** Un cliente abonó a su cartera en la caja. */
+    ABONO_REGISTRAR
 }

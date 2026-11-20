@@ -1,6 +1,6 @@
 # 007 - Crédito y cartera
 
-**Estado:** Propuesta · **Rama:** `feature/ventas-cartera` · **Depende de:** 004 (y 002 por los cupos)
+**Estado:** Hecha (V37) · **Rama:** `feature/ventas-pos` (con 004 a 008) · **Depende de:** 004 (y 002 por los cupos)
 
 ## Objetivo
 Vender a crédito a clientes conocidos, sin pasar su cupo, cobrar los abonos por la caja y saber quién debe y desde
@@ -17,19 +17,19 @@ cuándo. La primera versión de ventas sale solo con contado (D4); esta spec sum
 - Como dueño, quiero que todo cambio de cupo quede registrado.
 
 ## Criterios de aceptación
-- [ ] Solo se vende a crédito a un cliente identificado (nunca al consumidor final) y con cupo disponible (cupo − saldo).
-- [ ] Un cliente con alguna cuenta vencida no compra a crédito.
-- [ ] Cada venta a crédito crea su cuenta por cobrar con vencimiento según el plazo del cliente.
-- [ ] Cada abono entra a la caja del turno, se aplica a la cuenta más antigua y deja recibo.
-- [ ] El saldo a favor se puede usar como medio de pago.
-- [ ] El reporte de edades suma lo mismo que el saldo total de la cartera.
-- [ ] Los abonos cuadran en el cierre de caja.
-- [ ] Cambiar un cupo queda en la auditoría.
-- [ ] Una empresa nunca ve la cartera de otra.
-- [ ] Todas las pruebas pasan, incluidas las de fuga.
+- [x] Solo se vende a crédito a un cliente identificado (nunca al consumidor final) y con cupo disponible (cupo − saldo).
+- [x] Un cliente con alguna cuenta vencida no compra a crédito.
+- [x] Cada venta a crédito crea su cuenta por cobrar con vencimiento según el plazo del cliente.
+- [x] Cada abono entra a la caja del turno, se aplica a la cuenta más antigua y deja recibo.
+- [x] El saldo a favor se puede usar como medio de pago.
+- [x] El reporte de edades suma lo mismo que el saldo total de la cartera.
+- [x] Los abonos cuadran en el cierre de caja.
+- [x] Cambiar un cupo queda en la auditoría.
+- [x] Una empresa nunca ve la cartera de otra.
+- [x] Todas las pruebas pasan, incluidas las de fuga.
 
 ## Fuera de alcance
 - Intereses de mora, cobro jurídico, envío automático de estados de cuenta.
 
 ## Decisiones
-D4 recomendada (ver `agents/specs/README.md`).
+D4 tomada (2026-11-20): el crédito entra con esta spec. Decisión de la usuaria: un cliente en mora queda bloqueado y se avisa a los encargados, pero el supervisor o el dueño puede habilitarlo hasta una fecha con motivo (excepción en `cliente`, pantalla Cartera); la excepción no salta el cupo.

@@ -54,7 +54,7 @@ public class RotacionService {
 
     static final Set<TipoMovimiento> TIPOS_DEL_PERIODO = EnumSet.of(TipoMovimiento.SALIDA_CONSUMO,
             TipoMovimiento.SALIDA_VENTA, TipoMovimiento.ANULACION_DESPACHO, TipoMovimiento.ENTRADA_COMPRA,
-            TipoMovimiento.DEVOLUCION_PROVEEDOR);
+            TipoMovimiento.DEVOLUCION_PROVEEDOR, TipoMovimiento.ANULACION_VENTA, TipoMovimiento.DEVOLUCION_CLIENTE);
     static final Set<TipoMovimiento> TIPOS_DE_SALIDA = EnumSet.of(TipoMovimiento.SALIDA_CONSUMO,
             TipoMovimiento.SALIDA_VENTA);
 
@@ -137,7 +137,8 @@ public class RotacionService {
             int dias, LocalDate hoy) {
         BigDecimal stock = f.stock();
         BigDecimal salidas = noNegativo(cant(mov, TipoMovimiento.SALIDA_CONSUMO).add(cant(mov, TipoMovimiento.SALIDA_VENTA))
-                .subtract(cant(mov, TipoMovimiento.ANULACION_DESPACHO)));
+                .subtract(cant(mov, TipoMovimiento.ANULACION_DESPACHO)).subtract(cant(mov, TipoMovimiento.ANULACION_VENTA))
+                .subtract(cant(mov, TipoMovimiento.DEVOLUCION_CLIENTE)));
         BigDecimal comprado = noNegativo(cant(mov, TipoMovimiento.ENTRADA_COMPRA)
                 .subtract(cant(mov, TipoMovimiento.DEVOLUCION_PROVEEDOR)));
         boolean huboSalidas = salidas.signum() > 0;

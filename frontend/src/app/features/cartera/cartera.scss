@@ -1,0 +1,11 @@
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.filtros { display: flex; flex-wrap: wrap; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--sc-borde);
+  input { max-width: 280px; } select { max-width: 220px; } }
+.sub { display: block; font-size: 12px; color: var(--sc-texto-2); }
+.sub.rojo { color: #b3261e; }
+.detalle { display: grid; gap: 12px; h2, h3 { margin: 0; } }
+.entre { justify-content: space-between; align-items: center; }
+.cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 0;
+  dt { font-size: 12px; color: var(--sc-texto-2); } dd { margin: 0; font-weight: 600; } }
+.habilitar { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; padding: 14px; border: 1px solid var(--sc-borde);
+  border-radius: 12px; .ancho { grid-column: 1 / -1; } .fila, .sub { grid-column: 1 / -1; } }

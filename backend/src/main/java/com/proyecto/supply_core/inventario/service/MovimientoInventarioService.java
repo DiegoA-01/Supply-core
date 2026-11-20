@@ -135,8 +135,25 @@ public class MovimientoInventarioService {
     @Transactional
     public RegistroMovimientoResponse registrarEntradaCompra(Long productoId, Long bodegaId, BigDecimal cantidad,
             String referenciaTipo, Long referenciaId) {
+        return registrarEntradaCompra(productoId, bodegaId, cantidad, null, referenciaTipo, referenciaId);
+    }
+
+    /**
+     * Entrada por recepción con el costo de la compra, que queda en el movimiento (spec 008).
+     *
+     * @param productoId     producto recibido
+     * @param bodegaId       bodega donde se recibe
+     * @param cantidad       cantidad aceptada (> 0)
+     * @param costoCompra    costo unitario de la compra ({@code null} = el promedio vigente)
+     * @param referenciaTipo documento de origen (p. ej. {@code RECEPCION})
+     * @param referenciaId   id del documento de origen
+     * @return movimiento registrado
+     */
+    @Transactional
+    public RegistroMovimientoResponse registrarEntradaCompra(Long productoId, Long bodegaId, BigDecimal cantidad,
+            BigDecimal costoCompra, String referenciaTipo, Long referenciaId) {
         return aplicar(TipoMovimiento.ENTRADA_COMPRA, productoId, null, bodegaId, cantidad, null,
-                referenciaTipo, referenciaId);
+                referenciaTipo, referenciaId, costoCompra);
     }
 
     /**
@@ -201,6 +218,39 @@ public class MovimientoInventarioService {
     }
 
     /**
+     * Entrada que devuelve al stock lo de una venta anulada en su turno (spec 006). Solo la llama la anulación.
+     *
+     * @param productoId producto
+     * @param bodegaId   bodega de la caja
+     * @param cantidad   cantidad en la unidad del producto (> 0)
+     * @param motivo     motivo de la anulación
+     * @param ventaId    venta anulada
+     * @return movimiento registrado
+     */
+    @Transactional
+    public RegistroMovimientoResponse registrarAnulacionVenta(Long productoId, Long bodegaId, BigDecimal cantidad,
+            String motivo, Long ventaId) {
+        return aplicar(TipoMovimiento.ANULACION_VENTA, productoId, null, bodegaId, cantidad, motivo, "VENTA", ventaId);
+    }
+
+    /**
+     * Entrada por la mercancía que devuelve un cliente (spec 006). Solo la llama la devolución.
+     *
+     * @param productoId   producto
+     * @param bodegaId     bodega de venta (buen estado) o de averías (dañado)
+     * @param cantidad     cantidad en la unidad del producto (> 0)
+     * @param motivo       motivo de la devolución
+     * @param devolucionId devolución
+     * @return movimiento registrado
+     */
+    @Transactional
+    public RegistroMovimientoResponse registrarDevolucionCliente(Long productoId, Long bodegaId, BigDecimal cantidad,
+            String motivo, Long devolucionId) {
+        return aplicar(TipoMovimiento.DEVOLUCION_CLIENTE, productoId, null, bodegaId, cantidad, motivo, "DEVOLUCION_VENTA",
+                devolucionId);
+    }
+
+    /**
      * Kardex con filtros, más recientes primero.
      *
      * @param filtro   filtros validados
@@ -245,6 +295,25 @@ public class MovimientoInventarioService {
      */
     private RegistroMovimientoResponse aplicar(TipoMovimiento tipo, Long productoId, Long origenId, Long destinoId,
             BigDecimal cantidadBruta, String motivo, String referenciaTipo, Long referenciaId) {
+        return aplicar(tipo, productoId, origenId, destinoId, cantidadBruta, motivo, referenciaTipo, referenciaId, null);
+    }
+
+    /**
+     * Igual que la otra versión, con el costo unitario del movimiento.
+     *
+     * @param tipo           tipo de movimiento
+     * @param productoId     producto
+     * @param origenId       bodega de origen o {@code null}
+     * @param destinoId      bodega de destino o {@code null}
+     * @param cantidadBruta  cantidad (> 0)
+     * @param motivo         motivo o {@code null}
+     * @param referenciaTipo documento de origen o {@code null}
+     * @param referenciaId   id del documento de origen o {@code null}
+     * @param costo          costo unitario ({@code null} = el costo vigente del producto)
+     * @return movimiento, total del producto y alerta
+     */
+    private RegistroMovimientoResponse aplicar(TipoMovimiento tipo, Long productoId, Long origenId, Long destinoId,
+            BigDecimal cantidadBruta, String motivo, String referenciaTipo, Long referenciaId, BigDecimal costo) {
         BigDecimal cantidad = cantidadBruta.setScale(ESCALA, RoundingMode.HALF_UP);
         if (cantidad.signum() <= 0) {
             throw new NegocioException("CANTIDAD_INVALIDA", "La cantidad debe ser mayor que cero");
@@ -289,6 +358,7 @@ public class MovimientoInventarioService {
         m.setMotivo(motivo == null || motivo.isBlank() ? null : motivo.trim());
         m.setReferenciaTipo(referenciaTipo);
         m.setReferenciaId(referenciaId);
+        m.setCostoUnitario(costo != null ? costo : producto.costoVigente());
         MovimientoInventario guardado = movimientoRepository.save(m);
 
         if (tipo == TipoMovimiento.AJUSTE_POSITIVO || tipo == TipoMovimiento.AJUSTE_NEGATIVO) {

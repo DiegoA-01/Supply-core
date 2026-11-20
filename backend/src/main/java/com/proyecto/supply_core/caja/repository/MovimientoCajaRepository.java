@@ -26,4 +26,11 @@ public interface MovimientoCajaRepository extends JpaRepository<MovimientoCaja, 
      */
     @Query("select coalesce(sum(m.monto), 0) from MovimientoCaja m where m.turnoId = :turnoId and m.medioPago = :medio")
     BigDecimal saldo(@Param("turnoId") Long turnoId, @Param("medio") MedioPago medio);
+
+    /**
+     * @param referenciaTipo documento de origen ({@code VENTA})
+     * @param referenciaId   id del documento
+     * @return movimientos del documento
+     */
+    java.util.List<MovimientoCaja> findByReferenciaTipoAndReferenciaId(String referenciaTipo, Long referenciaId);
 }

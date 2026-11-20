@@ -84,6 +84,16 @@ public class Cliente {
     @Column(name = "acepta_datos_en")
     private LocalDateTime aceptaDatosEn;
 
+    /** Hasta cuándo puede comprar a crédito aunque tenga cuentas vencidas (spec 007, V37); {@code null} = sin excepción. */
+    @Column(name = "credito_excepcion_hasta")
+    private java.time.LocalDate creditoExcepcionHasta;
+
+    @Column(name = "credito_excepcion_motivo", length = 300)
+    private String creditoExcepcionMotivo;
+
+    @Column(name = "credito_excepcion_por_usuario_id")
+    private Long creditoExcepcionPorUsuarioId;
+
     @Column(name = "creado_en", nullable = false, insertable = false, updatable = false)
     private LocalDateTime creadoEn;
 }

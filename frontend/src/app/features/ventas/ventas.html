@@ -1,0 +1,139 @@
+<div class="pagina">
+  <div class="encabezado"><div><h1>Ventas</h1><p>Historial de ventas con su detalle. Los montos son los que calculó el sistema al cobrar.</p></div>
+    <a class="boton" routerLink="/app/pedidos-venta">Pedidos de venta</a></div>
+  @if (soloConsecutivo()) {
+    <p class="aviso azul" role="note"><span class="material-symbols-outlined">search</span>
+      Escriba el consecutivo de la venta para reimprimirla, anularla en su turno o recibir una devolución.</p>
+  }
+
+  <section class="tarjeta sin-relleno">
+    <div class="filtros">
+      <div class="campo"><label for="vf-desde">Desde</label><input id="vf-desde" type="date" class="entrada" [ngModel]="desde()" (ngModelChange)="desde.set($event)"></div>
+      <div class="campo"><label for="vf-hasta">Hasta</label><input id="vf-hasta" type="date" class="entrada" [ngModel]="hasta()" (ngModelChange)="hasta.set($event)"></div>
+      <div class="campo"><label for="vf-estado">Estado</label>
+        <select id="vf-estado" class="entrada" [ngModel]="estado()" (ngModelChange)="estado.set($event)">
+          <option [ngValue]="null">Todas</option><option ngValue="CONFIRMADA">Confirmadas</option><option ngValue="ANULADA">Anuladas</option>
+        </select></div>
+      <div class="campo"><label for="vf-cons">Consecutivo</label><input id="vf-cons" class="entrada" placeholder="C1-000123" [ngModel]="consecutivo()" (ngModelChange)="consecutivo.set($event)" (keyup.enter)="buscar()"></div>
+      <button type="button" class="boton" (click)="buscar()">Buscar</button>
+    </div>
+    <div class="tabla-contenedor">
+      <table class="tabla">
+        <thead><tr><th>Venta</th><th>Fecha</th><th>Caja</th><th>Cliente</th><th>Cajero</th><th class="num">Total</th><th></th></tr></thead>
+        <tbody>
+          @for (v of pagina()?.contenido ?? []; track v.id) {
+            <tr [class.anulada]="v.estado === 'ANULADA'">
+              <td><strong>{{ v.consecutivo }}</strong>@if (v.estado === 'ANULADA') { <span class="sub">Anulada</span> }</td>
+              <td>{{ v.confirmadaEn | fecha: 'hora' }}</td><td>{{ v.caja }}</td><td>{{ v.cliente }}</td>
+              <td>{{ v.cajero }}@if (v.vendedor) { <span class="sub">vendió {{ v.vendedor }}</span> }</td>
+              <td class="num">{{ v.totalAPagar | pesos }}</td>
+              <td class="num"><button type="button" class="boton chico" (click)="ver(v)">Detalle</button></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" class="vacio">{{ pagina() ? 'No hay ventas con estos filtros.' : 'Cargando…' }}</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if ((pagina()?.totalPaginas ?? 0) > 1) {
+      <div class="fila paginacion">
+        <button type="button" class="boton chico" [disabled]="pagina()!.pagina === 0" (click)="buscar(pagina()!.pagina! - 1)">Anterior</button>
+        <span>Página {{ pagina()!.pagina! + 1 }} de {{ pagina()!.totalPaginas }}</span>
+        <button type="button" class="boton chico" [disabled]="pagina()!.pagina! + 1 >= pagina()!.totalPaginas!" (click)="buscar(pagina()!.pagina! + 1)">Siguiente</button>
+      </div>
+    }
+  </section>
+
+  @if (detalle(); as d) {
+    <section class="tarjeta detalle" aria-labelledby="t-detalle">
+      <div class="fila entre"><h2 id="t-detalle">Venta {{ d.consecutivo }} @if (d.estado === 'ANULADA') { <span class="chip gris">Anulada</span> }</h2>
+        <div class="fila"><button type="button" class="boton chico" (click)="reimprimir(d.id!)">Reimprimir (COPIA)</button>
+          @if (puedeAnular()) { <button type="button" class="boton chico" (click)="empezar('anular')">Anular</button> }
+          @if (puedeDevolver()) { <button type="button" class="boton chico" (click)="empezar('devolver')">Devolver</button> }
+          <button type="button" class="boton chico" (click)="detalle.set(null)">Cerrar</button></div></div>
+      <p class="sin-margen">{{ d.caja }} · {{ d.confirmadaEn | fecha: 'hora' }} · cajero {{ d.cajero }}@if (d.vendedor) { · vendedor {{ d.vendedor }} } · {{ d.cliente }} ({{ d.clienteDocumento }}) · lista {{ d.lista }}</p>
+      @if (d.autorizadaPor) { <p class="chip ambar sin-margen">Autorizó: {{ d.autorizadaPor }}</p> }
+      @if (d.estado === 'ANULADA') { <p class="aviso gris sin-margen">Anulada {{ d.anuladaEn | fecha: 'hora' }}: {{ d.motivoAnulacion }}</p> }
+      @if ((d.totalDevuelto ?? 0) > 0) { <p class="chip azul sin-margen">Devuelto al cliente: {{ d.totalDevuelto | pesos }}</p> }
+
+      @if (correccion() === 'anular') {
+        <div class="correccion">
+          <strong>Anular la venta</strong>
+          <p class="sub">Solo en el turno en que se cobró. El stock vuelve a la bodega y el dinero sale de la caja por cada medio.</p>
+          <div class="campo"><label for="an-motivo">Motivo</label>
+            <input id="an-motivo" class="entrada" maxlength="300" placeholder="Error de digitación, el cliente desistió…" [ngModel]="motivo()" (ngModelChange)="motivo.set($event)"></div>
+          @if (pidiendoPin()) {
+            <sc-autorizacion-pin accion="ANULAR_VENTA" [turnoId]="miTurno()!.id!" [referenciaId]="d.id!" (autorizado)="autorizado($event.token)" (cancelado)="pidiendoPin.set(false)" />
+          } @else {
+            <div class="fila"><button type="button" class="boton primario" [disabled]="motivo().trim().length < 5 || enviando()" (click)="pidiendoPin.set(true)">Anular (pide PIN)</button>
+              <button type="button" class="boton" (click)="correccion.set(null)">Cancelar</button></div>
+          }
+        </div>
+      }
+      @if (correccion() === 'devolver') {
+        <div class="correccion">
+          <strong>Devolución del cliente</strong>
+          <div class="tabla-contenedor"><table class="tabla devolver">
+            <thead><tr><th>Producto</th><th class="num">Se puede devolver</th><th class="num">Devuelve</th><th>Estado</th></tr></thead>
+            <tbody>@for (l of lineasDevueltas(); track l.ventaLineaId; let i = $index) {
+              <tr><td>{{ l.nombre }}</td><td class="num">{{ l.maximo | numero }} {{ l.unidad }}</td>
+                <td class="num"><input class="entrada mini" type="number" min="0" [max]="l.maximo" step="any" [attr.aria-label]="'Cantidad a devolver de ' + l.nombre"
+                  [ngModel]="l.cantidad" (ngModelChange)="cambiarLinea(i, 'cantidad', $event ?? 0)"></td>
+                <td><select class="entrada" [attr.aria-label]="'Estado de ' + l.nombre" [ngModel]="l.estado" (ngModelChange)="cambiarLinea(i, 'estado', $event)">
+                  <option ngValue="BUENO">Buen estado (vuelve al stock)</option><option ngValue="DANADO">Dañado (bodega de averías)</option></select></td></tr>
+            }</tbody>
+          </table></div>
+          <div class="formulario-fila fila">
+            <div class="campo"><label for="dv-forma">Reembolso</label>
+              <select id="dv-forma" class="entrada" [ngModel]="forma()" (ngModelChange)="forma.set($event)">
+                @for (f of formas; track f) { <option [ngValue]="f">{{ reembolsos[f] }}</option> }
+              </select></div>
+            <div class="campo"><label for="dv-motivo">Motivo</label>
+              <input id="dv-motivo" class="entrada" maxlength="300" [ngModel]="motivo()" (ngModelChange)="motivo.set($event)"></div>
+          </div>
+          <p class="sub">El valor lo calcula el sistema con el precio que pagó el cliente. Nunca se devuelve más de lo vendido.</p>
+          @if (pidiendoPin()) {
+            <sc-autorizacion-pin accion="DEVOLUCION" [turnoId]="miTurno()!.id!" [referenciaId]="d.id!" (autorizado)="autorizado($event.token)" (cancelado)="pidiendoPin.set(false)" />
+          } @else {
+            <div class="fila"><button type="button" class="boton primario" [disabled]="!totalDevolucionValido() || enviando()" (click)="pidiendoPin.set(true)">Registrar devolución (pide PIN)</button>
+              <button type="button" class="boton" (click)="correccion.set(null)">Cancelar</button></div>
+          }
+        </div>
+      }
+      <div class="tabla-contenedor"><table class="tabla">
+        <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Precio lista</th><th class="num">Desc.</th><th class="num">IVA</th><th class="num">Total</th></tr></thead>
+        <tbody>@for (l of d.lineas ?? []; track $index) {
+          <tr><td>{{ l.nombre }}<span class="sub">{{ l.codigo }}@if (l.autorizadoPor) { · autorizó {{ l.autorizadoPor }} }</span></td>
+            <td class="num">{{ l.cantidad | numero }} {{ l.unidad }}</td><td class="num">{{ l.precioLista | pesos }}</td>
+            <td class="num">{{ (l.descuentoPct ?? 0) > 0 ? (l.descuentoPct | numero) + ' %' : '—' }}</td>
+            <td class="num">{{ l.impuesto | pesos }}<span class="sub">{{ l.tarifaImpuestoPct | numero }} %</span></td>
+            <td class="num">{{ l.totalLinea | pesos }}</td></tr>
+        }</tbody>
+      </table></div>
+      <dl class="totales">
+        <div><dt>Subtotal</dt><dd>{{ d.subtotal | pesos }}</dd></div>
+        <div><dt>Descuentos</dt><dd>{{ d.descuentoTotal | pesos }}</dd></div>
+        <div><dt>Impuestos</dt><dd>{{ d.impuestos | pesos }}</dd></div>
+        <div><dt>Redondeo</dt><dd>{{ d.redondeo | pesos }}</dd></div>
+        <div><dt>Total pagado</dt><dd>{{ d.totalAPagar | pesos }}</dd></div>
+        <div><dt>Cambio</dt><dd>{{ d.cambio | pesos }}</dd></div>
+      </dl>
+      <ul class="sin-margen">@for (p of d.pagos ?? []; track $index) {
+        <li>{{ textoMedio(p.medio) }}: {{ p.monto | pesos }}@if (p.recibido) { (recibió {{ p.recibido | pesos }}) }@if (p.ultimos4) { · ****{{ p.ultimos4 }} }@if (p.referencia) { · aut. {{ p.referencia }} }</li>
+      }</ul>
+    </section>
+  }
+
+  @if (veLimites() && limites().length) {
+    <section class="tarjeta">
+      <h2>Descuento máximo sin autorización</h2>
+      <p class="sub">Por encima de este porcentaje, o si el precio queda bajo el mínimo, el cajero necesita el PIN de un supervisor. El dueño no tiene límite.</p>
+      <div class="limites">@for (l of limites(); track l.rol) {
+        <div class="campo"><label [for]="'lim-' + l.rol">{{ nombreRol(l.rol) }} (%)</label>
+          <input [id]="'lim-' + l.rol" type="number" min="0" max="100" step="any" class="entrada" [disabled]="!esDueno()"
+            [ngModel]="l.descuentoMaximoPct" (ngModelChange)="cambiarLimite(l.rol!, $event)"></div>
+      }</div>
+      @if (esDueno()) { <button type="button" class="boton primario" (click)="guardarLimites()">Guardar límites</button> }
+    </section>
+  }
+</div>

@@ -3,7 +3,7 @@
     <p class="migas"><a routerLink="/app/inicio">Inicio</a> / Precios y margen</p>
     <div class="encabezado">
       <div><h1>Precios y margen</h1>
-        <p>El precio de venta de cada producto y cuánto ganas con él. El margen se mide sobre el precio sin IVA frente al último costo de compra. Cada cambio de precio queda en el historial.</p></div>
+        <p>El precio de venta de cada producto y cuánto ganas con él. El margen se mide sobre el precio sin IVA frente al costo promedio de la mercancía (o el último costo de compra si aún no hay promedio). Cada cambio de precio queda en el historial.</p></div>
       <div class="acciones">
         <div class="campo selector-lista"><label for="lst">Lista de precios</label>
           <select id="lst" class="entrada" [ngModel]="listaId()" (ngModelChange)="cambiarLista(+$event)">
@@ -50,7 +50,7 @@
       </div>
       <div class="tabla-contenedor">
         <table class="tabla">
-          <thead><tr><th>Producto</th><th>Impuesto</th><th class="num">Costo</th><th class="num">Precio</th><th class="num">Sin IVA</th><th class="num">Ganas</th><th class="num">Margen</th><th></th></tr></thead>
+          <thead><tr><th>Producto</th><th>Impuesto</th><th class="num">Costo promedio</th><th class="num">Precio</th><th class="num">Sin IVA</th><th class="num">Ganas</th><th class="num">Margen</th><th></th></tr></thead>
           <tbody>
             @for (p of filas(); track p.productoId) {
               <tr>

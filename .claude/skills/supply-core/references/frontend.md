@@ -105,3 +105,11 @@ Estado (2026-11-15): `frontend/` creado en `feature/frontend-initial` (10 vistas
 - `/portal/catalogo`: el proveedor sube su Excel (todo o nada, errores por fila) y ve su lista; nunca ve stock ni necesidades.
 - Plan de reabastecimiento: comparación de sedes, chip de traslado, mínimo y máximo por sede (ADMIN_COMPRAS) y "Ofertas en catálogos de proveedores" en el detalle.
 - Reportes, Inicio e Informe de compras con selector de sede o tabla "Compras por sede".
+
+## Ventas y caja (2026-11-20, specs 004 y 005)
+- `/app/pos` (CAJERO, SUPERVISOR_VENTAS cobran; VENDEDOR arma pedidos): sin turno lleva a `/app/caja/mi-turno`. Nunca calcula dinero: cada cambio llama a `POST /api/ventas/cotizar` (pausa de 250 ms). `?pedido=id` carga un pedido de venta.
+- `/app/caja/mi-turno`: el cierre es ciego, el esperado solo se ve después de guardar. `/app/caja` sigue siendo la vista del supervisor.
+- `/app/ventas` (supervisor, dueño, auditor, vendedor): historial, detalle y reimpresión; límites de descuento (los cambia el dueño). El cajero no tiene historial (cierre ciego).
+- Tiquete: `htmlTiquete` + `imprimirTiquete` en `features/pos/tiquete.ts`. Servicio: `core/servicios/venta.service.ts` (distinto de `ventas.service.ts`, que es el catálogo de precios).
+- `/app/cartera` (cajero, supervisor, dueño, auditor; módulo CARTERA): edades, clientes en mora o bloqueados, cuentas y abonos con su recibo; el supervisor o el dueño habilita a un cliente en mora hasta una fecha. El cupo se fija en Clientes.
+- Mi turno recibe abonos (con el módulo CARTERA) e imprime el recibo (`htmlRecibo` en `features/pos/tiquete.ts`). En el POS, Crédito y Saldo a favor aparecen solo con un cliente registrado; la tarjeta del cliente muestra crédito disponible, saldo a favor y si está bloqueado.
