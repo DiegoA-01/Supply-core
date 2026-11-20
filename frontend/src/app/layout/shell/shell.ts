@@ -102,6 +102,7 @@ export class Shell implements OnInit {
       case 'CREDITO_BLOQUEADO': return '/app/cartera';
       case 'INFORME_PEDIDO': case 'INFORME_RECIBIDO': return '/app/informes';
       case 'TURNO_DIFERENCIA': return '/app/caja';
+      case 'CUADRE_DESCUADRE': return '/app/ventas/reportes';
       default: return undefined;
     }
   }

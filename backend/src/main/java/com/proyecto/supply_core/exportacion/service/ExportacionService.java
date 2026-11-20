@@ -1,5 +1,6 @@
 package com.proyecto.supply_core.exportacion.service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -42,6 +43,7 @@ import com.proyecto.supply_core.exportacion.generador.Etiquetas;
 import com.proyecto.supply_core.exportacion.generador.ExcelGenerador;
 import com.proyecto.supply_core.exportacion.generador.ExcelGenerador.Cantidad;
 import com.proyecto.supply_core.exportacion.generador.OrdenPdfGenerador;
+import com.proyecto.supply_core.exportacion.generador.TablaPdfGenerador;
 import com.proyecto.supply_core.inventario.dto.MovimientoFiltro;
 import com.proyecto.supply_core.inventario.dto.MovimientoResponse;
 import com.proyecto.supply_core.inventario.dto.StockResponse;
@@ -50,6 +52,11 @@ import com.proyecto.supply_core.notificacion.email.Adjunto;
 import com.proyecto.supply_core.notificacion.email.EmailClient;
 import com.proyecto.supply_core.proveedor.dto.ProveedorResponse;
 import com.proyecto.supply_core.proveedor.service.ProveedorService;
+import com.proyecto.supply_core.reporte.dto.CajaReporte;
+import com.proyecto.supply_core.reporte.dto.VentaReporte;
+import com.proyecto.supply_core.reporte.enums.AgrupacionVenta;
+import com.proyecto.supply_core.reporte.service.CajaReporteService;
+import com.proyecto.supply_core.reporte.service.VentaReporteService;
 import com.proyecto.supply_core.security.context.SesionActual;
 import com.proyecto.supply_core.security.context.UsuarioAutenticado;
 import com.proyecto.supply_core.usuario.service.UsuarioService;
@@ -70,6 +77,7 @@ public class ExportacionService {
     private static final DateTimeFormatter SELLO = DateTimeFormatter.ofPattern("yyyyMMdd-HHmm");
     private static final Set<FormatoExportacion> SOLO_EXCEL = Set.of(FormatoExportacion.XLSX);
     private static final Set<FormatoExportacion> SOLO_PDF = Set.of(FormatoExportacion.PDF);
+    private static final Set<FormatoExportacion> EXCEL_Y_PDF = Set.of(FormatoExportacion.XLSX, FormatoExportacion.PDF);
 
     private final MovimientoInventarioService movimientoService;
     private final SolicitudService solicitudService;
@@ -83,6 +91,9 @@ public class ExportacionService {
     private final AuditoriaService auditoriaService;
     private final EmailClient emailClient;
     private final ClienteService clienteService;
+    private final VentaReporteService ventaReporte;
+    private final CajaReporteService cajaReporte;
+    private final TablaPdfGenerador tablaPdf;
 
     /**
      * @param movimientoService  existencias y kardex
@@ -97,13 +108,20 @@ public class ExportacionService {
      * @param auditoriaService   registro de cada exportación
      * @param emailClient        envío del adjunto
      * @param clienteService     clientes (spec 002)
+     * @param ventaReporte       reporte de ventas netas (spec 009)
+     * @param cajaReporte        reporte de caja (spec 009)
+     * @param tablaPdf           generador del PDF de los reportes
      */
     public ExportacionService(MovimientoInventarioService movimientoService, SolicitudService solicitudService,
             OrdenCompraService ordenService, EmpresaService empresaService, UsuarioService usuarioService,
             CentroCostoService centroCostoService, ProveedorService proveedorService, ExcelGenerador excel,
             OrdenPdfGenerador ordenPdf, AuditoriaService auditoriaService, EmailClient emailClient,
-            ClienteService clienteService) {
+            ClienteService clienteService, VentaReporteService ventaReporte, CajaReporteService cajaReporte,
+            TablaPdfGenerador tablaPdf) {
         this.clienteService = clienteService;
+        this.ventaReporte = ventaReporte;
+        this.cajaReporte = cajaReporte;
+        this.tablaPdf = tablaPdf;
         this.movimientoService = movimientoService;
         this.solicitudService = solicitudService;
         this.ordenService = ordenService;
@@ -140,6 +158,119 @@ public class ExportacionService {
                         "Cupo de crédito", "Plazo (días)", "Autorizó datos", "Activo"), filas);
         ArchivoExportado archivo = new ArchivoExportado(nombre("clientes", f), f, bytes, filas.size());
         return entregar(archivo, destino, null, "CLIENTES; activo=" + activo);
+    }
+
+    /**
+     * Reporte de ventas netas en Excel o PDF (spec 009), con los mismos datos y el mismo alcance que la pantalla: el
+     * cajero y el vendedor exportan solo lo suyo.
+     *
+     * @param formato {@code xlsx} o {@code pdf}
+     * @param desde   primer día (vacío = primer día del mes)
+     * @param hasta   último día (vacío = hoy)
+     * @param agrupar agrupación (vacío = por día)
+     * @param destino descarga o correo
+     * @return archivo generado
+     * @throws FormatoNoSoportadoException si el formato no es xlsx ni pdf
+     */
+    public ArchivoExportado ventas(String formato, LocalDate desde, LocalDate hasta, AgrupacionVenta agrupar,
+            DestinoExportacion destino) {
+        FormatoExportacion f = exigir(formato, EXCEL_Y_PDF, "El reporte de ventas");
+        VentaReporte r = ventaReporte.reporte(desde, hasta, agrupar);
+        boolean porMedio = r.agrupar() == AgrupacionVenta.MEDIO_PAGO;
+        List<String> columnas = porMedio
+                ? List.of("Medio de pago", "Ventas", "Cobrado", "Devuelto", "Neto")
+                : List.of(titulo(r.agrupar()), "Ventas", "Unidades", "Bruto", "Devoluciones", "Neto", "Base sin IVA",
+                        "Costo", "Margen", "Margen %");
+        List<List<Object>> filas = new ArrayList<>(r.filas().stream().<List<Object>>map(x -> porMedio
+                ? Arrays.asList(x.nombre(), x.ventas(), x.bruto(), x.devoluciones(), x.neto())
+                : Arrays.asList(x.nombre(), x.ventas(), Cantidad.de(x.unidades()), x.bruto(), x.devoluciones(), x.neto(),
+                        x.baseNeta(), x.costo(), x.margen(), x.margenPct())).toList());
+        VentaReporte.Totales tt = r.totales();
+        filas.add(porMedio ? Arrays.asList("Total cobrado (con redondeo)", tt.ventas(), null, null, tt.neto())
+                : Arrays.asList("Total (redondeo " + tt.redondeo().toPlainString() + ")", tt.ventas(), null, tt.bruto(),
+                        tt.devoluciones(), tt.neto(), tt.baseNeta(), tt.costo(), tt.margen(), tt.margenPct()));
+        String periodo = "Ventas netas del " + r.desde() + " al " + r.hasta() + (r.soloPropio() ? " (solo las suyas)" : "")
+                + ". Ticket promedio: " + (tt.ticketPromedio() == null ? "sin ventas" : tt.ticketPromedio().toPlainString());
+        byte[] bytes = f == FormatoExportacion.PDF
+                ? tablaPdf.generar("Reporte de ventas", periodo, empresa(), usuario().nombre(),
+                        List.of(new TablaPdfGenerador.Seccion("Por " + titulo(r.agrupar()).toLowerCase(), columnas, filas)))
+                : excel.generar("Reporte de ventas " + r.desde() + " a " + r.hasta(), empresa(), usuario().nombre(),
+                        columnas, filas);
+        ArchivoExportado archivo = new ArchivoExportado(nombre("reporte-ventas", f), f, bytes, filas.size());
+        return entregar(archivo, destino, null, "REPORTE_VENTAS; desde=" + r.desde() + "; hasta=" + r.hasta()
+                + "; agrupar=" + r.agrupar());
+    }
+
+    /**
+     * Reporte de caja en Excel (la lista de turnos) o PDF (todas las secciones), spec 009.
+     *
+     * @param formato {@code xlsx} o {@code pdf}
+     * @param desde   primer día (vacío = primer día del mes)
+     * @param hasta   último día (vacío = hoy)
+     * @param destino descarga o correo
+     * @return archivo generado
+     * @throws FormatoNoSoportadoException si el formato no es xlsx ni pdf
+     */
+    public ArchivoExportado caja(String formato, LocalDate desde, LocalDate hasta, DestinoExportacion destino) {
+        FormatoExportacion f = exigir(formato, EXCEL_Y_PDF, "El reporte de caja");
+        CajaReporte r = cajaReporte.reporte(desde, hasta);
+        List<String> colTurnos = List.of("Turno", "Caja", "Cajero", "Estado", "Abierto", "Cerrado", "Esperado efectivo",
+                "Contado efectivo", "Diferencia", "Por aprobar", "Aprobó");
+        List<List<Object>> turnos = r.turnos().stream().<List<Object>>map(x -> Arrays.asList(x.id(), x.caja(), x.cajero(),
+                x.estado(), x.abiertoEn(), x.cerradoEn(), x.esperadoEfectivo(), x.contadoEfectivo(), x.diferencia(),
+                x.porAprobar() ? "Sí" : "No", x.aprobadoPor())).toList();
+        byte[] bytes;
+        if (f == FormatoExportacion.PDF) {
+            List<TablaPdfGenerador.Seccion> secciones = List.of(
+                    new TablaPdfGenerador.Seccion("Cierres por turno", colTurnos, turnos),
+                    new TablaPdfGenerador.Seccion("Diferencias por cajero",
+                            List.of("Cajero", "Turnos", "Cerrados", "Faltantes", "Sobrantes", "Diferencia", "Por aprobar"),
+                            r.porCajero().stream().<List<Object>>map(x -> Arrays.asList(x.cajero(), x.turnos(), x.cerrados(),
+                                    x.faltantes(), x.sobrantes(), x.diferencia(), x.porAprobar())).toList()),
+                    new TablaPdfGenerador.Seccion("Retiros y gastos",
+                            List.of("Tipo", "Caja", "Medio", "Monto", "Motivo", "Registró", "Autorizó", "Fecha"),
+                            r.movimientos().stream().<List<Object>>map(x -> Arrays.asList(x.tipo(), x.caja(), x.medio(),
+                                    x.monto(), x.motivo(), x.registradoPor(), x.autorizadoPor(), x.creadoEn())).toList()),
+                    new TablaPdfGenerador.Seccion("Anulaciones",
+                            List.of("Venta", "Total", "Motivo", "Anuló", "Autorizó", "Fecha"),
+                            r.anulaciones().stream().<List<Object>>map(x -> Arrays.asList(x.consecutivo(), x.total(),
+                                    x.motivo(), x.cajero(), x.autorizadoPor(), x.anuladaEn())).toList()),
+                    new TablaPdfGenerador.Seccion("Descuentos y precios autorizados",
+                            List.of("Venta", "Producto", "Tipo", "Descuento %", "Descuento", "Cajero", "Autorizó", "Fecha"),
+                            r.autorizados().stream().<List<Object>>map(x -> Arrays.asList(x.consecutivo(), x.producto(),
+                                    x.tipo(), x.descuentoPct(), x.descuentoValor(), x.cajero(), x.autorizadoPor(),
+                                    x.confirmadaEn())).toList()));
+            CajaReporte.Totales tt = r.totales();
+            String periodo = "Del " + r.desde() + " al " + r.hasta() + ". Diferencia " + tt.diferencia().toPlainString()
+                    + " (faltantes " + tt.faltantes().toPlainString() + ", sobrantes " + tt.sobrantes().toPlainString()
+                    + "); retiros " + tt.retiros().toPlainString() + "; gastos " + tt.gastos().toPlainString()
+                    + "; anulado " + tt.anulaciones().toPlainString() + "; descuentos " + tt.descuentos().toPlainString() + ".";
+            bytes = tablaPdf.generar("Reporte de caja", periodo, empresa(), usuario().nombre(), secciones);
+        } else {
+            bytes = excel.generar("Cierres de caja " + r.desde() + " a " + r.hasta(), empresa(), usuario().nombre(),
+                    colTurnos, turnos);
+        }
+        ArchivoExportado archivo = new ArchivoExportado(nombre("reporte-caja", f), f, bytes, turnos.size());
+        return entregar(archivo, destino, null, "REPORTE_CAJA; desde=" + r.desde() + "; hasta=" + r.hasta());
+    }
+
+    /**
+     * @param a agrupación
+     * @return encabezado de la primera columna
+     */
+    private static String titulo(AgrupacionVenta a) {
+        return switch (a) {
+            case DIA -> "Día";
+            case SEMANA -> "Semana";
+            case MES -> "Mes";
+            case PRODUCTO -> "Producto";
+            case CATEGORIA -> "Categoría";
+            case CLIENTE -> "Cliente";
+            case VENDEDOR -> "Vendedor";
+            case CAJERO -> "Cajero";
+            case CAJA -> "Caja";
+            case MEDIO_PAGO -> "Medio de pago";
+        };
     }
 
     /**

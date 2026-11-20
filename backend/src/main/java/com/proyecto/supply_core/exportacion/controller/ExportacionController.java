@@ -1,7 +1,9 @@
 package com.proyecto.supply_core.exportacion.controller;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -20,6 +22,7 @@ import com.proyecto.supply_core.exportacion.dto.CorreoExportacionResponse;
 import com.proyecto.supply_core.exportacion.enums.DestinoExportacion;
 import com.proyecto.supply_core.exportacion.service.ExportacionService;
 import com.proyecto.supply_core.inventario.dto.MovimientoFiltro;
+import com.proyecto.supply_core.reporte.enums.AgrupacionVenta;
 import com.proyecto.supply_core.security.annotation.RequiereModulo;
 import com.proyecto.supply_core.security.annotation.RequiereRol;
 import com.proyecto.supply_core.security.annotation.UsuarioInterno;
@@ -47,6 +50,43 @@ public class ExportacionController {
      */
     public ExportacionController(ExportacionService exportacionService) {
         this.exportacionService = exportacionService;
+    }
+
+    /**
+     * Descarga el reporte de ventas netas (spec 009) con los mismos datos de la pantalla: el cajero y el vendedor,
+     * solo lo suyo.
+     *
+     * @param formato {@code xlsx} o {@code pdf}
+     * @param desde   primer día (vacío = primer día del mes)
+     * @param hasta   último día (vacío = hoy)
+     * @param agrupar agrupación (vacío = por día)
+     * @return archivo adjunto
+     */
+    @GetMapping("/reportes/ventas")
+    @RequiereModulo(Modulos.VENTAS)
+    @RequiereRol({ Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR, Roles.CAJERO, Roles.VENDEDOR })
+    public ResponseEntity<byte[]> reporteVentas(@RequestParam(required = false) String formato,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(required = false) AgrupacionVenta agrupar) {
+        return descarga(exportacionService.ventas(formato, desde, hasta, agrupar, DestinoExportacion.DESCARGA));
+    }
+
+    /**
+     * Descarga el reporte de caja (spec 009): Excel con los cierres o PDF con todas las secciones.
+     *
+     * @param formato {@code xlsx} o {@code pdf}
+     * @param desde   primer día (vacío = primer día del mes)
+     * @param hasta   último día (vacío = hoy)
+     * @return archivo adjunto
+     */
+    @GetMapping("/reportes/caja")
+    @RequiereModulo(Modulos.VENTAS)
+    @RequiereRol({ Roles.SUPERVISOR_VENTAS, Roles.ADMIN_SISTEMA, Roles.AUDITOR })
+    public ResponseEntity<byte[]> reporteCaja(@RequestParam(required = false) String formato,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return descarga(exportacionService.caja(formato, desde, hasta, DestinoExportacion.DESCARGA));
     }
 
     /**

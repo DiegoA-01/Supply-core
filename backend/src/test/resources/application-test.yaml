@@ -14,6 +14,8 @@ app:
     cierre-automatico: false     # sin jobs en segundo plano durante las pruebas
   aprobacion:
     sla-automatico: false
+  ventas:
+    cuadre-cron: "-"            # el cuadre diario se prueba llamándolo, no a la 01:00
   plataforma:
     cache-segundos: 0           # cada petición lee la suscripción de la base, sin memoria
   sesion:

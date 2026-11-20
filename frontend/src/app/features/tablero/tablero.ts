@@ -1,9 +1,11 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { ClaseRotacion, Tablero } from '../../core/api/modelos';
+import { ClaseRotacion, Tablero, TableroVentas } from '../../core/api/modelos';
 import { CompactoPipe, FechaPipe, NumeroPipe, PesosPipe } from '../../core/formato/formato';
 import { ReportesService } from '../../core/servicios/reportes.service';
+import { ReportesVentasService } from '../../core/servicios/reportes-ventas.service';
+import { SesionService } from '../../core/sesion/sesion.service';
 import { Avisos } from '../../core/ui/avisos';
 import { SelectorSede } from '../../core/ui/selector-sede';
 import { ESTADOS } from '../inventario/reabastecimiento';
@@ -34,6 +36,13 @@ const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'o
 export class TableroDueno implements OnInit {
   private readonly reportes = inject(ReportesService);
   private readonly avisos = inject(Avisos);
+  private readonly reportesVentas = inject(ReportesVentasService);
+  private readonly sesion = inject(SesionService);
+
+  /** Ventas de hoy y del mes (spec 009): solo con el módulo de ventas y para el dueño o auditoría. */
+  protected readonly ventas = signal<TableroVentas | null>(null);
+  protected readonly veVentas = computed(() =>
+    this.sesion.tieneModulo('VENTAS') && this.sesion.tieneRol(['ADMIN_SISTEMA', 'AUDITOR']));
 
   protected readonly datos = signal<Tablero | null>(null);
   protected readonly error = signal(false);
@@ -59,6 +68,9 @@ export class TableroDueno implements OnInit {
 
   ngOnInit(): void {
     this.cargar();
+    if (this.veVentas()) {
+      this.reportesVentas.tablero().subscribe({ next: v => this.ventas.set(v), error: () => undefined });
+    }
   }
 
   /** @param id sede elegida ({@code null} = toda la empresa); vuelve a pedir el tablero */

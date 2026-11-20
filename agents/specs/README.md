@@ -25,12 +25,12 @@ Estados de una spec: **Propuesta** (en revisión) → **Aprobada** (se puede pla
 | [001-ventas-catalogo](001-ventas-catalogo/spec.md) | F1 | Módulos, roles, impuestos, código de barras, listas y precios con historial | `feature/ventas-catalogo` | 000 | Hecha (V29 + V31, PR #28) |
 | [002-ventas-clientes](002-ventas-clientes/spec.md) | F2 | Clientes, consumidor final, autorización de datos | `feature/ventas-clientes` | 001 | Hecha (V32, PR #29) |
 | [003-caja-turnos](003-caja-turnos/spec.md) | F3 | Cajas, turnos, libro de caja, PIN de supervisor, cierre ciego | `feature/caja-turnos` | 001 | Hecha (V33, PR #30) |
-| [004-venta-backend](004-venta-backend/spec.md) | F4 | La venta en una sola transacción: precios, descuentos, impuestos, pagos, stock, caja, idempotencia | `feature/ventas-pos` | 002, 003 | Hecha (V34, falta PR) |
-| [005-pos-frontend](005-pos-frontend/spec.md) | F5 | POS con lector y atajos, cobro, tiquete de 80 mm, mi turno | `feature/ventas-pos` | 004 | Hecha (falta PR y prueba en Docker) |
-| [006-anulacion-devolucion](006-anulacion-devolucion/spec.md) | F6 | Anulación en el turno y devolución de cliente | `feature/ventas-pos` | 004 | Hecha (V35, falta PR) |
-| [007-cartera](007-cartera/spec.md) | F7 | Crédito, cupos, abonos y edades | `feature/ventas-pos` | 004 | Hecha (V37, falta PR) |
-| [008-costo-promedio-margen](008-costo-promedio-margen/spec.md) | F8 | Costo promedio ponderado y margen real | `feature/ventas-pos` | 004 | Hecha (V36, falta PR) |
-| [009-reportes-cuadre](009-reportes-cuadre/spec.md) | F9 | Reportes de ventas y caja, tablero, cuadre diario automático | `feature/ventas-reportes` | 006, 008 | Propuesta |
+| [004-venta-backend](004-venta-backend/spec.md) | F4 | La venta en una sola transacción: precios, descuentos, impuestos, pagos, stock, caja, idempotencia | `feature/ventas-pos` | 002, 003 | Hecha (V34, PR #32) |
+| [005-pos-frontend](005-pos-frontend/spec.md) | F5 | POS con lector y atajos, cobro, tiquete de 80 mm, mi turno | `feature/ventas-pos` | 004 | Hecha (PR #32; falta prueba en Docker) |
+| [006-anulacion-devolucion](006-anulacion-devolucion/spec.md) | F6 | Anulación en el turno y devolución de cliente | `feature/ventas-pos` | 004 | Hecha (V35, PR #32) |
+| [007-cartera](007-cartera/spec.md) | F7 | Crédito, cupos, abonos y edades | `feature/ventas-pos` | 004 | Hecha (V37, PR #32) |
+| [008-costo-promedio-margen](008-costo-promedio-margen/spec.md) | F8 | Costo promedio ponderado y margen real | `feature/ventas-pos` | 004 | Hecha (V36, PR #32) |
+| [009-reportes-cuadre](009-reportes-cuadre/spec.md) | F9 | Reportes de ventas y caja, tablero, cuadre diario automático | `feature/ventas-reportes` | 006, 008 | Hecha (V38) |
 | [010-endurecimiento-e2e](010-endurecimiento-e2e/spec.md) | F10 | Alertas, pruebas de punta a punta en el CI, prueba de carga | `feature/ventas-endurecimiento` | 009 | Propuesta |
 
 Al terminar la 006 el negocio ya puede **vender y cuadrar caja**. De la 007 en adelante se suman crédito, márgenes y
@@ -69,7 +69,8 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V35 | `feature/ventas-pos` | Anulación y devolución: tipos de movimiento, devoluciones, saldo a favor y bodega de averías (spec 006) |
 | V36 | `feature/ventas-pos` | Costo promedio del producto y costo de cada movimiento (spec 008) |
 | V37 | `feature/ventas-pos` | Cartera: cuentas por cobrar, abonos, saldo a favor como medio de pago y excepción de crédito (spec 007) |
-| V38 en adelante | libre | Se reserva al empezar cada spec |
+| V38 | `feature/ventas-reportes` | Cuadre diario automático: `cuadre_diario` (spec 009) |
+| V39 en adelante | libre | Se reserva al empezar cada spec |
 
 ## Riesgos generales
 

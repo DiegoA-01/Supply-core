@@ -1,0 +1,17 @@
+h2 { margin: 16px 0 8px; font-size: 15px; }
+.pestanas { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;
+  button { font: inherit; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--sc-borde); background: #fff; cursor: pointer;
+    &.activa { background: var(--sc-primario); border-color: var(--sc-primario); color: #fff; }
+    &:focus-visible { outline: 3px solid #f6b9a3; outline-offset: 2px; } } }
+.filtros { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin-bottom: 12px;
+  label { display: grid; gap: 4px; font-size: 13px; }
+  .espacio { flex: 1; } }
+.opcion { display: flex !important; align-items: center; gap: 8px; input { accent-color: var(--sc-primario); } }
+.sub { display: block; font-size: 12px; color: var(--sc-texto-2); }
+.rojo { color: var(--sc-rojo); }
+.ambar { color: #b26a00; }
+.chip.mini { font-size: 11px; padding: 1px 8px; }
+.fila.entre { display: flex; justify-content: space-between; align-items: center; }
+.cuadre { margin-bottom: 10px; p { margin: 4px 0; font-size: 13px; } }
+tr.total td { font-weight: 600; border-top: 2px solid var(--sc-borde); }
+.vacio { color: var(--sc-texto-2); text-align: center; }

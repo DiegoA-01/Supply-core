@@ -24,11 +24,26 @@ import com.proyecto.supply_core.reporte.dto.GastoResponse;
  * @param gasto          gasto de las órdenes vigentes del periodo (el mismo reporte de gasto)
  * @param recortado      {@code true} si alguna lista superó el máximo de filas
  * @param gastoPorSede   gasto del periodo repartido por la sede a la que llegan las órdenes (comparación de sedes)
+ * @param ventas         resumen de ventas netas del periodo (spec 009; {@code null} sin el módulo de ventas)
  */
 public record InformeContenido(LocalDate desde, LocalDate hasta, LocalDateTime generadoEn, Resumen resumen,
         List<SolicitudFila> solicitudes, List<RfqFila> rfqs, List<CotizacionFila> cotizaciones,
         List<AdjudicacionFila> adjudicaciones, GastoResponse gasto, boolean recortado,
-        List<com.proyecto.supply_core.reporte.dto.GastoItem> gastoPorSede) {
+        List<com.proyecto.supply_core.reporte.dto.GastoItem> gastoPorSede, VentasResumen ventas) {
+
+    /**
+     * Ventas del mismo periodo, para que el dueño vea en un solo informe lo que se compró y lo que se vendió.
+     *
+     * @param ventas         ventas confirmadas
+     * @param neto           ventas netas (con el redondeo)
+     * @param ticketPromedio neto / ventas
+     * @param margen         margen neto
+     * @param margenPct      margen en %
+     * @param masVendidos    productos que más vendieron (máximo 5)
+     */
+    public record VentasResumen(long ventas, BigDecimal neto, BigDecimal ticketPromedio, BigDecimal margen,
+            BigDecimal margenPct, List<com.proyecto.supply_core.reporte.dto.VentaReporte.Fila> masVendidos) {
+    }
 
     /** Filas máximas por lista. */
     public static final int MAXIMO_FILAS = 200;
