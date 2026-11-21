@@ -33,6 +33,29 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     Optional<Venta> bloquear(@Param("id") Long id);
 
     /**
+     * @param cajeroId cajero
+     * @param desde    inicio del día
+     * @param hasta    inicio del día siguiente
+     * @return ventas del cajero anuladas ese día (spec 010)
+     */
+    @Query("select count(v) from Venta v where v.cajeroUsuarioId = :cajeroId "
+            + "and v.estado = com.proyecto.supply_core.venta.enums.EstadoVenta.ANULADA "
+            + "and v.anuladaEn >= :desde and v.anuladaEn < :hasta")
+    long anuladasDelDia(@Param("cajeroId") Long cajeroId, @Param("desde") LocalDateTime desde,
+            @Param("hasta") LocalDateTime hasta);
+
+    /**
+     * @param cajeroId cajero
+     * @param desde    inicio del día
+     * @param hasta    inicio del día siguiente
+     * @return ventas del cajero de ese día con un descuento o un precio autorizado por un supervisor (spec 010)
+     */
+    @Query("select count(v) from Venta v where v.cajeroUsuarioId = :cajeroId and v.autorizadaPorUsuarioId is not null "
+            + "and v.confirmadaEn >= :desde and v.confirmadaEn < :hasta")
+    long autorizadasDelDia(@Param("cajeroId") Long cajeroId, @Param("desde") LocalDateTime desde,
+            @Param("hasta") LocalDateTime hasta);
+
+    /**
      * Historial con filtros opcionales ({@code null} = sin filtro).
      *
      * @param cajeroId    cajero

@@ -1,6 +1,6 @@
 # 010 - Alertas, pruebas de punta a punta y carga
 
-**Estado:** Propuesta · **Rama:** `feature/ventas-endurecimiento` · **Depende de:** 009
+**Estado:** Hecha (V39; verificada en Docker local, falta ver el trabajo `e2e` en GitHub) · **Rama:** `feature/ventas-endurecimiento` · **Depende de:** 009
 
 ## Objetivo
 Cerrar el módulo de ventas con alertas sobre comportamientos sospechosos y con la prueba de que todo el recorrido
@@ -12,12 +12,12 @@ funciona de punta a punta y aguanta el ritmo de un mostrador con fila.
 - Como dueño, quiero saber que el POS aguanta al menos 50 ventas por minuto sin errores.
 
 ## Criterios de aceptación
-- [ ] Los umbrales de anulaciones y descuentos por cajero se configuran por empresa, y pasarlos avisa al dueño.
-- [ ] La prueba de punta a punta (abrir turno → vender → anular con PIN → cerrar turno) corre en el CI contra el stack de
+- [x] Los umbrales de anulaciones y descuentos por cajero se configuran por empresa, y pasarlos avisa al dueño.
+- [x] La prueba de punta a punta (abrir turno → vender → anular con PIN → cerrar turno) corre en el CI contra el stack de
   Docker y pasa.
-- [ ] La prueba de carga hace 50 ventas por minuto sin errores, sin stock negativo y con la caja cuadrada.
-- [ ] La cobertura de los Services de ventas y caja es de al menos 90 %.
-- [ ] Todas las pruebas pasan.
+- [x] La prueba de carga hace 50 ventas por minuto sin errores, sin stock negativo y con la caja cuadrada.
+- [x] La cobertura de los Services de ventas y caja es de al menos 90 %.
+- [x] Todas las pruebas pasan.
 
 ## Fuera de alcance
 - Factura electrónica DIAN y repuestos (compatibilidad por marca y modelo de vehículo, referencias cruzadas): specs

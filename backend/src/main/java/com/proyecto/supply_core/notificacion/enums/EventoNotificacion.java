@@ -78,6 +78,9 @@ public enum EventoNotificacion {
     PRECIO_BAJO_COSTO("Venta por debajo del costo"),
     /** Se intentó vender a crédito a un cliente en mora (destino: SUPERVISOR_VENTAS y ADMIN_SISTEMA, spec 007). */
     CREDITO_BLOQUEADO("Crédito bloqueado por mora"),
+    /** Un cajero llegó en el día al umbral de anulaciones o de descuentos autorizados (destino: ADMIN_SISTEMA y
+     *  SUPERVISOR_VENTAS, spec 010). */
+    ALERTA_CAJERO("Alerta de cajero"),
     /** El área de compras envió un informe de compras al administrador de la empresa. */
     INFORME_RECIBIDO("Informe de compras recibido"),
     /** Un turno cerró con una diferencia de caja que pasa la tolerancia y espera la aprobación de un supervisor. */

@@ -141,3 +141,74 @@ jobs:
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: '1'
+
+  # Spec 010: el recorrido del mostrador de punta a punta contra el stack de Docker (abrir turno → vender → anular con
+  # PIN → cerrar). El .env y las cuentas se generan dentro del job con claves aleatorias y nunca se suben.
+  e2e:
+    name: e2e
+    # Solo si las pruebas del backend y del frontend pasaron; un envío nuevo a la misma rama cancela el anterior
+    needs: [backend, frontend]
+    concurrency:
+      group: e2e-${{ github.ref }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: .env de prueba con claves aleatorias (enmascaradas)
+        run: |
+          python3 scripts/env_de_prueba.py
+          # Solo se enmascaran los secretos: usuario, puerto y URL quedan legibles en los registros
+          grep -E '^(MYSQL_ROOT_PASSWORD|DB_PASSWORD|JWT_SECRET|PLATAFORMA_ADMIN_PASSWORD)=' .env | cut -d= -f2- \
+            | while read -r v; do [ -n "$v" ] && echo "::add-mask::$v"; done
+
+      - name: Levantar el stack de Docker
+        run: docker compose up -d --build
+
+      - name: Esperar a que la API responda
+        run: |
+          for i in $(seq 1 60); do
+            c=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' http://localhost:8088/api/auth/login || true)
+            if [ "$c" = "400" ] || [ "$c" = "401" ]; then echo "API lista ($c)"; exit 0; fi
+            sleep 5
+          done
+          docker compose logs --tail=200 api
+          exit 1
+
+      - name: Sembrar la demo (cuentas en un archivo local del job)
+        run: python3 scripts/sembrar_demo.py
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Instalar Playwright
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Prueba de punta a punta (Playwright)
+        working-directory: e2e
+        run: npx playwright test
+
+      - name: Reporte de Playwright
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7
+
+      - name: Registros del stack si algo falla
+        if: failure()
+        run: docker compose logs --tail=300
+
+      - name: Apagar el stack
+        if: always()
+        run: docker compose down -v

@@ -109,6 +109,29 @@ public class NotificacionService {
     }
 
     /**
+     * Igual que {@link #notificarRol}, pero para varios roles: quien tiene más de uno de ellos recibe el aviso una sola
+     * vez (por ejemplo, el dueño que también es supervisor de ventas).
+     *
+     * @param codigosRol códigos de los roles (constantes de {@code Roles})
+     * @param evento     evento
+     * @param mensaje    texto (se recorta a 500 caracteres)
+     * @return cantidad de destinatarios distintos
+     */
+    @Transactional
+    public int notificarRoles(java.util.Collection<String> codigosRol, EventoNotificacion evento, String mensaje) {
+        java.util.Map<Long, Usuario> unicos = new java.util.LinkedHashMap<>();
+        for (String rol : codigosRol) {
+            usuarioRepository.findByActivoTrueAndRoles_Codigo(rol).forEach(u -> unicos.putIfAbsent(u.getId(), u));
+        }
+        if (unicos.isEmpty()) {
+            log.warn("Notificación {} sin destinatarios: no hay usuarios activos con los roles {}", evento, codigosRol);
+            return 0;
+        }
+        entregar(new java.util.ArrayList<>(unicos.values()), evento, mensaje);
+        return unicos.size();
+    }
+
+    /**
      * Bandeja del usuario de la sesión, las más recientes primero.
      *
      * @param soloNoLeidas {@code true} para ver solo las pendientes

@@ -88,6 +88,22 @@ class NotificacionServiceTest {
     }
 
     @Test
+    void notificarRolesAvisaUnaSolaVezAQuienTieneVariosRoles() {
+        when(usuarios.findByActivoTrueAndRoles_Codigo("ADMIN_SISTEMA")).thenReturn(List.of(usuario(1L, "dueno@x.com")));
+        when(usuarios.findByActivoTrueAndRoles_Codigo("SUPERVISOR_VENTAS"))
+                .thenReturn(List.of(usuario(1L, "dueno@x.com"), usuario(2L, "super@x.com")));
+
+        int n = service.notificarRoles(List.of("ADMIN_SISTEMA", "SUPERVISOR_VENTAS"), EventoNotificacion.ALERTA_CAJERO, "Alerta");
+
+        assertEquals(2, n);
+        ArgumentCaptor<List<Notificacion>> captor = ArgumentCaptor.forClass(List.class);
+        verify(notificaciones).saveAll(captor.capture());
+        assertEquals(List.of(1L, 2L), captor.getValue().stream().map(Notificacion::getUsuarioId).toList());
+        verify(email).enviar(eq("dueno@x.com"), anyString(), anyString());
+        verify(email).enviar(eq("super@x.com"), anyString(), anyString());
+    }
+
+    @Test
     void canalDesactivadoNoSeUsa() {
         when(usuarios.findByActivoTrueAndRoles_Codigo("COMPRADOR")).thenReturn(List.of(usuario(1L, "a@x.com")));
         when(config.findByEventoAndCanal(EventoNotificacion.STOCK_BAJO_MINIMO, CanalNotificacion.EMAIL))

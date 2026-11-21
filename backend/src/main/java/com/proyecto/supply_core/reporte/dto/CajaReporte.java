@@ -5,6 +5,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Reporte de caja de un periodo (spec 009): cierres por turno, diferencias por cajero, retiros, gastos, anulaciones y
  * descuentos o precios autorizados. Lo calcula Java; la pantalla solo lo muestra.
@@ -35,6 +37,7 @@ public record CajaReporte(LocalDate desde, LocalDate hasta, List<Turno> turnos, 
      * @param aprobadoPor        supervisor que aprobó la diferencia
      * @param explicacion        lo que escribió al aprobar
      */
+    @Schema(name = "TurnoCajaReporte")
     public record Turno(Long id, String caja, String cajero, String estado, LocalDateTime abiertoEn,
             LocalDateTime cerradoEn, BigDecimal esperadoEfectivo, BigDecimal contadoEfectivo, BigDecimal diferencia,
             boolean porAprobar, String aprobadoPor, String explicacion) {
@@ -50,6 +53,7 @@ public record CajaReporte(LocalDate desde, LocalDate hasta, List<Turno> turnos, 
      * @param sobrantes   suma de los sobrantes (positiva o 0)
      * @param porAprobar  turnos con diferencia sin aprobar
      */
+    @Schema(name = "CajeroCajaReporte")
     public record Cajero(Long cajeroId, String cajero, long turnos, long cerrados, BigDecimal diferencia,
             BigDecimal faltantes, BigDecimal sobrantes, long porAprobar) {
     }
@@ -64,6 +68,7 @@ public record CajaReporte(LocalDate desde, LocalDate hasta, List<Turno> turnos, 
      * @param autorizadoPor supervisor que lo autorizó
      * @param creadoEn    cuándo
      */
+    @Schema(name = "MovimientoCajaReporte")
     public record Movimiento(String tipo, String caja, String medio, BigDecimal monto, String motivo,
             String registradoPor, String autorizadoPor, LocalDateTime creadoEn) {
     }
@@ -77,6 +82,7 @@ public record CajaReporte(LocalDate desde, LocalDate hasta, List<Turno> turnos, 
      * @param autorizadoPor supervisor que la autorizó
      * @param anuladaEn     cuándo
      */
+    @Schema(name = "AnulacionCajaReporte")
     public record Anulacion(Long ventaId, String consecutivo, BigDecimal total, String motivo, String cajero,
             String autorizadoPor, LocalDateTime anuladaEn) {
     }
@@ -92,6 +98,7 @@ public record CajaReporte(LocalDate desde, LocalDate hasta, List<Turno> turnos, 
      * @param autorizadoPor  supervisor que lo autorizó
      * @param confirmadaEn   cuándo
      */
+    @Schema(name = "AutorizadoCajaReporte")
     public record Autorizado(Long ventaId, String consecutivo, String producto, String tipo, BigDecimal descuentoPct,
             BigDecimal descuentoValor, String cajero, String autorizadoPor, LocalDateTime confirmadaEn) {
     }
@@ -107,6 +114,7 @@ public record CajaReporte(LocalDate desde, LocalDate hasta, List<Turno> turnos, 
      * @param anulaciones  suma de lo anulado
      * @param descuentos   suma de los descuentos autorizados
      */
+    @Schema(name = "TotalesCajaReporte")
     public record Totales(long turnos, BigDecimal diferencia, BigDecimal faltantes, BigDecimal sobrantes, long porAprobar,
             BigDecimal retiros, BigDecimal gastos, BigDecimal anulaciones, BigDecimal descuentos) {
     }

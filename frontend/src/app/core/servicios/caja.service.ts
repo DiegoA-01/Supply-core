@@ -34,9 +34,14 @@ export class CajaService {
   /**
    * @param toleranciaDiferencia diferencia aceptada sin aprobación
    * @param bodegaAveriasId      bodega para lo devuelto en mal estado (null = no reingresa)
+   * @param umbrales             anulaciones y descuentos por cajero y día que avisan al dueño (spec 010; vacío = no cambian)
    */
-  configurar(toleranciaDiferencia: number, bodegaAveriasId: number | null = null): Observable<ConfiguracionCaja> {
-    return this.http.put<ConfiguracionCaja>(api('/api/cajas/configuracion'), { toleranciaDiferencia, bodegaAveriasId });
+  configurar(toleranciaDiferencia: number, bodegaAveriasId: number | null = null,
+    umbrales: { anulaciones: number | null; descuentos: number | null } | null = null): Observable<ConfiguracionCaja> {
+    return this.http.put<ConfiguracionCaja>(api('/api/cajas/configuracion'), {
+      toleranciaDiferencia, bodegaAveriasId,
+      umbralAnulacionesDia: umbrales?.anulaciones ?? null, umbralDescuentosDia: umbrales?.descuentos ?? null,
+    });
   }
 
   /** @param filtros estado, solo pendientes de aprobación, caja y página */

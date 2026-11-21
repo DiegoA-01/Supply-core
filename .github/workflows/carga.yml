@@ -1,0 +1,79 @@
+# Prueba de carga del POS (spec 010). No corre en cada PR: se lanza a mano desde la pestaña Actions
+# ("Run workflow"). Levanta el stack de Docker con claves aleatorias, siembra la demo y vende al ritmo pedido en varias
+# cajas; al final comprueba errores, stock no negativo, consecutivos sin huecos y cajas cuadradas. El reporte queda
+# como artefacto.
+name: Carga
+
+on:
+  workflow_dispatch:
+    inputs:
+      ritmo:
+        description: Ventas por minuto entre todas las cajas
+        type: number
+        default: 50
+      minutos:
+        description: Duración en minutos
+        type: number
+        default: 5
+      cajas:
+        description: Cajas vendiendo a la vez
+        type: number
+        default: 3
+
+permissions:
+  contents: read
+
+jobs:
+  carga:
+    name: carga
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: .env de prueba con claves aleatorias (enmascaradas)
+        run: |
+          python3 scripts/env_de_prueba.py
+          # Solo se enmascaran los secretos: usuario, puerto y URL quedan legibles en los registros
+          grep -E '^(MYSQL_ROOT_PASSWORD|DB_PASSWORD|JWT_SECRET|PLATAFORMA_ADMIN_PASSWORD)=' .env | cut -d= -f2- \
+            | while read -r v; do [ -n "$v" ] && echo "::add-mask::$v"; done
+
+      - name: Levantar el stack de Docker
+        run: docker compose up -d --build
+
+      - name: Esperar a que la API responda
+        run: |
+          for i in $(seq 1 60); do
+            c=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' http://localhost:8088/api/auth/login || true)
+            if [ "$c" = "400" ] || [ "$c" = "401" ]; then echo "API lista ($c)"; exit 0; fi
+            sleep 5
+          done
+          docker compose logs --tail=200 api
+          exit 1
+
+      - name: Sembrar la demo
+        run: python3 scripts/sembrar_demo.py
+
+      - name: Prueba de carga
+        # Las entradas van por variables de entorno, nunca pegadas en el comando
+        env:
+          RITMO: ${{ inputs.ritmo }}
+          MINUTOS: ${{ inputs.minutos }}
+          CAJAS: ${{ inputs.cajas }}
+        run: python3 scripts/prueba_carga.py --ritmo "$RITMO" --minutos "$MINUTOS" --cajas "$CAJAS"
+
+      - name: Reporte de la prueba de carga
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: reporte-carga
+          path: reporte-carga.local.json
+          retention-days: 30
+
+      - name: Registros del stack si algo falla
+        if: failure()
+        run: docker compose logs --tail=300
+
+      - name: Apagar el stack
+        if: always()
+        run: docker compose down -v

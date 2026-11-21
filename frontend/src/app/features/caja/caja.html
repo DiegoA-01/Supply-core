@@ -156,6 +156,15 @@
           </select>
           @if (esDueno()) { <button type="button" class="boton" (click)="guardarTolerancia()">Guardar</button> }
         </div>
+        <h2>Alertas por cajero</h2>
+        <p class="texto-chico texto-2">Cuando un cajero llega en un día a estas cantidades, el dueño y los supervisores reciben un aviso (una vez por día).</p>
+        <div class="fila tolerancia">
+          <label for="um-anul">Anulaciones</label>
+          <input id="um-anul" class="entrada num" type="number" min="1" [disabled]="!esDueno()" [ngModel]="umbralAnulaciones()" (ngModelChange)="umbralAnulaciones.set($event === '' ? null : +$event)">
+          <label for="um-desc">Ventas con descuento autorizado</label>
+          <input id="um-desc" class="entrada num" type="number" min="1" [disabled]="!esDueno()" [ngModel]="umbralDescuentos()" (ngModelChange)="umbralDescuentos.set($event === '' ? null : +$event)">
+          @if (esDueno()) { <button type="button" class="boton" (click)="guardarTolerancia()">Guardar</button> }
+        </div>
       </section>
     }
 
