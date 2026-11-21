@@ -54,6 +54,9 @@ export class CajasTurnos implements OnInit {
   protected readonly tolerancia = signal<number | null>(null);
   /** Bodega para lo devuelto en mal estado (spec 006); null = no reingresa. */
   protected readonly averias = signal<number | null>(null);
+  /** Anulaciones y descuentos autorizados por cajero en un día que avisan al dueño (spec 010). */
+  protected readonly umbralAnulaciones = signal<number | null>(null);
+  protected readonly umbralDescuentos = signal<number | null>(null);
   protected readonly tienePin = signal<boolean | null>(null);
   protected readonly passwordActual = signal('');
   protected readonly pinNuevo = signal('');
@@ -74,6 +77,8 @@ export class CajasTurnos implements OnInit {
       next: c => {
         this.tolerancia.set(c.toleranciaDiferencia);
         this.averias.set(c.bodegaAveriasId ?? null);
+        this.umbralAnulaciones.set(c.umbralAnulacionesDia ?? null);
+        this.umbralDescuentos.set(c.umbralDescuentosDia ?? null);
       },
       error: () => undefined,
     });
@@ -156,10 +161,12 @@ export class CajasTurnos implements OnInit {
     if (t === null || t < 0) {
       return;
     }
-    this.servicio.configurar(t, this.averias()).subscribe({
+    this.servicio.configurar(t, this.averias(), { anulaciones: this.umbralAnulaciones(), descuentos: this.umbralDescuentos() }).subscribe({
       next: c => {
         this.tolerancia.set(c.toleranciaDiferencia);
         this.averias.set(c.bodegaAveriasId ?? null);
+        this.umbralAnulaciones.set(c.umbralAnulacionesDia ?? null);
+        this.umbralDescuentos.set(c.umbralDescuentosDia ?? null);
         this.avisos.ok('Configuración guardada.');
       },
       error: e => this.avisos.error(e),

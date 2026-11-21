@@ -552,7 +552,7 @@ de aceptación verificados → rama propia desde `develop` → PR que crea y mez
 | 007 Cartera | Venta a crédito con cupo y mora, abonos en la caja, edades, saldo a favor | V37 | (rama `feature/ventas-pos`) | **Hecha** (2026-11-20, falta PR) |
 | 008 Costo promedio | Costo promedio ponderado en la recepción, costo en la línea de venta, margen real | V36 | (rama `feature/ventas-pos`) | **Hecha** (2026-11-20, falta PR) |
 | 009 Reportes y cuadre | Reportes de ventas y caja, bloque de ventas en el tablero, cuadre diario automático | — | — | Propuesta |
-| 010 Endurecimiento | Alertas por cajero, Playwright en el CI, prueba de carga de 50 ventas por minuto | — | — | Propuesta |
+| 010 Endurecimiento | Alertas por cajero, Playwright en el CI, prueba de carga de 50 ventas por minuto | V39 | (rama `feature/ventas-endurecimiento`) | **Hecha** (2026-11-20, falta PR y ver el `e2e` en GitHub) |
 
 ### Lo que dejó cada spec hecha (lo esencial para retomar)
 - **000:** `.github/workflows/ci.yml`, `dependency-review.yml` y `codeql.yml`; JaCoCo en el `pom.xml`. Trivy obligó a fijar

@@ -127,6 +127,7 @@ public class VentaService {
     private final DevolucionVentaRepository devolucionRepository;
     private final NotificacionService notificacionService;
     private final CarteraService carteraService;
+    private final AlertaCajeroService alertaCajero;
 
     /**
      * Línea lista para cobrar: el producto, su precio del día y el resultado del cálculo.
@@ -179,6 +180,7 @@ public class VentaService {
      * @param devolucionRepository        lo ya devuelto de cada línea
      * @param notificacionService         aviso de venta por debajo del costo (spec 008)
      * @param carteraService              crédito, cupo, mora y saldo a favor (spec 007)
+     * @param alertaCajero                alerta de descuentos autorizados por cajero (spec 010)
      */
     public VentaService(VentaRepository ventaRepository, PedidoVentaRepository pedidoRepository,
             TurnoCajaRepository turnoRepository, CajaRepository cajaRepository,
@@ -190,7 +192,7 @@ public class VentaService {
             AutorizacionService autorizacionService, LimiteDescuentoService limiteService,
             UsuarioRepository usuarioRepository, AuditoriaService auditoriaService, JdbcTemplate jdbc,
             EmpresaRepository empresaRepository, DevolucionVentaRepository devolucionRepository,
-            NotificacionService notificacionService, CarteraService carteraService) {
+            NotificacionService notificacionService, CarteraService carteraService, AlertaCajeroService alertaCajero) {
         this.ventaRepository = ventaRepository;
         this.pedidoRepository = pedidoRepository;
         this.turnoRepository = turnoRepository;
@@ -214,6 +216,7 @@ public class VentaService {
         this.devolucionRepository = devolucionRepository;
         this.notificacionService = notificacionService;
         this.carteraService = carteraService;
+        this.alertaCajero = alertaCajero;
     }
 
     /**
@@ -372,6 +375,9 @@ public class VentaService {
                 + (autorizaPrecio == null ? "" : "; precio bajo mínimo autorizado por " + autorizaPrecio)
                 + (pedido == null ? "" : "; pedido=" + pedido.getConsecutivo()));
         avisarBajoCosto(v, lineas);
+        if (v.getAutorizadaPorUsuarioId() != null) {
+            alertaCajero.revisar(cajero, AlertaCajeroService.Tipo.DESCUENTOS);
+        }
         return new Confirmacion(respuesta(v), true);
     }
 

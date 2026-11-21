@@ -487,7 +487,13 @@ public class PreciosService {
         if (!u.isActivo()) {
             throw new NegocioException("UNIDAD_INACTIVA", "La unidad " + u.getCodigo() + " está inactiva");
         }
-        unidadMedidaService.convertir(BigDecimal.ONE, u.getId(), producto.getUnidadMedida().getId());
+        // Se compara la magnitud aquí mismo: llamar a convertir (transaccional) para validar marcaría la transacción
+        // para deshacerse al fallar, y la carga de precios, que reporta el error como una fila mala, terminaba en 500.
+        UnidadMedida base = producto.getUnidadMedida();
+        if (u.getMagnitud() != base.getMagnitud()) {
+            throw new NegocioException("UNIDADES_INCOMPATIBLES", "No se puede convertir " + u.getCodigo() + " ("
+                    + u.getMagnitud() + ") a " + base.getCodigo() + " (" + base.getMagnitud() + ")");
+        }
         return u;
     }
 

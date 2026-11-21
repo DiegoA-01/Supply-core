@@ -16,6 +16,7 @@ const EVENTOS: Record<string, string> = {
   CATALOGO_ACTUALIZADO: 'Un proveedor actualizó su catálogo',
   PRECIO_BAJO_COSTO: 'Se vendió por debajo del costo',
   CREDITO_BLOQUEADO: 'Se bloqueó el crédito de un cliente en mora',
+  ALERTA_CAJERO: 'Un cajero llegó al umbral de anulaciones o descuentos',
   CUADRE_DESCUADRE: 'El cuadre diario encontró ventas, inventario o caja que no cuadran',
   SOLICITUD_PENDIENTE_APROBACION: 'Hay una solicitud esperando una decisión',
   SOLICITUD_DECIDIDA: 'Decidieron una solicitud',

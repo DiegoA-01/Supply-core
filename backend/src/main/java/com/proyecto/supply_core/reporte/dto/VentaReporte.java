@@ -6,6 +6,8 @@ import java.util.List;
 
 import com.proyecto.supply_core.reporte.enums.AgrupacionVenta;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 /**
  * Reporte de ventas netas de un periodo (spec 009). Todo lo calcula Java: la pantalla y la exportación solo lo muestran.
  *
@@ -35,6 +37,7 @@ public record VentaReporte(LocalDate desde, LocalDate hasta, AgrupacionVenta agr
      * @param margenPct     margen sobre la base con costo, en % ({@code null} sin base o sin costo)
      * @param baseSinCosto  base de líneas que se vendieron sin costo conocido (no entra al margen)
      */
+    @Schema(name = "FilaVentaReporte")
     public record Fila(String clave, String nombre, long ventas, BigDecimal unidades, BigDecimal bruto,
             BigDecimal devoluciones, BigDecimal neto, BigDecimal baseNeta, BigDecimal costo, BigDecimal margen,
             BigDecimal margenPct, BigDecimal baseSinCosto) {
@@ -55,6 +58,7 @@ public record VentaReporte(LocalDate desde, LocalDate hasta, AgrupacionVenta agr
      * @param baseSinCosto    base de líneas sin costo conocido
      * @param ticketPromedio  neto / ventas ({@code null} sin ventas)
      */
+    @Schema(name = "TotalesVentaReporte")
     public record Totales(long ventas, BigDecimal bruto, BigDecimal devoluciones, BigDecimal redondeo, BigDecimal neto,
             BigDecimal baseNeta, BigDecimal costo, BigDecimal margen, BigDecimal margenPct, BigDecimal baseSinCosto,
             BigDecimal ticketPromedio) {

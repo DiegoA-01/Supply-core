@@ -85,6 +85,14 @@ public class Empresa {
     @Column(name = "bodega_averias_id")
     private Long bodegaAveriasId;
 
+    /** Anulaciones de un cajero en un día que disparan la alerta al dueño (spec 010, V39). */
+    @Column(name = "umbral_anulaciones_dia", nullable = false)
+    private int umbralAnulacionesDia = 3;
+
+    /** Ventas con descuento o precio autorizado de un cajero en un día que disparan la alerta (spec 010, V39). */
+    @Column(name = "umbral_descuentos_dia", nullable = false)
+    private int umbralDescuentosDia = 5;
+
     @Column(name = "creado_en", nullable = false, updatable = false, insertable = false)
     private LocalDateTime creadoEn;
 }

@@ -15,6 +15,7 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 SALIDA = RAIZ / 'credenciales-docker.local.txt'
+SALIDA_JSON = RAIZ / 'credenciales-docker.local.json'
 ENV = dict(l.split('=', 1) for l in (RAIZ / '.env').read_text(encoding='utf-8').splitlines() if '=' in l and not l.startswith('#'))
 BASE = ENV.get('PUBLIC_URL', 'http://localhost:' + ENV.get('WEB_PORT', '8088')).rstrip('/')
 CODIGO_EMPRESA = 'Ferreteria Demo'
@@ -235,6 +236,11 @@ PIN del supervisor de ventas (autoriza retiros, gastos y anulaciones en la caja)
 Correo:  {prov_correo}
 Clave:   {prov_clave}
 """, encoding='utf-8')
+    # Copia en JSON para las pruebas de punta a punta y de carga (spec 010); tampoco se sube a git
+    SALIDA_JSON.write_text(json.dumps({
+        'base': BASE, 'empresa': CODIGO_EMPRESA, 'admin': {'correo': admin_correo, 'clave': admin_clave, 'secretoMfa': secreto_admin},
+        'cuentas': claves, 'pinSupervisor': pin_supervisor, 'caja': 'Caja 1 mostrador', 'producto': 'CEM-50',
+    }, ensure_ascii=False, indent=2), encoding='utf-8')
     print(f'\nListo. Credenciales guardadas en {SALIDA}')
 
 

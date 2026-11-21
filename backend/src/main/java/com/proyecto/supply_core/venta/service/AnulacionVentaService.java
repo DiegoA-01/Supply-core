@@ -52,6 +52,7 @@ public class AnulacionVentaService {
     private final AuditoriaService auditoriaService;
     private final VentaService ventaService;
     private final CarteraService carteraService;
+    private final AlertaCajeroService alertaCajero;
 
     /**
      * @param ventaRepository             ventas
@@ -63,11 +64,13 @@ public class AnulacionVentaService {
      * @param auditoriaService            registro de la anulación
      * @param ventaService                detalle de la venta
      * @param carteraService              anula la cuenta y devuelve el saldo a favor (spec 007)
+     * @param alertaCajero                alerta de anulaciones por cajero (spec 010)
      */
     public AnulacionVentaService(VentaRepository ventaRepository, TurnoCajaRepository turnoRepository,
             MovimientoCajaRepository movimientoCajaRepository, DevolucionVentaRepository devolucionRepository,
             MovimientoInventarioService movimientoInventarioService, AutorizacionService autorizacionService,
-            AuditoriaService auditoriaService, VentaService ventaService, CarteraService carteraService) {
+            AuditoriaService auditoriaService, VentaService ventaService, CarteraService carteraService,
+            AlertaCajeroService alertaCajero) {
         this.ventaRepository = ventaRepository;
         this.turnoRepository = turnoRepository;
         this.movimientoCajaRepository = movimientoCajaRepository;
@@ -77,6 +80,7 @@ public class AnulacionVentaService {
         this.auditoriaService = auditoriaService;
         this.ventaService = ventaService;
         this.carteraService = carteraService;
+        this.alertaCajero = alertaCajero;
     }
 
     /**
@@ -150,6 +154,7 @@ public class AnulacionVentaService {
         v.setAnulacionAutorizadaPorUsuarioId(supervisor);
         auditoriaService.exito(AccionAuditoria.VENTA_ANULAR, EntidadAuditada.VENTA, v.getId(), v.getConsecutivo()
                 + "; total=" + v.totalAPagar().toPlainString() + "; autorizó=" + supervisor + "; motivo=" + motivo);
+        alertaCajero.revisar(v.getCajeroUsuarioId(), AlertaCajeroService.Tipo.ANULACIONES);
         return ventaService.respuesta(v);
     }
 }

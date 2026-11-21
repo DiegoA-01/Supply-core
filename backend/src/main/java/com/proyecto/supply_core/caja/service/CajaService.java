@@ -119,7 +119,8 @@ public class CajaService {
     @Transactional(readOnly = true)
     public ConfiguracionCaja configuracion() {
         Empresa e = empresa();
-        return new ConfiguracionCaja(e.getToleranciaDiferenciaCaja(), e.getBodegaAveriasId());
+        return new ConfiguracionCaja(e.getToleranciaDiferenciaCaja(), e.getBodegaAveriasId(), e.getUmbralAnulacionesDia(),
+                e.getUmbralDescuentosDia());
     }
 
     /**
@@ -130,16 +131,24 @@ public class CajaService {
     @Transactional
     public ConfiguracionCaja configurar(ConfiguracionCaja req) {
         Empresa e = empresa();
-        String antes = e.getToleranciaDiferenciaCaja().toPlainString() + "; averías=" + e.getBodegaAveriasId();
+        String antes = e.getToleranciaDiferenciaCaja().toPlainString() + "; averías=" + e.getBodegaAveriasId() + "; umbrales=" + e.getUmbralAnulacionesDia() + "/"
+                + e.getUmbralDescuentosDia();
         if (req.bodegaAveriasId() != null) {
             bodegaRepository.findById(req.bodegaAveriasId()).orElseThrow(() -> new NoEncontradoException("Bodega no encontrada"));
         }
         e.setToleranciaDiferenciaCaja(req.toleranciaDiferencia().setScale(2, RoundingMode.HALF_UP));
         e.setBodegaAveriasId(req.bodegaAveriasId());
+        if (req.umbralAnulacionesDia() != null) {
+            e.setUmbralAnulacionesDia(req.umbralAnulacionesDia());
+        }
+        if (req.umbralDescuentosDia() != null) {
+            e.setUmbralDescuentosDia(req.umbralDescuentosDia());
+        }
         auditoriaService.exito(AccionAuditoria.CAJA_CONFIGURAR, EntidadAuditada.EMPRESA, e.getId(),
                 "antes: " + antes + " | después: " + e.getToleranciaDiferenciaCaja().toPlainString() + "; averías="
                         + e.getBodegaAveriasId());
-        return new ConfiguracionCaja(e.getToleranciaDiferenciaCaja(), e.getBodegaAveriasId());
+        return new ConfiguracionCaja(e.getToleranciaDiferenciaCaja(), e.getBodegaAveriasId(), e.getUmbralAnulacionesDia(),
+                e.getUmbralDescuentosDia());
     }
 
     // ----------------------------------------------------------------- apoyo

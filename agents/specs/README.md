@@ -31,7 +31,7 @@ Estados de una spec: **Propuesta** (en revisión) → **Aprobada** (se puede pla
 | [007-cartera](007-cartera/spec.md) | F7 | Crédito, cupos, abonos y edades | `feature/ventas-pos` | 004 | Hecha (V37, PR #32) |
 | [008-costo-promedio-margen](008-costo-promedio-margen/spec.md) | F8 | Costo promedio ponderado y margen real | `feature/ventas-pos` | 004 | Hecha (V36, PR #32) |
 | [009-reportes-cuadre](009-reportes-cuadre/spec.md) | F9 | Reportes de ventas y caja, tablero, cuadre diario automático | `feature/ventas-reportes` | 006, 008 | Hecha (V38) |
-| [010-endurecimiento-e2e](010-endurecimiento-e2e/spec.md) | F10 | Alertas, pruebas de punta a punta en el CI, prueba de carga | `feature/ventas-endurecimiento` | 009 | Propuesta |
+| [010-endurecimiento-e2e](010-endurecimiento-e2e/spec.md) | F10 | Alertas, pruebas de punta a punta en el CI, prueba de carga | `feature/ventas-endurecimiento` | 009 | Hecha (V39; falta ver el `e2e` del CI en GitHub) |
 
 Al terminar la 006 el negocio ya puede **vender y cuadrar caja**. De la 007 en adelante se suman crédito, márgenes y
 control fino.
@@ -70,7 +70,8 @@ Antes de crear una migración, la rama la anota aquí (en su primer commit) para
 | V36 | `feature/ventas-pos` | Costo promedio del producto y costo de cada movimiento (spec 008) |
 | V37 | `feature/ventas-pos` | Cartera: cuentas por cobrar, abonos, saldo a favor como medio de pago y excepción de crédito (spec 007) |
 | V38 | `feature/ventas-reportes` | Cuadre diario automático: `cuadre_diario` (spec 009) |
-| V39 en adelante | libre | Se reserva al empezar cada spec |
+| V39 | `feature/ventas-endurecimiento` | Umbrales de anulaciones y descuentos por cajero y registro de alertas (spec 010) |
+| V40 en adelante | libre | Se reserva al empezar cada spec |
 
 ## Riesgos generales
 
