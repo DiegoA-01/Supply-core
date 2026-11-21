@@ -154,7 +154,7 @@ public class AnulacionVentaService {
         v.setAnulacionAutorizadaPorUsuarioId(supervisor);
         auditoriaService.exito(AccionAuditoria.VENTA_ANULAR, EntidadAuditada.VENTA, v.getId(), v.getConsecutivo()
                 + "; total=" + v.totalAPagar().toPlainString() + "; autorizó=" + supervisor + "; motivo=" + motivo);
-        alertaCajero.revisar(v.getCajeroUsuarioId(), AlertaCajeroService.Tipo.ANULACIONES);
+        alertaCajero.revisarDespuesDeConfirmar(v.getCajeroUsuarioId(), AlertaCajeroService.Tipo.ANULACIONES);
         return ventaService.respuesta(v);
     }
 }

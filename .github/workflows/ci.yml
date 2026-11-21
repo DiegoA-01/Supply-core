@@ -146,6 +146,11 @@ jobs:
   # PIN → cerrar). El .env y las cuentas se generan dentro del job con claves aleatorias y nunca se suben.
   e2e:
     name: e2e
+    # Solo si las pruebas del backend y del frontend pasaron; un envío nuevo a la misma rama cancela el anterior
+    needs: [backend, frontend]
+    concurrency:
+      group: e2e-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -154,7 +159,9 @@ jobs:
       - name: .env de prueba con claves aleatorias (enmascaradas)
         run: |
           python3 scripts/env_de_prueba.py
-          grep -v '^#' .env | cut -d= -f2- | while read -r v; do [ -n "$v" ] && echo "::add-mask::$v"; done
+          # Solo se enmascaran los secretos: usuario, puerto y URL quedan legibles en los registros
+          grep -E '^(MYSQL_ROOT_PASSWORD|DB_PASSWORD|JWT_SECRET|PLATAFORMA_ADMIN_PASSWORD)=' .env | cut -d= -f2- \
+            | while read -r v; do [ -n "$v" ] && echo "::add-mask::$v"; done
 
       - name: Levantar el stack de Docker
         run: docker compose up -d --build

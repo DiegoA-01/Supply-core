@@ -9,13 +9,16 @@ on:
     inputs:
       ritmo:
         description: Ventas por minuto entre todas las cajas
-        default: '50'
+        type: number
+        default: 50
       minutos:
         description: Duración en minutos
-        default: '5'
+        type: number
+        default: 5
       cajas:
         description: Cajas vendiendo a la vez
-        default: '3'
+        type: number
+        default: 3
 
 permissions:
   contents: read
@@ -31,7 +34,9 @@ jobs:
       - name: .env de prueba con claves aleatorias (enmascaradas)
         run: |
           python3 scripts/env_de_prueba.py
-          grep -v '^#' .env | cut -d= -f2- | while read -r v; do [ -n "$v" ] && echo "::add-mask::$v"; done
+          # Solo se enmascaran los secretos: usuario, puerto y URL quedan legibles en los registros
+          grep -E '^(MYSQL_ROOT_PASSWORD|DB_PASSWORD|JWT_SECRET|PLATAFORMA_ADMIN_PASSWORD)=' .env | cut -d= -f2- \
+            | while read -r v; do [ -n "$v" ] && echo "::add-mask::$v"; done
 
       - name: Levantar el stack de Docker
         run: docker compose up -d --build
@@ -50,7 +55,12 @@ jobs:
         run: python3 scripts/sembrar_demo.py
 
       - name: Prueba de carga
-        run: python3 scripts/prueba_carga.py --ritmo ${{ inputs.ritmo }} --minutos ${{ inputs.minutos }} --cajas ${{ inputs.cajas }}
+        # Las entradas van por variables de entorno, nunca pegadas en el comando
+        env:
+          RITMO: ${{ inputs.ritmo }}
+          MINUTOS: ${{ inputs.minutos }}
+          CAJAS: ${{ inputs.cajas }}
+        run: python3 scripts/prueba_carga.py --ritmo "$RITMO" --minutos "$MINUTOS" --cajas "$CAJAS"
 
       - name: Reporte de la prueba de carga
         if: always()

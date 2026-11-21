@@ -3,9 +3,16 @@ package com.proyecto.supply_core.venta.service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.proyecto.supply_core.common.tenant.EmpresaContexto;
 import com.proyecto.supply_core.empresa.entity.Empresa;
@@ -20,7 +27,9 @@ import com.proyecto.supply_core.venta.repository.VentaRepository;
 /**
  * Alertas por cajero (spec 010): cuando un cajero llega en un día al umbral de anulaciones o de ventas con descuento o
  * precio autorizado que fijó su empresa, se avisa al dueño y a los supervisores de ventas (decisión de la usuaria), una
- * sola vez por cajero, tipo y día. No bloquea nada: solo avisa para que alguien lo revise.
+ * sola vez por cajero, tipo y día. No bloquea nada: solo avisa para que alguien lo revise. Desde la venta y la
+ * anulación se revisa después de confirmar ({@link #revisarDespuesDeConfirmar}): así cuenta lo que ya quedó guardado
+ * y un error del aviso nunca deshace la venta.
  */
 @Service
 public class AlertaCajeroService {
@@ -37,7 +46,10 @@ public class AlertaCajeroService {
     private final EmpresaRepository empresaRepository;
     private final UsuarioRepository usuarioRepository;
     private final NotificacionService notificacionService;
+    private static final Logger log = LoggerFactory.getLogger(AlertaCajeroService.class);
+
     private final JdbcTemplate jdbc;
+    private final TransactionTemplate aparte;
 
     /**
      * @param ventaRepository     conteos del día
@@ -45,14 +57,45 @@ public class AlertaCajeroService {
      * @param usuarioRepository   nombre del cajero
      * @param notificacionService avisos
      * @param jdbc                registro de la alerta (sin repetir el mismo día)
+     * @param transacciones       transacción propia para revisar después de confirmar
      */
     public AlertaCajeroService(VentaRepository ventaRepository, EmpresaRepository empresaRepository,
-            UsuarioRepository usuarioRepository, NotificacionService notificacionService, JdbcTemplate jdbc) {
+            UsuarioRepository usuarioRepository, NotificacionService notificacionService, JdbcTemplate jdbc,
+            PlatformTransactionManager transacciones) {
         this.ventaRepository = ventaRepository;
         this.empresaRepository = empresaRepository;
         this.usuarioRepository = usuarioRepository;
         this.notificacionService = notificacionService;
         this.jdbc = jdbc;
+        this.aparte = new TransactionTemplate(transacciones);
+        this.aparte.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    /**
+     * Revisa el umbral cuando la transacción en curso (la venta o la anulación) ya se confirmó, en una transacción
+     * aparte. Un error aquí se registra en el log y no toca la operación; sin transacción en curso revisa de una vez.
+     *
+     * @param cajeroId cajero
+     * @param tipo     anulaciones o descuentos
+     */
+    public void revisarDespuesDeConfirmar(Long cajeroId, Tipo tipo) {
+        Runnable revisar = () -> {
+            try {
+                aparte.executeWithoutResult(estado -> revisar(cajeroId, tipo));
+            } catch (RuntimeException e) {
+                log.error("No se pudo revisar la alerta {} del cajero {}: {}", tipo, cajeroId, e.getMessage(), e);
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    revisar.run();
+                }
+            });
+        } else {
+            revisar.run();
+        }
     }
 
     /**
@@ -87,8 +130,8 @@ public class AlertaCajeroService {
         String cajero = usuarioRepository.findById(cajeroId).map(Usuario::getNombreCompleto).orElse("Un cajero");
         String mensaje = cajero + " lleva hoy " + cantidad + (tipo == Tipo.ANULACIONES ? " ventas anuladas" : " ventas con descuento o precio autorizado")
                 + " (umbral " + umbral + "). Revise sus ventas en el reporte de caja.";
-        notificacionService.notificarRol(Roles.ADMIN_SISTEMA, EventoNotificacion.ALERTA_CAJERO, mensaje);
-        notificacionService.notificarRol(Roles.SUPERVISOR_VENTAS, EventoNotificacion.ALERTA_CAJERO, mensaje);
+        notificacionService.notificarRoles(java.util.List.of(Roles.ADMIN_SISTEMA, Roles.SUPERVISOR_VENTAS),
+                EventoNotificacion.ALERTA_CAJERO, mensaje);
         return true;
     }
 

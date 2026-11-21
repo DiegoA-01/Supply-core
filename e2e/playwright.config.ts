@@ -11,7 +11,8 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   fullyParallel: false,
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
+  // Sin reintentos: la prueba abre un turno y un reintento lo encontraría abierto (fallaría por otra razón)
+  retries: 0,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:8088',

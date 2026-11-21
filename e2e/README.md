@@ -34,3 +34,7 @@ Crea sus propios cajeros y cajas, vende a la vez en todas y al final comprueba q
 quedó negativo y bajó exactamente lo vendido, que los consecutivos de cada caja no tienen huecos y que cada caja cierra
 cuadrada. El reporte queda en `reporte-carga.local.json`. En GitHub se lanza a mano con el workflow **Carga**
 (pestaña Actions → Run workflow); no corre en cada PR.
+
+Los cajeros, cajas, turnos y ventas que crea la prueba quedan en la base: en GitHub se borran solos (el workflow
+termina con `docker compose down -v`), pero en tu equipo se acumulan con cada corrida. Para dejar la demo limpia:
+`docker compose down -v`, levantar de nuevo y volver a sembrar (las claves cambian).

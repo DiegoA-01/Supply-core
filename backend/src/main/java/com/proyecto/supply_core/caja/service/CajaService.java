@@ -146,7 +146,8 @@ public class CajaService {
         }
         auditoriaService.exito(AccionAuditoria.CAJA_CONFIGURAR, EntidadAuditada.EMPRESA, e.getId(),
                 "antes: " + antes + " | después: " + e.getToleranciaDiferenciaCaja().toPlainString() + "; averías="
-                        + e.getBodegaAveriasId());
+                        + e.getBodegaAveriasId() + "; umbrales=" + e.getUmbralAnulacionesDia() + "/"
+                        + e.getUmbralDescuentosDia());
         return new ConfiguracionCaja(e.getToleranciaDiferenciaCaja(), e.getBodegaAveriasId(), e.getUmbralAnulacionesDia(),
                 e.getUmbralDescuentosDia());
     }

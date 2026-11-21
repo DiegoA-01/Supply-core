@@ -376,7 +376,7 @@ public class VentaService {
                 + (pedido == null ? "" : "; pedido=" + pedido.getConsecutivo()));
         avisarBajoCosto(v, lineas);
         if (v.getAutorizadaPorUsuarioId() != null) {
-            alertaCajero.revisar(cajero, AlertaCajeroService.Tipo.DESCUENTOS);
+            alertaCajero.revisarDespuesDeConfirmar(cajero, AlertaCajeroService.Tipo.DESCUENTOS);
         }
         return new Confirmacion(respuesta(v), true);
     }
