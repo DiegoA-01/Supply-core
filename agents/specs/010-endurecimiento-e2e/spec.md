@@ -1,6 +1,6 @@
 # 010 - Alertas, pruebas de punta a punta y carga
 
-**Estado:** Hecha (V39; el trabajo `e2e` del CI falta verlo correr en GitHub) · **Rama:** `feature/ventas-endurecimiento` · **Depende de:** 009
+**Estado:** Hecha (V39; verificada en Docker local, falta ver el trabajo `e2e` en GitHub) · **Rama:** `feature/ventas-endurecimiento` · **Depende de:** 009
 
 ## Objetivo
 Cerrar el módulo de ventas con alertas sobre comportamientos sospechosos y con la prueba de que todo el recorrido

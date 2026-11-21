@@ -17,3 +17,7 @@ que chocaban en el Swagger: se les dio nombre único con `@Schema` para que `npm
 La prueba de cobertura encontró un fallo de la 001: una fila de la carga de precios con una unidad que no se convierte
 hacía fallar todo el archivo con 500 (la validación llamaba a un método transaccional que marcaba la transacción para
 deshacerse). `PreciosService.unidadDelPrecio` compara ahora la magnitud directamente, con el mismo error.
+Verificado en Docker local (2026-11-20, mismos pasos que el CI): API lista con la espera del CI, siembra, Playwright
+pasa (9,4 s) y carga completa 250 ventas en 5 min en 3 cajas: 0 errores, 50,2/min, media 81 ms, p95 115 ms, stock
+exacto, sin huecos, cajas cuadradas. La carga ahora espera y reintenta el ingreso ante el límite de intentos por minuto
+por IP (429). Solo falta ver el YAML de `ci.yml` y `carga.yml` correr en GitHub.

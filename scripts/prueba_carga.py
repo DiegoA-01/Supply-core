@@ -72,7 +72,16 @@ class Api:
 def entrar(base, empresa, correo, clave_, secreto_mfa=None):
     """Inicia sesión (con segundo factor si hace falta) y devuelve la API con el token."""
     api = Api(base)
-    r = api.exigir('ingreso ' + correo, 'POST', '/api/auth/login', {'empresa': empresa, 'correo': correo, 'password': clave_})
+    # El backend limita los ingresos por minuto desde una IP; la prueba entra varias veces desde el mismo equipo
+    # (en la vida real cada cajero entra desde el suyo), así que ante un 429 espera el minuto y reintenta.
+    for _ in range(4):
+        estado, r, _ = api.llamar('POST', '/api/auth/login', {'empresa': empresa, 'correo': correo, 'password': clave_})
+        if estado != 429:
+            break
+        print(f'  límite de ingresos por minuto alcanzado; esperando para entrar como {correo}…')
+        time.sleep(61)
+    if estado != 200:
+        sys.exit(f'Falló "ingreso {correo}": {estado} {r}')
     if r.get('desafioMfa'):
         r = api.exigir('segundo factor ' + correo, 'POST', '/api/auth/mfa', {'desafio': r['desafioMfa'], 'codigo': totp(secreto_mfa)})
     api.token = r['token']
