@@ -36,7 +36,7 @@
 		<anthropic.version>2.34.0</anthropic.version>
 		<poi.version>5.4.1</poi.version>
 		<pdfbox.version>3.0.5</pdfbox.version>
-		<openpdf.version>2.0.3</openpdf.version>
+		<openpdf.version>3.0.5</openpdf.version>
 		<swagger-core.version>2.2.55</swagger-core.version>
 	</properties>
 	<dependencyManagement>
